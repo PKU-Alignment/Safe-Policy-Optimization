@@ -23,13 +23,6 @@ Here we provide a table for Safe RL algorithms that the benchmark concludes.
 
 
 ## Supported Environment 
-Here we provide a table for comparison of MARLlib and before benchmarks.
-
-|   Environment   | Github Stars | Paper Links |       Framework          | Last Update |
-|:-------------:|:-------------:|:-------------:|:---------------------------:|:---------------------------:
-|     [PyMARL](https://github.com/oxwhirl/pymarl) | [![GitHub stars](https://img.shields.io/github/stars/oxwhirl/pymarl)](https://github.com/oxwhirl/pymarl/stargazers)    |       CP      |       :heavy_check_mark:       |       VD       |         5        |                   |                       |                      |              *              | ![GitHub last commit](https://img.shields.io/github/last-commit/oxwhirl/pymarl?label=last%20update) |
-
-
 
 ## Installation
 
