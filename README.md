@@ -2,7 +2,17 @@
 
 <img src="assets/main.jpeg" width="1000" border="1"/>
 
-Safepo baselines provides many safe-based algorithms implementations, including Single-agent RL and Multi-agent RL. Codes are implemented based on the latest version of pytorch and include mainstream CMDP-based algorithms in the field of safe reinforcement learning. We provide a unified framework and interface for these algorithms, which helps people to fairly compare the performance of different algorithms under the same learning mode and parameters. All algorithms are implemented based on cpu multi-threading and minibatch, which greatly improves the training speed of the algorithm.
+****
+[![Organization](https://img.shields.io/badge/Organization-PKU_MARL-blue.svg "Organization")](https://github.com/PKU-MARL "Organization")[![Unittest](https://img.shields.io/badge/Unittest-passing-green.svg "Unittest")](https://github.com/PKU-MARL "Unittest")[![Docs](https://img.shields.io/badge/Docs-In_development-red.svg "Author")](https://github.com/PKU-MARL "Docs")[![GitHub license](https://img.shields.io/github/license/PKU-MARL/DexterousHands)](https://github.com/PKU-MARL/DexterousHands/blob/main/LICENSE)
+
+**Safe Poicy Optimization (Safe PO)**  is a comprehensive benchmark based on safeRL. It provides RL research community a unified platform for processing and evaluating the ultramodern algorithms in various safe reinforcement learning environments. To better help the community study this problem, Safe PO are developed with the following key features:
+
+- **Comprehensive RL Benchmark**: We offer many safe reinforcement learning algorithms both single agent and muti-agent, including cpo, pcpo, trpo_lagrangian, ppo_lagrangian, focops, macpo, macpo_lagrangian, hatrpo...
+- **More richer interfaces**：In safePO, you can  can modify the parameters of the algorithm according to your requirements. We provide customizable YAML files for each algorithm, and you can also pass in the parameters you want to change via argprase at the terminal.
+- **More fair, more effective**：In the past, when comparing different algorithms, the number of interactions of each algorithm and the processing mode of buffer may be different. To solve this problem, we abstracted the most basic Policy Graident class and inherited all other algorithms from this class to ensure a more fair and reasonable performance comparison. In order to improve efficiency, we also support the parallelism of multi-core CPU, which greatly improves the efficiency of algorithm development and verification.
+- **More infos you can know**：We provide a large number of data visualization interfaces. Reinforcement learning will involve many parameters in the training process. In order to better understand the changes of each parameter in the training process, we use log files and Tensorboard to visualize a large number of parameters in the training process. We think this helps developers tune each algorithm more efficiently.
+
+<img src="assets/arch.png" width="1000" border="1"/>
 
 ## Overview of Algorithms
 Here we provide a table for Safe RL algorithms that the benchmark concludes.
