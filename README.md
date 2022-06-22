@@ -55,11 +55,11 @@ The goal is for an agent to move along a straight line or a two dimensional plan
 
 The reward consists of three parts:
 
-- *alive bonus*: Every timestep that the walker is alive, it gets a reward of 1,
-- *reward_forward*: A reward of walking forward which is measured as *(x-coordinate before action - x-coordinate after action)/dt*. *dt* is the time between actions and is dependent on the frame_skip parameter (default is 4), where the *dt* for one frame is 0.002 - making the default *dt = 4 \* 0.002 = 0.008*. This reward would be positive if the walker walks forward (right) desired.
-- *reward_control*: A negative reward for penalising the walker if it takes actions that are too large. It is measured as *-coefficient **x** sum(action2)* where *coefficient* is a parameter set for the control and has a default value of 0.001
+- **alive bonus**: Every timestep that the walker is alive, it gets a reward of 1,
+- **reward_forward**: A reward of walking forward which is measured as (x-coordinate before action - x-coordinate after action)/dt. *dt* is the time between actions and is dependent on the frame_skip parameter (default is 4), where the *dt* for one frame is 0.002 - making the default dt = 4 \* 0.002 = 0.008. This reward would be positive if the walker walks forward (right) desired.
+- **reward_control**: A negative reward for penalising the walker if it takes actions that are too large. It is measured as -coefficient **x** sum(action2) where coefficient is a parameter set for the control and has a default value of 0.001
 
-The total reward returned is ***reward*** *=* *alive bonus + reward_forward + reward_control*
+The total reward returned is **reward** *=* alive bonus + reward_forward + reward_control
 
 #### cost
 
