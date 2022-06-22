@@ -170,7 +170,7 @@ Because you use this baselines, you need to install environments that you want t
 ### Conda-Environment
 
 ```python
-conda create -n Single python=3.8
+conda create -n safe python=3.8
 # because the cuda version, we recommend you install pytorch manual.
 pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 torchaudio==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -e .
@@ -261,45 +261,26 @@ as an argument:
 python train.py --task=ShadowHandOver --algo=macpo
 ```
 
-At present, we only support these four algorithms.
-<!-- ### Loading trained models // Checkpoints
-
-Checkpoints are saved in the folder `models/` 
-
-To load a trained checkpoint and only perform inference (no training), pass `--test` 
-as an argument:
-
-```bash
-python train.py --task=ShadowHandOver --checkpoint=models/shadow_hand_over/ShadowHandOver.pth --test
-``` -->
-
-<!--## <span id="task">Tasks</span>-->
-
 #### Select tasks
 
 Source code for tasks can be found in `dexteroushandenvs/tasks`. 
 
 Until now we only suppose the following environments:
 
-| Environments | ShadowHandOver | ShadowHandCatchUnderarm | ShadowHandTwoCatchUnderarm | ShadowHandCatchAbreast | ShadowHandOver2Underarm |
-|  :----:  | :----:  | :----:  | :----:  | :----:  | :----:  |
-| Description | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand. | These environments again have two hands, however now they have some additional degrees of freedom that allows them to translate/rotate their centre of masses within some constrained region. | These environments involve coordination between the two hands so as to throw the two objects between hands (i.e. swapping them). | This environment is similar to ShadowHandCatchUnderarm, the difference is that the two hands are changed from relative to side-by-side posture. | This environment is is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand |
-| Actions Type | Continuous | Continuous | Continuous | Continuous | Continuous |
-| Total Action Num | 40    | 52    | 52    | 52    | 52    |
-| Action Values     | [-1, 1]    | [-1, 1]    | [-1, 1]    | [-1, 1]    | [-1, 1]    |
-| Action Index and Description     | [detail](#action1)    | [detail](#action2)   | [detail](#action3)    | [detail](#action4)    | [detail](#action5)    |
-| Observation Shape     | (num_envs, 2, 211)    | (num_envs, 2, 217)    | (num_envs, 2, 217)    | (num_envs, 2, 217)    | (num_envs, 2, 217)    |
-| Observation Values     | [-5, 5]    | [-5, 5]    | [-5, 5]    | [-5, 5]    | [-5, 5]    |
-| Observation Index and Description     | [detail](#obs1)    | [detail](#obs2)   | [detail](#obs3)    | [detail](#obs4)    | [detail](#obs4)    |
-| State Shape     | (num_envs, 2, 398)    | (num_envs, 2, 422)    | (num_envs, 2, 422)    | (num_envs, 2, 422)    | (num_envs, 2, 422)    | 
-| State Values     | [-5, 5]    | [-5, 5]    | [-5, 5]    | [-5, 5]    | [-5, 5]    |
-| Rewards     | Rewards is the pose distance between object and goal. You can check out the details [here](#r1)| Rewards is the pose distance between object and goal. You can check out the details [here](#r2)    | Rewards is the pose distance between object and goal. You can check out the details [here](#r3)    | Rewards is the pose distance between two object and  two goal, this means that both objects have to be thrown in order to be swapped over. You can check out the details [here](#r4)    | Rewards is the pose distance between object and goal. You can check out the details [here](#r2)    |
-| Demo     | <img src="assets/image_folder/0v1.gif" align="middle" width="550" border="1"/>    | <img src="assets/image_folder/hand_catch_underarm.gif" align="middle" width="140" border="1"/>    | <img src="assets/image_folder/two_catch.gif" align="middle" width="130" border="1"/>    | <img src="assets/image_folder/1v1.gif" align="middle" width="130" border="1"/>    | <img src="assets/image_folder/2.gif" align="middle" width="130" border="1"/>    |
-
-
-
-
-
+|           Environments            |                        ShadowHandOver                        |                   ShadowHandCatchUnderarm                    |                  ShadowHandTwoCatchUnderarm                  |                    ShadowHandCatchAbreast                    |                   ShadowHandOver2Underarm                    |
+| :-------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+|            Description            | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand. | These environments again have two hands, however now they have some additional degrees of freedom that allows them to translate/rotate their centre of masses within some constrained region. | These environments involve coordination between the two hands so as to throw the two objects between hands (i.e. swapping them). | This environment is similar to ShadowHandCatchUnderarm, the difference is that the two hands are changed from relative to side-by-side posture. | This environment is is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand |
+|           Actions Type            |                          Continuous                          |                          Continuous                          |                          Continuous                          |                          Continuous                          |                          Continuous                          |
+|         Total Action Num          |                              40                              |                              52                              |                              52                              |                              52                              |                              52                              |
+|           Action Values           |                           [-1, 1]                            |                           [-1, 1]                            |                           [-1, 1]                            |                           [-1, 1]                            |                           [-1, 1]                            |
+|   Action Index and Description    |                      [detail](#action1)                      |                      [detail](#action2)                      |                      [detail](#action3)                      |                      [detail](#action4)                      |                      [detail](#action5)                      |
+|         Observation Shape         |                      (num_envs, 2, 211)                      |                      (num_envs, 2, 217)                      |                      (num_envs, 2, 217)                      |                      (num_envs, 2, 217)                      |                      (num_envs, 2, 217)                      |
+|        Observation Values         |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |
+| Observation Index and Description |                       [detail](#obs1)                        |                       [detail](#obs2)                        |                       [detail](#obs3)                        |                       [detail](#obs4)                        |                       [detail](#obs4)                        |
+|            State Shape            |                      (num_envs, 2, 398)                      |                      (num_envs, 2, 422)                      |                      (num_envs, 2, 422)                      |                      (num_envs, 2, 422)                      |                      (num_envs, 2, 422)                      |
+|           State Values            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |
+|              Rewards              | Rewards is the pose distance between object and goal. You can check out the details [here](#r1) | Rewards is the pose distance between object and goal. You can check out the details [here](#r2) | Rewards is the pose distance between object and goal. You can check out the details [here](#r3) | Rewards is the pose distance between two object and  two goal, this means that both objects have to be thrown in order to be swapped over. You can check out the details [here](#r4) | Rewards is the pose distance between object and goal. You can check out the details [here](#r2) |
+|               Demo                | <img src="assets/hand/0v1.gif" align="middle" width="550" border="1"/> | <img src="assets/hand/hand_catch_underarm.gif" align="middle" width="140" border="1"/> | <img src="assets/hand/two_catch.gif" align="middle" width="130" border="1"/> | <img src="assets/hand/1v1.gif" align="middle" width="130" border="1"/> | <img src="assets/hand/2.gif" align="middle" width="130" border="1"/> |
 
 ## Demo
 If you want to see some demo with our benchmark, you can check it [Demo](https://sites.google.com/view/safepo-benchmark)
