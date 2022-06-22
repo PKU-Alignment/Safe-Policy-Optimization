@@ -165,23 +165,18 @@ In each task:Goal, Button, Push, there are three levels of difficulty(with highe
 
 ## Installation
 
-### Sacred
-Sacred is a tool to configure, organize, log and reproduce computational experiments. It is designed to introduce only minimal overhead, while encouraging modularity and configurability of experiments. You can install it from [Sacred doc](https://sacred.readthedocs.io/en/stable/).
-
-### Safety Gym
-Safety Gym, a suite of environments and tools for measuring progress towards reinforcement learning agents that respect safety constraints while training. You can install from [Safety Gym github](https://github.com/openai/safety-gym).
-
-### Bullet Safety Gym
-"Bullet-Safety-Gym" is a free and open-source framework to benchmark and assess safety specifications in Reinforcement Learning (RL) problems.[Bullet Safety Gym github](https://github.com/SvenGronauer/Bullet-Safety-Gym).
+Because you use this baselines, you need to install environments that you want test. You can check [Mujoco](https://mujoco.org/), [Safety_gym](https://github.com/openai/safety-gym), [Bullet_gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs) for more detail to install. Details regarding installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
 
 ### Conda-Environment
 
-```
+```python
 conda create -n Single python=3.8
+# because the cuda version, we recommend you install pytorch manual.
 pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 torchaudio==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -e .
 ```
 ### Machine Configuration
+
 We test all algorithms and experiments in CPU: **AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
 
 ## Getting Started
@@ -224,10 +219,6 @@ python train.py --algo trpo_lagrangian --env_id Safexp-PointGoal1-v0 --cores 10 
 #### About this repository
 
 This repository provides a safe MARL baseline benchmark for safe MARL research on challenging tasks of safety DexterousHands (which is developed for MARL, named as Safe MAIG, for details, see [Safe MAIG](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym)), in which the [MACPO](https://arxiv.org/pdf/2110.02793.pdf), [MAPPO-lagrangian](https://arxiv.org/pdf/2110.02793.pdf), [MAPPO](https://arxiv.org/abs/2103.01955), [HAPPO](https://arxiv.org/abs/2109.11251), [IPPO](https://arxiv.org/abs/2011.09533) are all implemented to investigate the safety and reward performance.
-
-
-
-
 
 
 #### Installation
