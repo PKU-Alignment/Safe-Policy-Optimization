@@ -99,11 +99,11 @@ cost = np.float(np.abs(x_pos) > x_lim)
 
 |                          PointGoal                           |                         PointButton                          |                          PointPush                           |
 | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
-| <img src="assets/envs/safety_gym/pointgoal.mp4" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/pointbutton.mp4" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/pointpush.mp4" align="middle" width="200" border="1"/> |
+| <img src="assets/envs/safety_gym/pointgoal.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/pointbutton.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/pointpush.gif" align="middle" width="200" border="1"/> |
 |                         **CarGoal**                          |                        **CarButton**                         |                         **CarPush**                          |
-| <img src="assets/envs/safety_gym/cargoal.mp4" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/carbutton.mp4" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/carpush.mp4" align="middle" width="200" border="1"/> |
+| <img src="assets/envs/safety_gym/cargoal.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/carbutton.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/carpush.gif" align="middle" width="200" border="1"/> |
 |                        **DoggoGoal**                         |                       **DoggoButton**                        |                        **DoggoPush**                         |
-| <img src="assets/envs/safety_gym/doggogoal.mp4" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/doggobutton.mp4" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/doggopush.mp4" align="middle" width="200" border="1"/> |
+| <img src="assets/envs/safety_gym/doggogoal.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/doggobutton.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/doggopush.gif" align="middle" width="200" border="1"/> |
 
 #### More details
 
