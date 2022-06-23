@@ -21,7 +21,7 @@ class Lagrangian(abc.ABC):
         self.lagrangian_multiplier = torch.nn.Parameter(
             torch.as_tensor(init_value),
             requires_grad=True)
-        self.lambda_range_projection = torch.nn.ReLU
+        self.lambda_range_projection = torch.nn.ReLU()
         # fetch optimizer from PyTorch optimizer package
         assert hasattr(optim, lambda_optimizer), \
             f'Optimizer={lambda_optimizer} not found in torch.'
