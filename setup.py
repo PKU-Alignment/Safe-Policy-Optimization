@@ -16,7 +16,15 @@ setup(
     packages=[package for package in find_packages() if package.startswith("safepo")],
     package_data={"safepo": ["py.typed", "version.txt"]},
     install_requires=[
-        
+        "psutil",
+        "joblib",
+        "tensorboard",
+        "pyyaml",
+        "matplotlib",
+        "pandas",
+        "tensorboardX",
+        "gym==0.15.3"
+        # we recommend use conda install scipy and mpi4py
     ],
     description="Pytorch version of Safe Reinforcement Learning Algorithm",
     author="PKU-MARL",
