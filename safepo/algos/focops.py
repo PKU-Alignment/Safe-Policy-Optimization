@@ -1,44 +1,24 @@
 from turtle import pen
 import torch
-from safepo.algos.policy_graident import PG
+from safepo.algos.policy_gradient import PG
 from safepo.algos.lagrangian_base import Lagrangian
 
 class FOCOPS(PG,Lagrangian):
-    def __init__(
-            self,
-            alg: str = 'focops',
-            eta: float = 0.02,
-            lam: float = 1.5,
-            cost_limit: float = 25.,
-            lagrangian_multiplier_init: float = 0.001,
-            lambda_lr: float = 0.05,
-            lambda_optimizer: str = 'Adam',
-            use_lagrangian_penalty: bool = True,
-            use_standardized_advantages: bool = True,
-            **kwargs
-    ):
-        PG.__init__(
-            self,
-            alg=alg,
-            cost_limit=cost_limit,
-            lagrangian_multiplier_init=lagrangian_multiplier_init,
-            lambda_lr=lambda_lr,
-            lambda_optimizer=lambda_optimizer,
-            use_cost_value_function=True,
-            use_kl_early_stopping=True,
-            use_lagrangian_penalty=use_lagrangian_penalty,
-            use_standardized_advantages=use_standardized_advantages,
-            **kwargs
-        )
+    def __init__(self,algo='focops', eta=0.02, lam=1.5, cost_limit=25.,
+            lagrangian_multiplier_init=0.001, lambda_lr=0.05, lambda_optimizer='Adam',
+            use_lagrangian_penalty=True, use_standardized_advantages=True, **kwargs):
 
-        Lagrangian.__init__(
-            self,
-            cost_limit=cost_limit,
+        PG.__init__(self, algo=algo, cost_limit=cost_limit,
+            lagrangian_multiplier_init=lagrangian_multiplier_init,
+            lambda_lr=lambda_lr,lambda_optimizer=lambda_optimizer,
+            use_cost_value_function=True,use_kl_early_stopping=True,
+            use_lagrangian_penalty=use_lagrangian_penalty,
+            use_standardized_advantages=use_standardized_advantages,**kwargs)
+
+        Lagrangian.__init__(self,cost_limit=cost_limit,
             use_lagrangian_penalty=use_lagrangian_penalty,
             lagrangian_multiplier_init=lagrangian_multiplier_init,
-            lambda_lr=lambda_lr,
-            lambda_optimizer=lambda_optimizer
-        )
+            lambda_lr=lambda_lr,lambda_optimizer=lambda_optimizer)
         self.lam = lam
         self.eta = eta
 
@@ -70,15 +50,15 @@ class FOCOPS(PG,Lagrangian):
 
     def update(self):
         raw_data = self.buf.get()
-        # pre-process data
+        # Pre-process data
         data = self.pre_process_data(raw_data)
-        # sub-sampling accelerates calculations
+        # Sub-sampling accelerates calculations
         self.fvp_obs = data['obs'][::4]
         # Note that logger already uses MPI statistics across all processes..
         ep_costs = self.logger.get_stats('EpCosts')[0]
         # First update Lagrange multiplier parameter
         self.update_lagrange_multiplier(ep_costs)
-        # now update policy and value network
+        # Now: update policy and value network
         self.update_policy_net(data=data)
         self.update_value_net(data=data)
         self.update_cost_net(data=data)

@@ -12,54 +12,111 @@ from safepo.common.buffer import Buffer
 from safepo.common.utils import get_flat_params_from
 
 class PG(PolicyGradient):
-    def __init__(
-            self,
-            actor: str,
-            ac_kwargs: dict,
-            env_id: str,
-            epochs: int,
-            logger_kwargs: dict,
-            adv_estimation_method: str = 'gae',
-            algo='pg',
-            check_freq: int = 25,
-            entropy_coef: float = 0.01,
-            gamma: float = 0.99,
-            lam: float = 0.95,  # GAE lambda
-            lam_c: float = 0.95,  # GAE cost lambda
-            max_ep_len: int = 1000,
-            max_grad_norm: float = 0.5,
-            num_mini_batches: int = 16,  # used for value network training
-            optimizer: str = 'Adam',
-            pi_lr: float = 3e-4,
-            steps_per_epoch: int = 32 * 1000,  # number global steps per epoch
-            target_kl: float = 0.01,
-            train_pi_iterations: int = 80,
-            train_v_iterations: int = 40,
-            use_cost_value_function: bool = False,
-            use_entropy: bool = False,
-            use_exploration_noise_anneal: bool = False,
-            use_kl_early_stopping: bool = False,
-            use_linear_lr_decay: bool = True,
-            use_max_grad_norm: bool = False,
-            use_reward_scaling: bool = True,
-            use_reward_penalty: bool = False,
-            use_shared_weights: bool = False,
-            use_standardized_advantages: bool = False,
-            use_standardized_obs: bool = True,
-            vf_lr: float = 1e-3,
-            weight_initialization: str = 'kaiming_uniform',
-            save_freq: int = 10,
-            seed: int = 0,
-            **kwargs  # use to log parameters from child classes
-    ):
+    def __init__(self, actor, ac_kwargs, env_id, epochs, logger_kwargs,
+            adv_estimation_method='gae',algo='pg',check_freq=25,
+            entropy_coef=0.01, gamma=0.99,lam=0.95,lam_c=0.95,max_ep_len=1000,
+            max_grad_norm=0.5,num_mini_batches=16,optimizer='Adam',
+            pi_lr=3e-4,vf_lr=1e-3,steps_per_epoch=32 * 1000,target_kl=0.01,
+            train_pi_iterations=80,train_v_iterations=40,
+            use_cost_value_function=False,use_entropy=False,
+            use_exploration_noise_anneal=False,use_kl_early_stopping=False,
+            use_linear_lr_decay=True,use_max_grad_norm=False,
+            use_reward_scaling=True, use_reward_penalty=False,
+            use_shared_weights=False,use_standardized_advantages=False,
+            use_standardized_obs=True,weight_initialization = 'kaiming_uniform',
+            save_freq=10,seed=0,**kwargs):
+        """
+        Policy Gradient, 
+        Args:
+            actor (string): The type of network in actor, it does not actually affect any things
+                which happen in the following.
+
+            ac_kwargs (dictionary): Information about actor and critic's net work configuration,
+                it originates from {algo}.yaml file to describe [hidden layers] and [activation function].
+
+            env_id (string): The name of environment we want to roll out.
+
+            epochs (int): The number of epochs we want to roll out.
+
+            logger_kwargs (dictionary): The information about logger configuration which originates
+                from [runner module].
+
+            adv_estimation_method (string): The type of advantage estimation method.
+
+            algo (string): The name of algorithm corresponding to current class, it does not actually 
+                affect any things which happen in the following.
+
+            check_freq (int): The frequency for we to check if all models own the same parameter values.
+                (for mpi multi-process purpose)
+
+            entropy_coef (float): The discount coefficient for entropy penalty, if parameters[use_entropy=True].
+
+            gamma (float): The gamma for GAE.
+
+            lam (float): The lambda for reward GAE.
+
+            lam_c (float): The lambda for cost GAE.
+
+            max_ep_len (int): The maximum timesteps of an episode.
+
+            max_grad_norm (float): The if parameters[use_max_grad_norm=True].TODO
+
+            num_mini_batches (int): The number of mini batches we want to update actor and critic after one epoch.
+
+            optimizer (string): The type of optimizer.
+
+            pi_lr (float): The learning rate of actor network.
+
+            vf_lr (float): The learning rate of critic network.
+
+            steps_per_epoch (int): The number of time steps per epoch.
+
+            target_kl (float): Roughly what KL divergence we think is appropriate
+                between new and old policies after an update. This will get used 
+                for early stopping. (Usually small, 0.01 or 0.05.)
+
+            train_pi_iterations (int): The number of iteration when we update actor network per mini batch.
+
+            train_v_iterations (int): The number of iteration when we update critic network per mini batch.
+
+            use_cost_value_function (bool): Use cost value function or not.
+
+            use_entropy (bool): Use entropy penalty or not.
+
+            use_exploration_noise_anneal (bool): Use exloration noise anneal or not.
+                        
+            use_kl_early_stopping (bool): Use KL early stopping or not.
+
+            use_linear_lr_decay (bool): Use linear learning rate decay or not.
+
+            use_max_grad_norm (bool): Use maximum gradient normalization or not.
+
+            use_reward_scaling (bool): Use reward scaling or not.
+
+            use_reward_penalty (bool): Use cost to penalize reward or not.
+
+            use_shared_weights (bool): Use shared weights between actor and critic network or not.
+
+            use_standardized_advantages (bool): Use standardized advantages or not.
+
+            use_standardized_obs (bool): Use standarized observation or not.
+            
+            weight_initialization (string): The type of weight initialization method.
+
+            save_freq (int): How often (in terms of gap between epochs) to save
+                the current policy and value function.
+
+            seed (int): The random seed of this run.
+        """
         # Environment calls
-        # TODO: Robust!!!!
         self.env = env = gym.make(env_id) if isinstance(env_id, str) else env_id
-        # Collect information from environment if it has an time wrapper
+        # Use the environment's built_in max_episode_steps
         if hasattr(self.env, '_max_episode_steps'):
             max_ep_len = self.env._max_episode_steps
 
-        self.gamma = gamma # add because p3o
+        # P3O Special
+        self.gamma = gamma
+        # How to calculate the advantage of reward/cost 
         self.adv_estimation_method = adv_estimation_method
         self.algo = algo
         self.check_freq = check_freq

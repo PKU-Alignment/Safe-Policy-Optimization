@@ -1,6 +1,6 @@
 
 import torch
-from safepo.algos.policy_graident import PG
+from safepo.algos.policy_gradient import PG
 import safepo.common.mpi_tools as mpi_tools
 from safepo.common.utils import get_flat_params_from, conjugate_gradients, get_flat_gradients_from,set_param_values_to_model
 

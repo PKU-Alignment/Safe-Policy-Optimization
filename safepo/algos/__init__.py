@@ -1,4 +1,4 @@
-from safepo.algos.policy_graident import PG
+from safepo.algos.policy_gradient import PG
 from safepo.algos.natural_pg import NPG
 from safepo.algos.trpo import TRPO
 from safepo.algos.ppo import PPO
