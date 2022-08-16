@@ -33,7 +33,7 @@ if __name__ == '__main__':
                         help='The environment name of Safety_gym, Bullet_Safety_Gym')
     parser.add_argument('--seed', default=0, type=int,
                         help='Define the seed of experiments')
-    parser.add_argument('--cores', '-c', type=int, default=physical_cores,
+    parser.add_argument('--cores', '-c', type=int, default=5,
                         help=f'Number of cores used for calculations.')
     parser.add_argument('--runs', '-r', type=int, default=1,
                         help='Number of total runs that are executed.')
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     parser.add_argument('--log-dir', type=str, default=default_log_dir,
                         help='Define a log/data directory.')
     args, unparsed_args = parser.parse_known_args()
-    # Use number of physical cores as default. 
+    # Use number of physical cores as default.
     # If also hardware threading CPUs should be used, enable this by the use_number_of_threads=True
     use_number_of_threads = True if args.cores > physical_cores else False
     if mpi_tools.mpi_fork(args.cores,use_number_of_threads=use_number_of_threads):
