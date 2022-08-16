@@ -14,6 +14,38 @@
 
 <img src="assets/arch.png" width="1000" border="1"/>
 
+- [Overview of Algorithms](#overview-of-algorithms)
+- [Supported Environments](#supported-environments)
+  - [Task1: Velocity](#task1-velocity)
+    - [Task Defination](#task-defination)
+    - [reward](#reward)
+    - [cost](#cost)
+  - [Task2: Circle](#task2-circle)
+    - [Task Defination](#task-defination-1)
+    - [reward and cost](#reward-and-cost)
+  - [Safety Gym](#safety-gym)
+    - [More details](#more-details)
+  - [Safe Bullet Gym](#safe-bullet-gym)
+    - [Agent](#agent)
+    - [Task](#task)
+    - [More Description](#more-description)
+- [Installation](#installation)
+  - [Conda-Environment](#conda-environment)
+  - [Machine Configuration](#machine-configuration)
+- [Getting Started](#getting-started)
+  - [Single Agent](#single-agent)
+    - [Train](#train)
+    - [Configures](#configures)
+  - [Mult-agent](#mult-agent)
+    - [About this repository](#about-this-repository)
+    - [Installation](#installation-1)
+    - [Pre-requisites](#pre-requisites)
+    - [install this repo](#install-this-repo)
+    - [Running the benchmarks](#running-the-benchmarks)
+    - [Select an algorithm](#select-an-algorithm)
+    - [Select tasks](#select-tasks)
+- [PKU-MARL Team](#pku-marl-team)
+
 ## Overview of Algorithms
 Here we provide a table of Safe RL algorithms that the benchmark includes.
 |Algorithm| Proceedings&Cites | Paper Links |Code URL | Official Code Repo | Official Code Framework | Official Code Last Update | Official Github Stars |
@@ -63,7 +95,7 @@ The total reward returned is **reward** *=* alive bonus + reward_forward + rewar
 
 #### cost
 
-We obtain the velocity information as follows: 
+We obtain the velocity information as follows:
 
 ```python
 #next_obs, rew, done, info = env.step(act)
@@ -81,7 +113,7 @@ The goal is for an agent to move along the circumference of a circle while remai
 
 #### reward and cost
 
-We set the circle cost as follows: 
+We set the circle cost as follows:
 
 ```python
 xy_position_before = mass_center(self.model, self.sim)
@@ -243,8 +275,8 @@ version for Linux is `470` (dictated by support of IsaacGym).
 It uses [Anaconda](https://www.anaconda.com/) to create virtual environments.
 To install Anaconda, follow instructions [here](https://docs.anaconda.com/anaconda/install/linux/).
 
-Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` 
-directory, like `joint_monkey.py`. Follow troubleshooting steps described in the Isaac Gym Preview 2 
+Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples`
+directory, like `joint_monkey.py`. Follow troubleshooting steps described in the Isaac Gym Preview 2
 install instructions if you have any trouble running the samples.
 
 #### install this repo
@@ -264,7 +296,7 @@ python train.py --task=ShadowHandOver --algo=macpo
 
 #### Select an algorithm
 
-To select an algorithm, pass `--algo=ppo/mappo/happo/hatrpo` in ```algos/marl``` 
+To select an algorithm, pass `--algo=ppo/mappo/happo/hatrpo` in ```algos/marl```
 as an argument:
 
 ```bash
@@ -273,7 +305,7 @@ python train.py --task=ShadowHandOver --algo=macpo
 
 #### Select tasks
 
-Source code for tasks can be found in `dexteroushandenvs/tasks`. 
+Source code for tasks can be found in `dexteroushandenvs/tasks`.
 
 Until now we only suppose the following environments:
 
@@ -292,11 +324,8 @@ Until now we only suppose the following environments:
 |              Rewards              | Rewards is the pose distance between object and goal. You can check out the details [here](#r1) | Rewards is the pose distance between object and goal. You can check out the details [here](#r2) | Rewards is the pose distance between object and goal. You can check out the details [here](#r3) | Rewards is the pose distance between two object and  two goal, this means that both objects have to be thrown in order to be swapped over. You can check out the details [here](#r4) | Rewards is the pose distance between object and goal. You can check out the details [here](#r2) |
 |               Demo                | <img src="assets/hand/0v1.gif" align="middle" width="140" border="1"/> | <img src="assets/hand/hand_catch_underarm.gif" align="middle" width="140" border="1"/> | <img src="assets/hand/two_catch.gif" align="middle" width="130" border="1"/> | <img src="assets/hand/1v1.gif" align="middle" width="130" border="1"/> | <img src="assets/hand/2.gif" align="middle" width="130" border="1"/> |
 
-## Demo
-If you want to see some demo with our benchmark, you can check it [Demo](https://sites.google.com/view/safepo-benchmark)
 
-
-## The Team
+## PKU-MARL Team
 The Baseline is a project contributed by MARL team at Peking University, please contact yaodong.yang@pku.edu.cn if you are interested to collaborate.
-We also thank the list of contributors from the following open source repositories: 
+We also thank the list of contributors from the following open source repositories:
 [Spinning Up](https://spinningup.openai.com/en/latest/), [Bullet-Safety-Gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs), [SvenG](https://github.com/SvenGronauer/RL-Safety-Algorithms), [Safety Gym](https://github.com/openai/safety-gym).
