@@ -56,6 +56,7 @@ Because you use this baselines, you need to install environments that you want t
 
 ```python
 conda create -n safe python=3.8
+conda activate safe
 # because the cuda version, we recommend you install pytorch manual.
 pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 torchaudio==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -e .
