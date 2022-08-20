@@ -16,19 +16,6 @@
 
 - [Overview of Algorithms](#overview-of-algorithms)
 - [Supported Environments](#supported-environments)
-  - [Task1: Velocity](#task1-velocity)
-    - [Task Defination](#task-defination)
-    - [reward](#reward)
-    - [cost](#cost)
-  - [Task2: Circle](#task2-circle)
-    - [Task Defination](#task-defination-1)
-    - [reward and cost](#reward-and-cost)
-  - [Safety Gym](#safety-gym)
-    - [More details](#more-details)
-  - [Safe Bullet Gym](#safe-bullet-gym)
-    - [Agent](#agent)
-    - [Task](#task)
-    - [More Description](#more-description)
 - [Installation](#installation)
   - [Conda-Environment](#conda-environment)
   - [Machine Configuration](#machine-configuration)
@@ -48,162 +35,24 @@
 
 ## Overview of Algorithms
 Here we provide a table of Safe RL algorithms that the benchmark includes.
-|Algorithm| Proceedings&Cites | Paper Links |Code URL | Official Code Repo | Official Code Framework | Official Code Last Update | Official Github Stars |
-|:-------------:|:------------:|:-------------:|:-------------:|:---------------------------:|:------------:|---------------|---------------|
-|PPO Lagrangian | &cross; | [Openai](https://cdn.openai.com/safexp-short.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/ppo_lagrangian.py)| [Official repo](https://github.com/openai/safety-starter-agents) | Tensorflow 1 | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/safety-starter-agents?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/openai/safety-starter-agents)](https://github.com/openai/safety-starter-agents/stargazers) |
-|TRPO Lagrangian | &cross; | [Openai](https://cdn.openai.com/safexp-short.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/trpo_lagrangian.py)| [Official repo](https://github.com/openai/safety-starter-agents) | Tensorflow 1 | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/safety-starter-agents?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/openai/safety-starter-agents)](https://github.com/openai/safety-starter-agents/stargazers) |
-|FOCOPS | Neurips 2020 (Cite: 27) | [arxiv](https://arxiv.org/pdf/2002.06506.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/focops.py)| [Official repo](https://github.com/ymzhang01/focops) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/ymzhang01/focops?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/ymzhang01/focops)](https://github.com/ymzhang01/focops/stargazers) |
-|CPO | ICML 2017(Cite: 663) | [arxiv](https://arxiv.org/abs/1705.10528) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/cpo.py)| &cross; | &cross; | &cross; | &cross; |
-|PCPO | ICLR 2020(Cite: 67) | [arxiv](https://arxiv.org/pdf/2010.03152.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/pcpo.py)| [Official repo](https://sites.google.com/view/iclr2020-pcpo) | theano | &cross; | &cross; |
-|P3O | IJCAI 2022(Cite: 0) | [arxiv](https://arxiv.org/pdf/2205.11814.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/p3o.py)| &cross; | &cross; | &cross; | &cross; |
-|MACPO | Preprint(Cite: 4) | [arxiv](https://arxiv.org/pdf/2110.02793.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/marl/safe-marl-baselines/algorithms/algorithms/macpo_trainer.py)| [Official repo](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
-|MAPPO_Lagrangian | Preprint(Cite: 4) | [arxiv](https://arxiv.org/pdf/2110.02793.pdf) |[code]()| [Official repo](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
-|HATRPO | ICLR 2022 (Cite: 10) | [arxiv](https://arxiv.org/pdf/2109.11251.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/marl/safe-marl-baselines/algorithms/algorithms/hatrpo_trainer.py)| [Official repo](https://github.com/cyanrain7/TRPO-in-MARL) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/cyanrain7/TRPO-in-MARL?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/cyanrain7/TRPO-in-MARL)](https://github.com/cyanrain7/TRPO-in-MARL/stargazers) |
-|HAPPO (Purely reward optimisation) | ICLR 2022 (Cite: 10) | [arxiv](https://arxiv.org/pdf/2109.11251.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/marl/safe-marl-baselines/algorithms/algorithms/happo_trainer.py)| [Official repo](https://github.com/cyanrain7/TRPO-in-MARL) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/cyanrain7/TRPO-in-MARL?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/cyanrain7/TRPO-in-MARL)](https://github.com/cyanrain7/TRPO-in-MARL/stargazers) |
-|MAPPO (Purely reward optimisation) | Preprint(Cite: 98) | [arxiv](https://arxiv.org/pdf/2103.01955.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/marl/safe-marl-baselines/algorithms/algorithms/mappo_trainer.py)| [Official repo](https://github.com/marlbenchmark/on-policy) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/marlbenchmark/on-policy?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/marlbenchmark/on-policy)](https://github.com/marlbenchmark/on-policy/stargazers) |
-|IPPO (Purely reward optimisation) | Preprint(Cite: 28) | [arixiv](https://arxiv.org/pdf/2011.09533.pdf) |[code](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/safepo/algos/marl/safe-marl-baselines/algorithms/algorithms/ippo_trainer.py)| &cross; | &cross; | &cross; | &cross; |
+|Algorithm| Proceedings&Cites| Official Code Repo | Official Code Framework | Official Code Last Update | Official Github Stars |
+|:-------------:|:------------:|:---------------------------:|:------------:|---------------|---------------|
+|[PPO-Lag](https://cdn.openai.com/safexp-short.pdf)| &cross; | [Official repo](https://github.com/openai/safety-starter-agents) | Tensorflow 1 | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/safety-starter-agents?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/openai/safety-starter-agents)](https://github.com/openai/safety-starter-agents/stargazers) |
+|[TRPO-Lag](https://cdn.openai.com/safexp-short.pdf)| &cross; | [Official repo](https://github.com/openai/safety-starter-agents) | Tensorflow 1 | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/safety-starter-agents?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/openai/safety-starter-agents)](https://github.com/openai/safety-starter-agents/stargazers) |
+|[FOCOPS](https://arxiv.org/pdf/2002.06506.pdf) | Neurips 2020 (Cite: 27) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/ymzhang01/focops?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/ymzhang01/focops)](https://github.com/ymzhang01/focops/stargazers) |
+|[CPO](https://arxiv.org/abs/1705.10528) | ICML 2017(Cite: 663) | &cross; | &cross; | &cross; | &cross; |
+|[PCPO](https://arxiv.org/pdf/2010.03152.pdf) | ICLR 2020(Cite: 67) | [Official repo](https://sites.google.com/view/iclr2020-pcpo) | theano | &cross; | &cross; |
+|[P3O](https://arxiv.org/pdf/2205.11814.pdf) | IJCAI 2022(Cite: 0) | &cross; | &cross; | &cross; | &cross; |
+|[MACPO](https://arxiv.org/pdf/2110.02793.pdf) | Preprint(Cite: 4) | [Official repo](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
+|[MAPPO_Lagrangian](https://arxiv.org/pdf/2110.02793.pdf) | Preprint(Cite: 4) | [Official repo](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
+|[HATRPO](https://arxiv.org/pdf/2109.11251.pdf) | ICLR 2022 (Cite: 10) | [Official repo](https://github.com/cyanrain7/TRPO-in-MARL) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/cyanrain7/TRPO-in-MARL?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/cyanrain7/TRPO-in-MARL)](https://github.com/cyanrain7/TRPO-in-MARL/stargazers) |
+|[HAPPO (Purely reward optimisation)](https://arxiv.org/pdf/2109.11251.pdf) | ICLR 2022 (Cite: 10) | [Official repo](https://github.com/cyanrain7/TRPO-in-MARL) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/cyanrain7/TRPO-in-MARL?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/cyanrain7/TRPO-in-MARL)](https://github.com/cyanrain7/TRPO-in-MARL/stargazers) |
+|[MAPPO (Purely reward optimisation)](https://arxiv.org/pdf/2103.01955.pdf) | Preprint(Cite: 98) | [Official repo](https://github.com/marlbenchmark/on-policy) | pytorch | ![GitHub last commit](https://img.shields.io/github/last-commit/marlbenchmark/on-policy?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/marlbenchmark/on-policy)](https://github.com/marlbenchmark/on-policy/stargazers) |
+|[IPPO (Purely reward optimisation)](https://arxiv.org/pdf/2011.09533.pdf) | Preprint(Cite: 28) | &cross; | &cross; | &cross; | &cross; |
+
 
 ## Supported Environments
-
-MuJoCo stands for Multi-Joint dynamics with Contact. It is a general purpose physics engine that aims to facilitate research and development in robotics, biomechanics, graphics and animation, machine learning, and other areas which demand fast and accurate simulation of articulated structures interacting with their environment. You can install from [Mujoco github](https://github.com/deepmind/mujoco).
-
-|                             Ant                              |                         Half Cheetah                         |                            Hopper                            |
-| :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
-| **State Space: (27,)<br />Action Space: Box(-1.0, 1.0, (8,), float32)** | **State Space: (17,)<br />Action Space:Box(-1.0, 1.0, (6,), float32)** | **State Space: (11,)<br />Action Space:Box(-1.0, 1.0, (3,), float32)** |
-| <img src="assets/envs/mujoco/ant.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/mujoco/half_cheetah.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/mujoco/hopper.gif" align="middle" width="200" border="1"/> |
-|                           Humaniod                           |                           Swimmer                            |                           Walker2D                           |
-| **State Space:(376,)<br />Action Space:Box(-0.4, 0.4, (17,), float32)** | **State Space: (8,)<br />Action Space:Box(-1.0, 1.0, (2,), float32)** | **State Space: (17,)<br />Action Space:Box(-1.0, 1.0, (6,), float32)** |
-| <img src="assets/envs/mujoco/humanoid.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/mujoco/swimmer.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/mujoco/walker2d.gif" align="middle" width="200" border="1"/> |
-
-
-
-### Task1: Velocity
-
-#### Task Defination
-
-The goal is for an agent to move along a straight line or a two dimensional plane, but the speed of the robot is constrained for safety purposes.
-
-#### reward
-
-The reward consists of three parts:
-
-- **alive bonus**: Every timestep that the walker is alive, it gets a reward of 1,
-- **reward_forward**: A reward of walking forward which is measured as (x-coordinate before action - x-coordinate after action)/dt. *dt* is the time between actions and is dependent on the frame_skip parameter (default is 4), where the *dt* for one frame is 0.002 - making the default dt = 4 \* 0.002 = 0.008. This reward would be positive if the walker walks forward (right) desired.
-- **reward_control**: A negative reward for penalising the walker if it takes actions that are too large. It is measured as -coefficient **x** sum(action2) where coefficient is a parameter set for the control and has a default value of 0.001
-
-The total reward returned is **reward** *=* alive bonus + reward_forward + reward_control
-
-#### cost
-
-We obtain the velocity information as follows:
-
-```python
-#next_obs, rew, done, info = env.step(act)
-if 'y_velocity' not in info:
-	cost = np.abs(info['x_velocity'])
-else:
-	cost = np.sqrt(info['x_velocity'] ** 2 + info['y_velocity'] ** 2)
-```
-
-###  Task2: Circle
-
-#### Task Defination
-
-The goal is for an agent to move along the circumference of a circle while remaining within a safety region smaller than the radius of the circle.
-
-#### reward and cost
-
-We set the circle cost as follows:
-
-```python
-xy_position_before = mass_center(self.model, self.sim)
-self.do_simulation(action, self.frame_skip)
-xy_position_after = mass_center(self.model, self.sim)
-
-xy_velocity = (xy_position_after - xy_position_before) / self.dt
-x_v, y_v = xy_velocity
-
-x_pos, y_pos = xy_position_after[0], xy_position_after[1]
-d_xy = np.linalg.norm(xy_position_after, ord=2)
-d_o = 10
-x_lim = 2.5
-
-# Get reward
-reward = (- x_v * y_pos + y_v * x_pos) / (1 + np.abs(d_xy - d_o))
-
-# Get cost
-cost = np.float(np.abs(x_pos) > x_lim)
-```
-
-
-
-### Safety Gym
-
-|                          PointGoal                           |                         PointButton                          |                          PointPush                           |
-| :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
-| <img src="assets/envs/safety_gym/pointgoal.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/pointbutton.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/pointpush.gif" align="middle" width="200" border="1"/> |
-|                         **CarGoal**                          |                        **CarButton**                         |                         **CarPush**                          |
-| <img src="assets/envs/safety_gym/cargoal.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/carbutton.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/carpush.gif" align="middle" width="200" border="1"/> |
-|                        **DoggoGoal**                         |                       **DoggoButton**                        |                        **DoggoPush**                         |
-| <img src="assets/envs/safety_gym/doggogoal.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/doggobutton.gif" align="middle" width="200" border="1"/> | <img src="assets/envs/safety_gym/doggopush.gif" align="middle" width="200" border="1"/> |
-
-#### More details
-
-In each task:Goal, Button, Push, there are three levels of difficulty(with higher levels having more challenging constraints).
-
-- `Safexp-{Robot}Goal0-v0`: A robot must navigate to a goal.
-
-- `Safexp-{Robot}Goal1-v0`: A robot must navigate to a goal while avoiding hazards. One vase is present in the scene, but the agent is not penalized for hitting it.
-
-- `Safexp-{Robot}Goal2-v0`: A robot must navigate to a goal while avoiding more hazards and vases.
-
-- `Safexp-{Robot}Button0-v0`: A robot must press a goal button.
-
-- `Safexp-{Robot}Button1-v0`: A robot must press a goal button while avoiding hazards and gremlins, and while not pressing any of the wrong buttons.
-
-- `Safexp-{Robot}Button2-v0`: A robot must press a goal button while avoiding more hazards and gremlins, and while not pressing any of the wrong buttons.
-
-- `Safexp-{Robot}Push0-v0`: A robot must push a box to a goal.
-
-- `Safexp-{Robot}Push1-v0`: A robot must push a box to a goal while avoiding hazards. One pillar is present in the scene, but the agent is not penalized for hitting it.
-
-- `Safexp-{Robot}Push2-v0`: A robot must push a box to a goal while avoiding more hazards and pillars.
-
-  (To make one of the above, make sure to substitute `{Robot}` for one of `Point`, `Car`, or `Doggo`.) If you want find more information about Safety Gym, you can check [this](https://github.com/openai/safety-gym).
-
-### Safe Bullet Gym
-
-#### Agent
-
-|                             Ball                             |                             Car                              |                            Drone                             |                             Ant                              |
-| :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
-| <img src="assets/envs/bullet_gym/ball.png" align="middle" width="200" border="1"/> | <img src="assets/envs/bullet_gym/car.png" align="middle" width="200" border="1"/> | <img src="assets/envs/bullet_gym/drone.png" align="middle" width="200" border="1"/> | <img src="assets/envs/bullet_gym/ant.png" align="middle" width="200" border="1"/> |
-
-#### Task
-
-| Circle                                                       | Gather                                                       | Reach                                                        | Run                                                          |
-| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| <img src="assets/envs/bullet_gym/circle.png" align="middle" width="200" border="1"/> | <img src="assets/envs/bullet_gym/gather.png" align="middle" width="200" border="1"/> | <img src="assets/envs/bullet_gym/reach.png" align="middle" width="200" border="1"/> | <img src="assets/envs/bullet_gym/run.png" align="middle" width="200" border="1"/> |
-
-#### More Description
-
-- **Ball**: A spherical shaped agent which can freely move on the xy-plane.
-
-- **Car**: A four-wheeled agent based on MIT's Racecar.
-
-- **Drone**: An air vehicle based on the AscTec Hummingbird quadrotor.
-
-- **Ant**: A four-legged animal with a spherical torso.
-
-- **Circle**: Agents are expected to move on a circle in clock-wise direction (as proposed by Achiam et al. (2017)). The reward is dense and increases by the agent's velocity and by the proximity towards the boundary of the circle. Costs are received when agent leaves the safety zone defined by the two yellow boundaries.
-
-- **Gather** Agents are expected to navigate and collect as many green apples as possible while avoiding red bombs (Duan et al. 2016). In contrast to the other tasks, agents in the gather tasks receive only sparse rewards when reaching apples. Costs are also sparse and received when touching bombs (Achiam et al. 2017).
-
-- **Reach**: Agents are supposed to move towards a goal (Ray et al. 2019). As soon the agents enters the goal zone, the goal is re-spawned such that the agent has to reach a series of goals. Obstacles are placed to hinder the agent from trivial solutions. We implemented obstacles with a physical body, into which agents can collide and receive costs, and ones without collision shape that produce costs for traversing. Rewards are dense and increase for moving closer to the goal and a sparse component is obtained when entering the goal zone.
-
-- **Run**: Agents are rewarded for running through an avenue between two safety boundaries (Chow et al. 2019). The boundaries are non-physical bodies which can be penetrated without collision but provide costs. Additional costs are received when exceeding an agent-specific velocity threshold.
-
-  If you want to find more information, you can check [this](https://github.com/SvenGronauer/Bullet-Safety-Gym).
+> For detailed instructions refer to [Environments.md](Environments.md).
 
 ## Installation
 
@@ -217,6 +66,8 @@ conda create -n safe python=3.8
 pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 torchaudio==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -e .
 ```
+> For detailed instructions refer to [INSTALL.md](INSTALL.md).
+
 ### Machine Configuration
 
 We test all algorithms and experiments in CPU: **AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
