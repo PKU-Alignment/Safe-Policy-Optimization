@@ -26,6 +26,9 @@
 
 ## Overview of Algorithms
 Here we provide a table of Safe RL algorithms that the benchmark includes.
+
+**The work is undering review, we already implement and test extra five algorithms: PDO, RCPO, CPPO-Pid, IPO, SAC-Lag, we will add them into the repository as soon as possible.**
+
 |Algorithm| Proceedings&Cites| Official Code Repo | Official Code Last Update | Official Github Stars |
 |:-------------:|:------------:|:---------------------------:|---------------|---------------|
 |[PPO-Lag](https://cdn.openai.com/safexp-short.pdf)| &cross; | [Tensorflow 1 ](https://github.com/openai/safety-starter-agents)| ![GitHub last commit](https://img.shields.io/github/last-commit/openai/safety-starter-agents?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/openai/safety-starter-agents)](https://github.com/openai/safety-starter-agents/stargazers) |
