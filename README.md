@@ -21,16 +21,7 @@
   - [Machine Configuration](#machine-configuration)
 - [Getting Started](#getting-started)
   - [Single Agent](#single-agent)
-    - [Train](#train)
-    - [Configures](#configures)
   - [Mult-agent](#mult-agent)
-    - [About this repository](#about-this-repository)
-    - [Installation](#installation-1)
-    - [Pre-requisites](#pre-requisites)
-    - [install this repo](#install-this-repo)
-    - [Running the benchmarks](#running-the-benchmarks)
-    - [Select an algorithm](#select-an-algorithm)
-    - [Select tasks](#select-tasks)
 - [PKU-MARL Team](#pku-marl-team)
 
 ## Overview of Algorithms
@@ -74,13 +65,12 @@ We test all algorithms and experiments in CPU: **AMD Ryzen Threadripper PRO 3975
 
 ## Getting Started
 ### Single Agent
-#### Train
 All algorithm codes are in file:Parallel_algorithm, for example, if you want to run ppo_lagrangian in safety_gym:Safexp-PointGoal1-v0, with cpu cores:4, seed:0,
 
 ```
 python train.py --env_id Safexp-PointGoal1-v0 --algo ppo_lagrangian --cores 4
 ```
-#### Configures
+
 |  Argprase   | default  | info|
 |  ----       | ----  | ----|
 | --algo       | required | the name of algorithm exec |
@@ -109,16 +99,14 @@ E.g. if we want use trpo_lagrangian in environment: with 10 cores and seed:0, we
 python train.py --algo trpo_lagrangian --env_id Safexp-PointGoal1-v0 --cores 10 --seed 0
 ```
 ### Mult-agent
-#### About this repository
-
 This repository provides a safe MARL baseline benchmark for safe MARL research on challenging tasks of safety DexterousHands (which is developed for MARL, named as Safe MAIG, for details, see [Safe MAIG](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym)), in which the [MACPO](https://arxiv.org/pdf/2110.02793.pdf), [MAPPO-lagrangian](https://arxiv.org/pdf/2110.02793.pdf), [MAPPO](https://arxiv.org/abs/2103.01955), [HAPPO](https://arxiv.org/abs/2109.11251), [IPPO](https://arxiv.org/abs/2011.09533) are all implemented to investigate the safety and reward performance.
 
 
-#### Installation
+>Installation
 
 Details regarding installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
 
-#### Pre-requisites
+> Pre-requisites
 
 The code has been tested on Ubuntu 18.04 with Python 3.7. The minimum recommended NVIDIA driver
 version for Linux is `470` (dictated by support of IsaacGym).
@@ -130,14 +118,14 @@ Ensure that Isaac Gym works on your system by running one of the examples from t
 directory, like `joint_monkey.py`. Follow troubleshooting steps described in the Isaac Gym Preview 2
 install instructions if you have any trouble running the samples.
 
-#### install this repo
+> install this repo
 Once Isaac Gym is installed and samples work within your current python environment, install marl package ```algos/marl``` with:
 
 ```bash
 pip install -e .
 ```
 
-#### Running the benchmarks
+> Running the benchmarks
 
 To train your first policy, run this line in ```algos/marl```:
 
@@ -145,7 +133,7 @@ To train your first policy, run this line in ```algos/marl```:
 python train.py --task=ShadowHandOver --algo=macpo
 ```
 
-#### Select an algorithm
+> Select an algorithm
 
 To select an algorithm, pass `--algo=ppo/mappo/happo/hatrpo` in ```algos/marl```
 as an argument:
@@ -154,7 +142,7 @@ as an argument:
 python train.py --task=ShadowHandOver --algo=macpo
 ```
 
-#### Select tasks
+> Select tasks
 
 Source code for tasks can be found in `dexteroushandenvs/tasks`.
 
