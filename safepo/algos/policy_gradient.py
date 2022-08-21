@@ -59,7 +59,7 @@ class PG(PolicyGradient):
 
             max_ep_len (int): The maximum timesteps of an episode.
 
-            max_grad_norm (float): The if parameters[use_max_grad_norm=True].TODO
+            max_grad_norm (float): If parameters[use_max_grad_norm=True], use this parameter to normalize gradient.
 
             num_mini_batches (int): The number of mini batches we want to update actor and critic after one epoch.
 
@@ -108,20 +108,21 @@ class PG(PolicyGradient):
 
             seed (int): The random seed of this run.
         """
-        # Environment calls
-        self.env = env = gym.make(env_id) if isinstance(env_id, str) else env_id
+        # Create Environment
+        self.env = gym.make(env_id) if isinstance(env_id, str) else env_id
+
         # Use the environment's built_in max_episode_steps
         if hasattr(self.env, '_max_episode_steps'):
             max_ep_len = self.env._max_episode_steps
 
-        # P3O Special
-        self.gamma = gamma
+        self.gamma = gamma 
+
         # How to calculate the advantage of reward/cost 
         self.adv_estimation_method = adv_estimation_method
+
         self.algo = algo
         self.check_freq = check_freq
         self.entropy_coef = entropy_coef if use_entropy else 0.0
-        self.epoch = 0  # iterated in learn method
         self.epochs = epochs
         self.lam = lam
         self.local_steps_per_epoch = steps_per_epoch // mpi_tools.num_procs()
@@ -130,6 +131,7 @@ class PG(PolicyGradient):
         self.max_grad_norm = max_grad_norm
         self.num_mini_batches = num_mini_batches
         self.pi_lr = pi_lr
+        self.vf_lr = vf_lr
         self.save_freq = save_freq
         self.seed = seed
         self.steps_per_epoch = steps_per_epoch
@@ -138,21 +140,20 @@ class PG(PolicyGradient):
         self.train_v_iterations = train_v_iterations
         self.use_cost_value_function = use_cost_value_function
         self.use_exploration_noise_anneal = use_exploration_noise_anneal
-        self.use_kl_early_stopping = use_kl_early_stopping # importance for ppo_base methods
+        self.use_kl_early_stopping = use_kl_early_stopping
         self.use_linear_lr_decay = use_linear_lr_decay
         self.use_max_grad_norm = use_max_grad_norm
         self.use_reward_penalty = use_reward_penalty
         self.use_reward_scaling = use_reward_scaling
         self.use_standardized_obs = use_standardized_obs
         self.use_standardized_advantages = use_standardized_advantages
-        self.vf_lr = vf_lr
 
         # Call assertions, Check if some variables are valid to experiment
         # You can add assert that you want to check
         self._init_checks() 
 
         # Set up logger and save configuration to disk
-        # get local parameters before logger instance to avoid unnecessary print
+        # Get local parameters before logger instance to avoid unnecessary print
         self.params = locals()
         self.logger = self._init_logger()
         self.logger.save_config(self.params)
@@ -165,8 +166,8 @@ class PG(PolicyGradient):
         # Setup actor-critic module
         self.ac = ConstraintActorCritic(
             actor_type=actor,
-            observation_space=env.observation_space,
-            action_space=env.action_space,
+            observation_space=self.env.observation_space,
+            action_space=self.env.action_space,
             use_standardized_obs=use_standardized_obs,
             use_scaled_rewards=use_reward_scaling,
             use_shared_weights=use_shared_weights,
@@ -180,8 +181,8 @@ class PG(PolicyGradient):
         # Set up experience buffer
         self.buf = Buffer(
             actor_critic=self.ac,
-            obs_dim=env.observation_space.shape,
-            act_dim=env.action_space.shape,
+            obs_dim=self.env.observation_space.shape,
+            act_dim=self.env.action_space.shape,
             size=self.local_steps_per_epoch,
             gamma=gamma,
             lam=lam,
@@ -206,7 +207,7 @@ class PG(PolicyGradient):
         self.logger.setup_torch_saver(self.ac.pi)
         self.logger.torch_save()
 
-        # setup statistics
+        # Setup statistics
         self.start_time = time.time()
         self.epoch_time = time.time()
         self.loss_pi_before = 0.0
@@ -218,7 +219,8 @@ class PG(PolicyGradient):
         scheduler = None
         if self.use_linear_lr_decay:
             import torch.optim
-            def lm(epoch): return 1 - epoch / self.epochs  # linear anneal
+            # Linear anneal
+            def lm(epoch): return 1 - epoch / self.epochs 
             scheduler = torch.optim.lr_scheduler.LambdaLR(
                 optimizer=self.pi_optimizer,
                 lr_lambda=lm
@@ -226,10 +228,15 @@ class PG(PolicyGradient):
         return scheduler
 
     def _init_logger(self):
+        """
+            Initialize Epoch logger
+        """
+        # Remove objects
         self.params.pop('self')
-        self.params.pop('env')
+        # Combine inner parameters dictionary with outter
         if 'kwargs' in self.params:
             self.params.update(**self.params.pop('kwargs'))
+        # Initialize logger
         logger = EpochLogger(**self.logger_kwargs)
         return logger
 
@@ -238,7 +245,7 @@ class PG(PolicyGradient):
             Initialize MPI specifics
         """
         if mpi_tools.num_procs() > 1:
-            # Avoid slowdowns from PyTorch + MPI combo.
+            # Avoid slowdowns from PyTorch + MPI combo
             mpi_tools.setup_torch_for_mpi()
             dt = time.time()
             self.logger.log('INFO: Sync actor critic parameters')
@@ -250,12 +257,16 @@ class PG(PolicyGradient):
         """
             Checking feasible
         """
+        # The steps in each process should be integer
         assert self.steps_per_epoch % mpi_tools.num_procs() == 0
+        # Ensure local each local process can experience at least one complete eposide
         assert self.max_ep_len <= self.local_steps_per_epoch, \
             f'Reduce number of cores ({mpi_tools.num_procs()}) or increase ' \
             f'batch size {self.steps_per_epoch}.'
+        # Ensure vilid number for iteration
         assert self.train_pi_iterations > 0
         assert self.train_v_iterations > 0
+        # Ensure environment is consistent with gym
         assert isinstance(self.env, gym.Env), 'Env is not the expected type.'
 
     def algorithm_specific_logs(self):
@@ -290,13 +301,17 @@ class PG(PolicyGradient):
         dist, _log_p = self.ac.pi(data['obs'], data['act'])
         ratio = torch.exp(_log_p - data['log_p'])
 
+        # Compute loss via ratio and advantage
         loss_pi = -(ratio * data['adv']).mean()
         loss_pi -= self.entropy_coef * dist.entropy().mean()
 
         # Useful extra info
         approx_kl = (0.5 * (dist.mean - data['act']) ** 2
                      / dist.stddev ** 2).mean().item()
+
+        # Compute policy's entropy
         ent = dist.entropy().mean().item()
+
         pi_info = dict(kl=approx_kl, ent=ent, ratio=ratio.mean().item())
 
         return loss_pi, pi_info
@@ -330,26 +345,30 @@ class PG(PolicyGradient):
                 model and environment
         '''
         # Main loop: collect experience in env and update/log each epoch
-        for self.epoch in range(self.epochs):
+        for epoch in range(self.epochs):
             self.epoch_time = time.time()
 
-            if self.use_exploration_noise_anneal:  # update internals of AC
-                self.ac.update(frac=self.epoch / self.epochs)
-            # collect data and store
+            # Update internals of AC
+            if self.use_exploration_noise_anneal:
+                self.ac.update(frac=epoch / self.epochs)
+
+            # Collect data and store
             self.roll_out()
-            
-            # update: actor, critic, running statistics
+
+            # Update: actor, critic, running statistics
             self.update()
+
             # Log and store information
-            self.log(self.epoch)
+            self.log(epoch)
+
             # Check if all models own the same parameter values
-            if self.epoch % self.check_freq == 0:
+            if epoch % self.check_freq == 0:
                 self.check_distributed_parameters()
             # Save model to disk #TODO uncoupled
-            if self.epoch == (self.epochs - 1) or self.epoch % self.save_freq == 0:
+            if epoch == (self.epochs - 1) or epoch % self.save_freq == 0:
                 self.logger.save_state(state_dict={}, itr=None)
-            if (self.epoch + 1) % 100 == 0:
-                self.logger.torch_save(itr=self.epoch)
+            if (epoch + 1) % 100 == 0:
+                self.logger.torch_save(itr=epoch)
 
         # Close opened files to avoid number of open files overflow
         self.logger.close()
@@ -359,9 +378,11 @@ class PG(PolicyGradient):
         # Log info about epoch
         total_env_steps = (epoch + 1) * self.steps_per_epoch
         fps = self.steps_per_epoch / (time.time() - self.epoch_time)
+
+        # Step the actor learning rate scheduler if provided
         if self.scheduler and self.use_linear_lr_decay:
             current_lr = self.scheduler.get_last_lr()[0]
-            self.scheduler.step()  # step the scheduler if provided
+            self.scheduler.step()  
         else:
             current_lr = self.pi_lr
 
@@ -394,7 +415,7 @@ class PG(PolicyGradient):
         if self.use_exploration_noise_anneal:
             noise_std = np.exp(self.ac.pi.log_std[0].item())
             self.logger.log_tabular('Misc/ExplorationNoiseStd', noise_std)
-        # some child classes may add information to logs
+        # Some child classes may add information to logs
         self.algorithm_specific_logs()
         self.logger.log_tabular('TotalEnvSteps', total_env_steps)
         self.logger.log_tabular('Time', int(time.time() - self.start_time))
@@ -419,7 +440,7 @@ class PG(PolicyGradient):
         """
         data = deepcopy(raw_data)
         # Note: use_reward_scaling is currently applied in Buffer...
-        # if self.use_reward_scaling:
+        # If self.use_reward_scaling:
         #     rew = self.ac.ret_oms(data['rew'], subtract_mean=False, clip=True)
         #     data['rew'] = rew
         
@@ -434,7 +455,7 @@ class PG(PolicyGradient):
         o, ep_ret, ep_costs, ep_len = self.env.reset(), 0., 0., 0
 
         if self.use_reward_penalty:
-            # include reward penalty parameter in reward calculation: r' = r - c
+            # Consider reward penalty parameter in reward calculation: r' = r - c
             assert hasattr(self, 'lagrangian_multiplier')
             assert hasattr(self, 'lambda_range_projection')
             penalty_param = self.lambda_range_projection(
@@ -447,23 +468,28 @@ class PG(PolicyGradient):
                 torch.as_tensor(o, dtype=torch.float32))
             next_o, r, d, info = self.env.step(a)
             c = info.get('cost', 0.)
+
             ep_ret += r
             ep_costs += c
             ep_len += 1
 
-            # save and log
+            # Save and log
             # Notes:
             #   - raw observations are stored to buffer (later transformed)
             #   - reward scaling is performed in buf
             self.buf.store(
                 obs=o, act=a, rew=r, val=v, logp=logp, cost=c, cost_val=cv
             )
+
+            # Store values for statistic purpose
             if self.use_cost_value_function:
                 self.logger.store(**{
                     'Values/V': v,
                     'Values/C': cv})
             else:
                 self.logger.store(**{'Values/V': v})
+
+            # Update observation
             o = next_o
 
             timeout = ep_len == self.max_ep_len
@@ -476,8 +502,12 @@ class PG(PolicyGradient):
                         torch.as_tensor(o, dtype=torch.float32))
                 else:
                     v, cv = 0., 0.
+
+                # Automatically compute GAE in buffer
                 self.buf.finish_path(v, cv, penalty_param=float(penalty_param))
-                if terminal:  # only save EpRet / EpLen if trajectory finished
+
+                # Only save EpRet / EpLen if trajectory finished
+                if terminal:  
                     self.logger.store(EpRet=ep_ret, EpLen=ep_len,
                                       EpCosts=ep_costs)
                 o, ep_ret, ep_costs, ep_len = self.env.reset(), 0., 0., 0
@@ -499,15 +529,15 @@ class PG(PolicyGradient):
             Update actor, critic, running statistics
         """
         raw_data = self.buf.get()
-        # pre-process data: standardize observations, advantage estimation, etc.
+        # Pre-process data: standardize observations, advantage estimation, etc.
         data = self.pre_process_data(raw_data)
 
-        # update critic
+        # Update critic using epoch data
         self.update_value_net(data=data)
-        # update cost critic
+        # Update cost critic using epoch data
         if self.use_cost_value_function:
             self.update_cost_net(data=data)
-        # update actor
+        # Update actor using epoch data
         self.update_policy_net(data=data)
 
         # Update running statistics, e.g. observation standardization
@@ -515,39 +545,40 @@ class PG(PolicyGradient):
         self.update_running_statistics(raw_data)
 
     def update_policy_net(self, data) -> None:
-        # get prob. distribution before updates: used to measure KL distance
+        # Get prob. distribution before updates: used to measure KL distance
         with torch.no_grad():
             self.p_dist = self.ac.pi.dist(data['obs']) # for focops, this is ?
 
         # Get loss and info values before update
         pi_l_old, pi_info_old = self.compute_loss_pi(data)
         self.loss_pi_before = pi_l_old.item()
-        if self.use_cost_value_function:
-            self.loss_c_before = self.compute_loss_c(data['obs'],
-                                                     data['target_c']).item()
 
         # Train policy with multiple steps of gradient descent
         for i in range(self.train_pi_iterations):
             self.pi_optimizer.zero_grad()
             loss_pi, pi_info = self.compute_loss_pi(data=data)
             loss_pi.backward()
-            if self.use_max_grad_norm:  # apply L2 norm
+            # Apply L2 norm
+            if self.use_max_grad_norm:
                 torch.nn.utils.clip_grad_norm_(
                     self.ac.pi.parameters(),
                     self.max_grad_norm)
-            # average grads across MPI processes
+
+            # Average grads across MPI processes
             mpi_tools.mpi_avg_grads(self.ac.pi.net)
             self.pi_optimizer.step()
+
             q_dist = self.ac.pi.dist(data['obs'])
             torch_kl = torch.distributions.kl.kl_divergence(
                 self.p_dist, q_dist).mean().item()
+
             if self.use_kl_early_stopping:
-                # average KL for consistent early stopping across processes
+                # Average KL for consistent early stopping across processes
                 if mpi_tools.mpi_avg(torch_kl) > self.target_kl:
                     self.logger.log(f'Reached ES criterion after {i+1} steps.')
                     break
 
-        # track when policy iteration is stopped; Log changes from update
+        # Track when policy iteration is stopped; Log changes from update
         self.logger.store(**{
             'Loss/Pi': self.loss_pi_before,
             'Loss/DeltaPi': loss_pi.item() - self.loss_pi_before,
@@ -559,6 +590,7 @@ class PG(PolicyGradient):
         })
 
     def update_value_net(self, data: dict) -> None:
+        # Divide whole local epoch data into mini_batches which is mbs size
         mbs = self.local_steps_per_epoch // self.num_mini_batches
         assert mbs >= 16, f'Batch size {mbs}<16'
 
@@ -568,7 +600,8 @@ class PG(PolicyGradient):
         indices = np.arange(self.local_steps_per_epoch)
         val_losses = []
         for _ in range(self.train_v_iterations):
-            np.random.shuffle(indices)  # shuffle for mini-batch updates
+            # Shuffle for mini-batch updates
+            np.random.shuffle(indices)  
             # 0 to mini_batch_size with batch_train_size step
             for start in range(0, self.local_steps_per_epoch, mbs):
                 end = start + mbs  # iterate mini batch times
@@ -579,7 +612,7 @@ class PG(PolicyGradient):
                     ret=data['target_v'][mb_indices])
                 loss_v.backward()
                 val_losses.append(loss_v.item())
-                # average grads across MPI processes
+                # Average grads across MPI processes
                 mpi_tools.mpi_avg_grads(self.ac.v)
                 self.vf_optimizer.step()
 
@@ -591,20 +624,30 @@ class PG(PolicyGradient):
     def update_cost_net(self, data: dict) -> None:
         """Some child classes require additional updates,
         e.g. Lagrangian-PPO needs Lagrange multiplier parameter."""
+        # Ensure we have some key components
         assert self.use_cost_value_function
         assert hasattr(self, 'cf_optimizer')
         assert 'target_c' in data, f'provided keys: {data.keys()}'
+
+        if self.use_cost_value_function:
+            self.loss_c_before = self.compute_loss_c(data['obs'],
+                                                     data['target_c']).item()
+
+        # Divide whole local epoch data into mini_batches which is mbs size
         mbs = self.local_steps_per_epoch // self.num_mini_batches
         assert mbs >= 16, f'Batch size {mbs}<16'
+
         indices = np.arange(self.local_steps_per_epoch)
         losses = []
 
         # Train cost value network
         for _ in range(self.train_v_iterations):
-            np.random.shuffle(indices)  # shuffle for mini-batch updates
+            # Shuffle for mini-batch updates
+            np.random.shuffle(indices)  
             # 0 to mini_batch_size with batch_train_size step
             for start in range(0, self.local_steps_per_epoch, mbs):
-                end = start + mbs  # iterate mini batch times
+                # Iterate mini batch times
+                end = start + mbs  
                 mb_indices = indices[start:end]
 
                 self.cf_optimizer.zero_grad()
@@ -612,7 +655,7 @@ class PG(PolicyGradient):
                                              ret=data['target_c'][mb_indices])
                 loss_c.backward()
                 losses.append(loss_c.item())
-                # average grads across MPI processes
+                # Average grads across MPI processes
                 mpi_tools.mpi_avg_grads(self.ac.c)
                 self.cf_optimizer.step()
 
