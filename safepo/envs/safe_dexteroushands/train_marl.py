@@ -13,7 +13,7 @@ def train():
     agent_index = [[[0, 1, 2, 3, 4, 5]],
                    [[0, 1, 2, 3, 4, 5]]]
 
-    if args.algo in ["mappo", "happo", "hatrpo","maddpg","ippo", "macpo", "happolag"]:
+    if args.algo in ["mappo", "happo", "ippo", "macpo", "mappolag"]:
         # maddpg exists a bug now
         args.task_type = "MultiAgent"
 
@@ -26,16 +26,7 @@ def train():
         else:
             runner.run()
 
-    elif args.algo in ["ppo","ddpg","sac","td3","trpo"]:
-        task, env = parse_task(args, cfg, cfg_train, sim_params, agent_index)
-
-        sarl = eval('process_{}'.format(args.algo))(args, env, cfg_train, logdir)
-
-        iterations = cfg_train["learn"]["max_iterations"]
-        if args.max_iterations > 0:
-            iterations = args.max_iterations
-
-        sarl.run(num_learning_iterations=iterations, log_interval=cfg_train["learn"]["save_interval"])
+    
 
 
     else:
