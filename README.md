@@ -6,13 +6,14 @@
 
 **Safe Policy Optimization (Safe PO)**  is a comprehensive benchmark based on Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, Safe PO is developed with the following key features:
 
-- **Comprehensive RL benchmark**: We offer high-quality implementation of both single-agent and multi-agent safe reinforcement learning algorithms, including cpo, pcpo, trpo_lagrangian, ppo_lagrangian, focops, macpo, macpo_lagrangian, hatrpo, etc.
+- **Comprehensive RL benchmark**: We offer high-quality implementation of both single-agent and multi-agent safe reinforcement learning algorithms, including cpo, pcpo, trpo-lag, ppo-lag, focops, macpo, mappo-lag, hatrpo, etc.
 - **Richer interfaces**：In SafePO, you can modify the parameters of the algorithm according to your requirements. We provide customizable YAML files for each algorithm, and you can also pass in the parameters you want to change via argparse at the terminal.
 - **Fairer and more effective**：In the past, when comparing different algorithms, the number of interactions of each algorithm and the processing mode of buffer may be different. To solve this problem, we abstracted the most basic Policy Gradient class and inherited all other algorithms from this class to ensure a fairer and more reasonable performance comparison. In order to improve efficiency, we also support the parallelization of multi-core CPU, which greatly accelerates algorithm development and verification.
 - **More information**：We provide rich data visualization methods. Reinforcement learning algorithms typically involves huge number of parameters. In order to better understand the changes of each parameter in the training process, we use log files and Tensorboard to visualize them. We believe this will help developers tune each algorithm more efficiently.
 
+<div align=center>
 <img src="assets/arch.png" width="500" border="1"/>
-
+</div>
 - [SafePO-Baselines](#safepo-baselines)
   - [Overview of Algorithms](#overview-of-algorithms)
   - [Supported Environments](#supported-environments)
@@ -37,6 +38,10 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 |[CPO](https://arxiv.org/abs/1705.10528) | ICML 2017(Cite: 663) | &cross; | &cross; | &cross; |
 |[PCPO](https://arxiv.org/pdf/2010.03152.pdf) | ICLR 2020(Cite: 67) | [Theano](https://sites.google.com/view/iclr2020-pcpo) | &cross; | &cross; |
 |[P3O](https://arxiv.org/pdf/2205.11814.pdf) | IJCAI 2022(Cite: 0) | &cross; | &cross; | &cross; |
+|[IPO](https://ojs.aaai.org/index.php/AAAI/article/view/5932/5788) | AAAI 2020(Cite: 47) | &cross; | &cross; | &cross; |
+|PDO | &cross; | &cross; | &cross; | &cross; |
+|[RCPO](https://arxiv.org/pdf/1805.11074.pdf) | ICLR 2019 (cite: 238) | &cross; | &cross; | &cross; |
+|[CPPO-PID](https://arxiv.org/pdf/2007.03964.pdf) | Neurips 2020(Cite: 71) | [Pytorch](https://github.com/astooke/rlpyt/tree/master/rlpyt/projects/safe) | ![GitHub last commit](https://img.shields.io/github/last-commit/astooke/rlpyt?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers) |
 |[MACPO](https://arxiv.org/pdf/2110.02793.pdf) | Preprint(Cite: 4) | [Pytorch](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
 |[MAPPO_Lagrangian](https://arxiv.org/pdf/2110.02793.pdf) | Preprint(Cite: 4) | [Pytorch](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
 |[HATRPO](https://arxiv.org/pdf/2109.11251.pdf) | ICLR 2022 (Cite: 10) | [Pytorch](https://github.com/cyanrain7/TRPO-in-MARL) |  ![GitHub last commit](https://img.shields.io/github/last-commit/cyanrain7/TRPO-in-MARL?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/cyanrain7/TRPO-in-MARL)](https://github.com/cyanrain7/TRPO-in-MARL/stargazers) |
