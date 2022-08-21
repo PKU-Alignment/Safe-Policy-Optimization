@@ -13,7 +13,7 @@ from algorithms.utils.util import check
 
 class R_MAPPO_Lagr:
     """
-    Trainer class for MAPPO to update policies.
+    Trainer class for MAPPO-L to update policies.
     :param args: (argparse.Namespace) arguments containing relevant model, policy, and env information.
     :param policy: (R_MAPPO_Policy) policy to update.
     :param device: (torch.device) specifies the device to run on (cpu/gpu).
@@ -62,12 +62,12 @@ class R_MAPPO_Lagr:
         self._use_value_active_masks = config["use_value_active_masks"]
         self._use_policy_active_masks = config["use_policy_active_masks"]
 
-        self.attempt_feasible_recovery = attempt_feasible_recovery
+        
         self.attempt_infeasible_recovery = attempt_infeasible_recovery
         self.revert_to_last_safe_point = revert_to_last_safe_point
         num_slices = 1
         self._max_quad_constraint_val = delta_bound
-        self._max_lin_constraint_val = safety_bound
+        
         self._backtrack_ratio = _backtrack_ratio
         self._max_backtracks = _max_backtracks
         self._constraint_name_1 = _constraint_name_1
@@ -77,6 +77,7 @@ class R_MAPPO_Lagr:
 
         self.lagrangian_coef = config["lagrangian_coef_rate"] # lagrangian_coef
         self.lamda_lagr = config["lamda_lagr"] # 0.78
+        self.safety_bound = config["safety_bound"]
 
 
 
@@ -245,7 +246,7 @@ class R_MAPPO_Lagr:
                                                                                            rnn_states_cost_batch)
 
         # todo: lagrangian coef
-        adv_targ_hybrid = factor_batch * adv_targ - self.lamda_lagr*cost_adv_targ
+        adv_targ_hybrid =  adv_targ - self.lamda_lagr*cost_adv_targ
 
         # todo: lagrangian actor update step
         # actor update
@@ -277,7 +278,7 @@ class R_MAPPO_Lagr:
         self.policy.actor_optimizer.step()
 
         # todo: update lamda_lagr
-        delta_lamda_lagr = -((value_preds_batch - cost_values) * (1 - self.gamma) + (imp_weights * cost_adv_targ)).mean().detach()
+        delta_lamda_lagr = -(( cost_values - self.safety_bound) * (1 - self.gamma) + (imp_weights * cost_adv_targ)).mean().detach()
 
         R_Relu = torch.nn.ReLU()
         new_lamda_lagr = R_Relu(self.lamda_lagr - (delta_lamda_lagr * self.lagrangian_coef))
@@ -344,7 +345,7 @@ class R_MAPPO_Lagr:
         train_info['ratio'] = 0
         train_info['cost_grad_norm'] = 0
         train_info['cost_loss'] = 0
-        self.lamda_lagr = 0.78
+        
         for _ in range(self.ppo_epoch):
             if self._use_naive_recurrent:
                 data_generator = buffer.naive_recurrent_generator(advantages, self.num_mini_batch, cost_adv)
