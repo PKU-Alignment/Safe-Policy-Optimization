@@ -20,7 +20,7 @@ eval_interval: 25
 log_interval: 25
 eval_episodes: 10000
 
-safety_bound: 20
+safety_bound: 1
 lagrangian_coef_rate: 1.e-3
 lamda_lagr: 0.9
 
