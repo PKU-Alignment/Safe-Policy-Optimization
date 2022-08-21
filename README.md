@@ -14,20 +14,21 @@
 
 <img src="assets/arch.png" width="1000" border="1"/>
 
-- [Overview of Algorithms](#overview-of-algorithms)
-- [Supported Environments](#supported-environments)
-- [Installation](#installation)
+- [SafePO-Baselines](#safepo-baselines)
+  - [Overview of Algorithms](#overview-of-algorithms)
+  - [Supported Environments](#supported-environments)
+    - [Installation](#installation)
   - [Conda-Environment](#conda-environment)
   - [Machine Configuration](#machine-configuration)
-- [Getting Started](#getting-started)
-  - [Single Agent](#single-agent)
-  - [Mult-agent](#mult-agent)
-- [PKU-MARL Team](#pku-marl-team)
+  - [Getting Started](#getting-started)
+    - [Single-Agent](#single-agent)
+    - [Multi-Agent](#multi-agent)
+  - [PKU-MARL Team](#pku-marl-team)
 
 ## Overview of Algorithms
 Here we provide a table of Safe RL algorithms that the benchmark includes.
 
-**The work is undering review, we already implement and test extra five algorithms: PDO, RCPO, CPPO-Pid, IPO, SAC-Lag, we will add them into the repository as soon as possible.**
+**This work is currently under review. We have already implemented and tested five more algorithms: PDO, RCPO, CPPO-Pid, IPO, SAC-Lag. We will add them into the repository as soon as possible.**
 
 |Algorithm| Proceedings&Cites| Official Code Repo | Official Code Last Update | Official Github Stars |
 |:-------------:|:------------:|:---------------------------:|---------------|---------------|
@@ -46,13 +47,13 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 
 
 ## Supported Environments
-> For detailed instructions refer to [Environments.md](Environments.md).
+> For detailed instructions, please refer to [Environments.md](Environments.md).
 
-## Installation
+### Installation
 
-Because you use this baselines, you need to install environments that you want test. You can check [Mujoco](https://mujoco.org/), [Safety_gym](https://github.com/openai/safety-gym), [Bullet_gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs) for more detail to install. Details regarding installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
+To use SafePO-Baselines, you need to install environments. Please refer to [Mujoco](https://mujoco.org/), [Safety_gym](https://github.com/openai/safety-gym), [Bullet_gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs) for more details on installation. Details regarding the installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
 
-### Conda-Environment
+## Conda-Environment
 
 ```python
 conda create -n safe python=3.8
@@ -61,14 +62,14 @@ conda activate safe
 pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 torchaudio==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -e .
 ```
-> For detailed instructions refer to [INSTALL.md](INSTALL.md).
+> For detailed instructions, please refer to [Installation.md](Installation.md).
 
-### Machine Configuration
+## Machine Configuration
 
-We test all algorithms and experiments in CPU: **AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
+We test all algorithms and experiments in **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
 
 ## Getting Started
-### Single Agent
+### Single-Agent
 All algorithm codes are in file:Parallel_algorithm, for example, if you want to run ppo_lagrangian in safety_gym:Safexp-PointGoal1-v0, with cpu cores:4, seed:0,
 
 ```
@@ -102,7 +103,7 @@ E.g. if we want use trpo_lagrangian in environment: with 10 cores and seed:0, we
 ```
 python train.py --algo trpo_lagrangian --env_id Safexp-PointGoal1-v0 --cores 10 --seed 0
 ```
-### Mult-agent
+### Multi-Agent
 **We change the files layout, the marl usage will update as soon as possible.**
 This repository provides a safe MARL baseline benchmark for safe MARL research on challenging tasks of safety DexterousHands (which is developed for MARL, named as Safe MAIG, for details, see [Safe MAIG](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym)), in which the [MACPO](https://arxiv.org/pdf/2110.02793.pdf), [MAPPO-lagrangian](https://arxiv.org/pdf/2110.02793.pdf), [MAPPO](https://arxiv.org/abs/2103.01955), [HAPPO](https://arxiv.org/abs/2109.11251), [IPPO](https://arxiv.org/abs/2011.09533) are all implemented to investigate the safety and reward performance.
 
