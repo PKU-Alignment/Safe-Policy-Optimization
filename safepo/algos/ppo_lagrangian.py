@@ -19,7 +19,7 @@ class PPO_Lagrangian(PG,Lagrangian):
 
         Lagrangian.__init__(self, cost_limit=cost_limit, use_lagrangian_penalty=use_lagrangian_penalty,
             lagrangian_multiplier_init=lagrangian_multiplier_init, lambda_lr=lambda_lr, lambda_optimizer=lambda_optimizer)
-        
+
         self.clip = clip
 
     def algorithm_specific_logs(self):
