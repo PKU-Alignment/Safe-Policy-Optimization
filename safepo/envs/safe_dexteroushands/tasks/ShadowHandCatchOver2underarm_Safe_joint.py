@@ -122,7 +122,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
         if self.is_multi_agent:
             self.num_agents = 2
             self.cfg["env"]["numActions"] = 26
-            
+
         else:
             self.num_agents = 1
             self.cfg["env"]["numActions"] = 52
@@ -159,7 +159,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
         # self.shadow_hand_default_dof_pos = to_torch([0.0, -3.14, 0.0,  0.0,  0.0,  0.0, 0.0, 0.0,
         #                                             0.0,  0.0, 0.0,  0.0,  0.0,  0.0, 0.0, 0.0,
         #                                             0.0,  0.0, 0.0,  0.0,  0.0,  0.0, 0.0, 0.0], dtype=torch.float, device=self.device)
-        
+
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
         self.shadow_hand_dof_state = self.dof_state.view(self.num_envs, -1, 2)[:, :self.num_shadow_hand_dofs]
         self.shadow_hand_dof_pos = self.shadow_hand_dof_state[..., 0]
@@ -274,7 +274,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
                     a_tendon_props[i].damping = t_damping
         self.gym.set_asset_tendon_properties(shadow_hand_asset, tendon_props)
         self.gym.set_asset_tendon_properties(shadow_hand_another_asset, a_tendon_props)
-        
+
 
         actuated_dof_names = [self.gym.get_asset_actuator_joint_name(shadow_hand_asset, i) for i in range(self.num_shadow_hand_actuators)]
         self.actuated_dof_indices = [self.gym.find_asset_dof_index(shadow_hand_asset, name) for name in actuated_dof_names]
@@ -363,7 +363,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
                 self.gym.create_asset_force_sensor(shadow_hand_asset, ft_handle, sensor_pose)
             for ft_a_handle in self.fingertip_another_handles:
                 self.gym.create_asset_force_sensor(shadow_hand_another_asset, ft_a_handle, sensor_pose)
-        
+
         for i in range(self.num_envs):
             # create env instance
             env_ptr = self.gym.create_env(
@@ -376,23 +376,23 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
             # add hand - collision filter = -1 to use asset collision filters set in mjcf loader
             shadow_hand_actor = self.gym.create_actor(env_ptr, shadow_hand_asset, shadow_hand_start_pose, "hand", i, -1, 0)
             shadow_hand_another_actor = self.gym.create_actor(env_ptr, shadow_hand_another_asset, shadow_another_hand_start_pose, "another_hand", i, -1, 0)
-            
+
             self.hand_start_states.append([shadow_hand_start_pose.p.x, shadow_hand_start_pose.p.y, shadow_hand_start_pose.p.z,
                                            shadow_hand_start_pose.r.x, shadow_hand_start_pose.r.y, shadow_hand_start_pose.r.z, shadow_hand_start_pose.r.w,
                                            0, 0, 0, 0, 0, 0])
-            
+
             self.gym.set_actor_dof_properties(env_ptr, shadow_hand_actor, shadow_hand_dof_props)
             hand_idx = self.gym.get_actor_index(env_ptr, shadow_hand_actor, gymapi.DOMAIN_SIM)
             self.hand_indices.append(hand_idx)
 
             self.gym.set_actor_dof_properties(env_ptr, shadow_hand_another_actor, shadow_hand_another_dof_props)
             another_hand_idx = self.gym.get_actor_index(env_ptr, shadow_hand_another_actor, gymapi.DOMAIN_SIM)
-            self.another_hand_indices.append(another_hand_idx)            
+            self.another_hand_indices.append(another_hand_idx)
 
             # randomize colors and textures for rigid body
             num_bodies = self.gym.get_actor_rigid_body_count(env_ptr, shadow_hand_actor)
             hand_rigid_body_index = [[0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15], [16,17,18,19,20], [21,22,23,24,25]]
-            
+
             for n in self.agent_index[0]:
                 colorx = random.uniform(0, 1)
                 colory = random.uniform(0, 1)
@@ -401,7 +401,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
                     for o in hand_rigid_body_index[m]:
                         self.gym.set_rigid_body_color(env_ptr, shadow_hand_actor, o, gymapi.MESH_VISUAL,
                                                 gymapi.Vec3(colorx, colory, colorz))
-            for n in self.agent_index[1]:                
+            for n in self.agent_index[1]:
                 colorx = random.uniform(0, 1)
                 colory = random.uniform(0, 1)
                 colorz = random.uniform(0, 1)
@@ -416,7 +416,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
             if self.obs_type == "full_state" or self.asymmetric_obs:
                 self.gym.enable_actor_dof_force_sensors(env_ptr, shadow_hand_actor)
                 self.gym.enable_actor_dof_force_sensors(env_ptr, shadow_hand_another_actor)
-            
+
             # add object
             object_handle = self.gym.create_actor(env_ptr, object_asset, object_start_pose, "object", i, 0, 0)
             self.object_init_state.append([object_start_pose.p.x, object_start_pose.p.y, object_start_pose.p.z,
@@ -463,14 +463,14 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
         self.cost_buf = torch.zeros(
             self.num_envs, device=self.device, dtype=torch.float)
         self.cost_buf = torch.where(actions[:, 4] < -0.5, torch.ones_like(self.cost_buf), self.cost_buf)
-        self.cost_buf = torch.where(actions[:, 4] > -0.5, torch.ones_like(self.cost_buf), self.cost_buf)
+        self.cost_buf = torch.where(actions[:, 4] > 0.5, torch.ones_like(self.cost_buf), self.cost_buf)
 
         return self.cost_buf
 
     def compute_reward(self, actions):
         self.rew_buf[:], self.reset_buf[:], self.reset_goal_buf[:], self.progress_buf[:], self.successes[:], self.consecutive_successes[:] = compute_hand_reward(
             self.rew_buf, self.reset_buf, self.reset_goal_buf, self.progress_buf, self.successes, self.consecutive_successes,
-            self.max_episode_length, self.object_pos, self.object_rot, self.goal_pos, self.goal_rot, self.hand_positions[self.another_hand_indices, :], self.hand_positions[self.hand_indices, :], 
+            self.max_episode_length, self.object_pos, self.object_rot, self.goal_pos, self.goal_rot, self.hand_positions[self.another_hand_indices, :], self.hand_positions[self.hand_indices, :],
             self.dist_reward_scale, self.rot_reward_scale, self.rot_eps, self.actions, self.action_penalty_scale,
             self.success_tolerance, self.reach_goal_bonus, self.fall_dist, self.fall_penalty,
             self.max_consecutive_successes, self.av_factor, (self.object_type == "pen")
@@ -641,7 +641,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
         self.shadow_hand_another_dof_pos[env_ids, :] = pos
 
         self.shadow_hand_dof_vel[env_ids, :] = self.shadow_hand_dof_default_vel + \
-            self.reset_dof_vel_noise * rand_floats[:, 5+self.num_shadow_hand_dofs:5+self.num_shadow_hand_dofs*2]   
+            self.reset_dof_vel_noise * rand_floats[:, 5+self.num_shadow_hand_dofs:5+self.num_shadow_hand_dofs*2]
 
         self.shadow_hand_another_dof_vel[env_ids, :] = self.shadow_hand_dof_default_vel + \
             self.reset_dof_vel_noise * rand_floats[:, 5+self.num_shadow_hand_dofs:5+self.num_shadow_hand_dofs*2]
@@ -659,9 +659,9 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
 
         self.gym.set_dof_position_target_tensor_indexed(self.sim,
                                                         gymtorch.unwrap_tensor(self.prev_targets),
-                                                        gymtorch.unwrap_tensor(all_hand_indices), len(all_hand_indices))  
+                                                        gymtorch.unwrap_tensor(all_hand_indices), len(all_hand_indices))
 
-         
+
         self.hand_positions[all_hand_indices.to(torch.long), :] = self.saved_root_tensor[all_hand_indices.to(torch.long), 0:3]
         self.hand_orientations[all_hand_indices.to(torch.long), :] = self.saved_root_tensor[all_hand_indices.to(torch.long), 3:7]
         all_indices = torch.unique(torch.cat([all_hand_indices,
@@ -670,7 +670,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
         self.gym.set_dof_state_tensor_indexed(self.sim,
                                               gymtorch.unwrap_tensor(self.dof_state),
                                               gymtorch.unwrap_tensor(all_hand_indices), len(all_hand_indices))
-                                              
+
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_state_tensor),
                                                      gymtorch.unwrap_tensor(all_indices), len(all_indices))
@@ -700,7 +700,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
             targets = self.prev_targets[:, self.actuated_dof_indices + 24] + self.shadow_hand_dof_speed_scale * self.dt * self.actions[:, 32:52]
             self.cur_targets[:, self.actuated_dof_indices + 24] = tensor_clamp(targets,
                                                                           self.shadow_hand_dof_lower_limits[self.actuated_dof_indices], self.shadow_hand_dof_upper_limits[self.actuated_dof_indices])
-    
+
         else:
             self.cur_targets[:, self.actuated_dof_indices] = scale(self.actions[:, 6:26],
                                                                    self.shadow_hand_dof_lower_limits[self.actuated_dof_indices], self.shadow_hand_dof_upper_limits[self.actuated_dof_indices])
@@ -715,7 +715,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
                                                                                                         self.actuated_dof_indices + 24] + (1.0 - self.act_moving_average) * self.prev_targets[:, self.actuated_dof_indices]
             self.cur_targets[:, self.actuated_dof_indices + 24] = tensor_clamp(self.cur_targets[:, self.actuated_dof_indices + 24],
                                                                           self.shadow_hand_dof_lower_limits[self.actuated_dof_indices], self.shadow_hand_dof_upper_limits[self.actuated_dof_indices])
-    
+
         self.prev_targets[:, self.actuated_dof_indices] = self.cur_targets[:, self.actuated_dof_indices]
         self.prev_targets[:, self.actuated_dof_indices + 24] = self.cur_targets[:, self.actuated_dof_indices + 24]
         self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(self.cur_targets))
@@ -723,7 +723,7 @@ class ShadowHandCatchOver2Underarm_Safe_joint(BaseTask):
         self.apply_forces[:, 1, :] = self.actions[:, 0:3] * self.dt * self.transition_scale * 100000
         self.apply_forces[:, 1 + 26, :] = self.actions[:, 26:29] * self.dt * self.transition_scale * 100000
         self.apply_torque[:, 1, :] = self.actions[:, 3:6] * self.dt * self.orientation_scale * 1000
-        self.apply_torque[:, 1 + 26, :] = self.actions[:, 29:32] * self.dt * self.orientation_scale * 1000         
+        self.apply_torque[:, 1 + 26, :] = self.actions[:, 29:32] * self.dt * self.orientation_scale * 1000
 
         self.gym.apply_rigid_body_force_tensors(self.sim, gymtorch.unwrap_tensor(self.apply_forces), gymtorch.unwrap_tensor(self.apply_torque), gymapi.ENV_SPACE)
 
