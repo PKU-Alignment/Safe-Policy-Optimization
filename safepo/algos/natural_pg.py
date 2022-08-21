@@ -23,7 +23,6 @@ class NPG(PG):
         self.cg_iters = cg_iters
         self.target_kl = target_kl
         self.fvp_obs = None
-        # don't use scheduler, which concluded in PG
         self.scheduler = None  
 
     def search_step_size(self,
