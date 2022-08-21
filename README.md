@@ -11,7 +11,7 @@
 - **Fairer and more effective**：In the past, when comparing different algorithms, the number of interactions of each algorithm and the processing mode of buffer may be different. To solve this problem, we abstracted the most basic Policy Gradient class and inherited all other algorithms from this class to ensure a fairer and more reasonable performance comparison. In order to improve efficiency, we also support the parallelization of multi-core CPU, which greatly accelerates algorithm development and verification.
 - **More information**：We provide rich data visualization methods. Reinforcement learning algorithms typically involves huge number of parameters. In order to better understand the changes of each parameter in the training process, we use log files and Tensorboard to visualize them. We believe this will help developers tune each algorithm more efficiently.
 
-<img src="assets/arch.png" width="1000" border="1"/>
+<img src="assets/arch.png" width="500" border="1"/>
 
 - [SafePO-Baselines](#safepo-baselines)
   - [Overview of Algorithms](#overview-of-algorithms)
