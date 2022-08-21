@@ -28,7 +28,7 @@
 ## Overview of Algorithms
 Here we provide a table of Safe RL algorithms that the benchmark includes.
 
-**The work is under revie. We have already implemented and tested five more algorithms: PDO, RCPO, CPPO-Pid, IPO, SAC-Lag. We will add them into the repository as soon as possible.**
+**This work is currently under review. We have already implemented and tested five more algorithms: PDO, RCPO, CPPO-Pid, IPO, SAC-Lag. We will add them into the repository as soon as possible.**
 
 |Algorithm| Proceedings&Cites| Official Code Repo | Official Code Last Update | Official Github Stars |
 |:-------------:|:------------:|:---------------------------:|---------------|---------------|
