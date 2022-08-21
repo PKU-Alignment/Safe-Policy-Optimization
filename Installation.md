@@ -31,6 +31,15 @@ pip install mujoco_py==2.0.2.7
 
 ```
 
+## install IsaacGym
+```
+Details regarding installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
+Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples`
+directory, like `joint_monkey.py`. Follow troubleshooting steps described in the Isaac Gym Preview 2
+install instructions if you have any trouble running the samples.
+```
+
+
 # known issues
 
 ## problem1

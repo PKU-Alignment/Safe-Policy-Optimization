@@ -15,16 +15,16 @@
 <img src="assets/arch.png" width="500" border="1"/>
 </div>
 
-- [SafePO-Baselines](#safepo-baselines)
-  - [Overview of Algorithms](#overview-of-algorithms)
-  - [Supported Environments](#supported-environments)
-    - [Installation](#installation)
-  - [Conda-Environment](#conda-environment)
-  - [Machine Configuration](#machine-configuration)
-  - [Getting Started](#getting-started)
-    - [Single-Agent](#single-agent)
-    - [Multi-Agent](#multi-agent)
-  - [PKU-MARL Team](#pku-marl-team)
+- [Overview of Algorithms](#overview-of-algorithms)
+- [Supported Environments](#supported-environments)
+- [Pre-requisites](#pre-requisites)
+- [Conda-Environment](#conda-environment)
+- [Getting Started](#getting-started)
+  - [Single-Agent](#single-agent)
+  - [Multi-Agent](#multi-agent)
+  - [Select tasks](#select-tasks)
+- [Machine Configuration](#machine-configuration)
+- [PKU-MARL Team](#pku-marl-team)
 
 ## Overview of Algorithms
 Here we provide a table of Safe RL algorithms that the benchmark includes.
@@ -54,7 +54,7 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 ## Supported Environments
 > For detailed instructions, please refer to [Environments.md](Environments.md).
 
-### Installation
+## Pre-requisites
 
 To use SafePO-Baselines, you need to install environments. Please refer to [Mujoco](https://mujoco.org/), [Safety_gym](https://github.com/openai/safety-gym), [Bullet_gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs) for more details on installation. Details regarding the installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
 
@@ -106,70 +106,22 @@ E.g. if we want use trpo_lagrangian in environment: with 10 cores and seed:0, we
 python train.py --algo trpo_lagrangian --env_id Safexp-PointGoal1-v0 --cores 10 --seed 0
 ```
 ### Multi-Agent
-**We change the files layout, the marl usage will update as soon as possible.**
-This repository provides a safe MARL baseline benchmark for safe MARL research on challenging tasks of safety DexterousHands (which is developed for MARL, named as Safe MAIG, for details, see [Safe MAIG](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym)), in which the [MACPO](https://arxiv.org/pdf/2110.02793.pdf), [MAPPO-lagrangian](https://arxiv.org/pdf/2110.02793.pdf), [MAPPO](https://arxiv.org/abs/2103.01955), [HAPPO](https://arxiv.org/abs/2109.11251), [IPPO](https://arxiv.org/abs/2011.09533) are all implemented to investigate the safety and reward performance.
+We also provide a safe MARL baseline benchmark for safe MARL research on challenging tasks of safety DexterousHands.
 
-
->Installation
-
-Details regarding installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
-
-> Pre-requisites
-
-The code has been tested on Ubuntu 18.04 with Python 3.7. The minimum recommended NVIDIA driver
-version for Linux is `470` (dictated by support of IsaacGym).
-
-It uses [Anaconda](https://www.anaconda.com/) to create virtual environments.
-To install Anaconda, follow instructions [here](https://docs.anaconda.com/anaconda/install/linux/).
-
-Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples`
-directory, like `joint_monkey.py`. Follow troubleshooting steps described in the Isaac Gym Preview 2
-install instructions if you have any trouble running the samples.
-
-> install this repo
-Once Isaac Gym is installed and samples work within your current python environment, install marl package ```algos/marl``` with:
-
-```bash
-pip install -e .
-```
 
 > Running the benchmarks
 
-To train your first policy, run this line in ```algos/marl```:
+To train your marl algorithms, run this line in ```safepo/envs/safe_dexteroushands/```, we already implemented ```mappo|happo|ippo|macpo|happolag```:
 
 ```bash
-python train.py --task=ShadowHandOver --algo=macpo
+python train_marl.py --task=ShadowHandOver --algo=macpo
 ```
 
-> Select an algorithm
+### Select tasks
+ShadowHandOver
 
-To select an algorithm, pass `--algo=ppo/mappo/happo/hatrpo` in ```algos/marl```
-as an argument:
+ShadowHandOver2Underarm
 
-```bash
-python train.py --task=ShadowHandOver --algo=macpo
-```
-
-> Select tasks
-
-Source code for tasks can be found in `dexteroushandenvs/tasks`.
-
-Until now we only suppose the following environments:
-
-|           Environments            |                        ShadowHandOver                        |                   ShadowHandCatchUnderarm                    |                  ShadowHandTwoCatchUnderarm                  |                    ShadowHandCatchAbreast                    |                   ShadowHandOver2Underarm                    |
-| :-------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
-|            Description            | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand. | These environments again have two hands, however now they have some additional degrees of freedom that allows them to translate/rotate their centre of masses within some constrained region. | These environments involve coordination between the two hands so as to throw the two objects between hands (i.e. swapping them). | This environment is similar to ShadowHandCatchUnderarm, the difference is that the two hands are changed from relative to side-by-side posture. | This environment is is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand |
-|           Actions Type            |                          Continuous                          |                          Continuous                          |                          Continuous                          |                          Continuous                          |                          Continuous                          |
-|         Total Action Num          |                              40                              |                              52                              |                              52                              |                              52                              |                              52                              |
-|           Action Values           |                           [-1, 1]                            |                           [-1, 1]                            |                           [-1, 1]                            |                           [-1, 1]                            |                           [-1, 1]                            |
-|   Action Index and Description    |                      [detail](#action1)                      |                      [detail](#action2)                      |                      [detail](#action3)                      |                      [detail](#action4)                      |                      [detail](#action5)                      |
-|         Observation Shape         |                      (num_envs, 2, 211)                      |                      (num_envs, 2, 217)                      |                      (num_envs, 2, 217)                      |                      (num_envs, 2, 217)                      |                      (num_envs, 2, 217)                      |
-|        Observation Values         |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |
-| Observation Index and Description |                       [detail](#obs1)                        |                       [detail](#obs2)                        |                       [detail](#obs3)                        |                       [detail](#obs4)                        |                       [detail](#obs4)                        |
-|            State Shape            |                      (num_envs, 2, 398)                      |                      (num_envs, 2, 422)                      |                      (num_envs, 2, 422)                      |                      (num_envs, 2, 422)                      |                      (num_envs, 2, 422)                      |
-|           State Values            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |                           [-5, 5]                            |
-|              Rewards              | Rewards is the pose distance between object and goal. You can check out the details [here](#r1) | Rewards is the pose distance between object and goal. You can check out the details [here](#r2) | Rewards is the pose distance between object and goal. You can check out the details [here](#r3) | Rewards is the pose distance between two object and  two goal, this means that both objects have to be thrown in order to be swapped over. You can check out the details [here](#r4) | Rewards is the pose distance between object and goal. You can check out the details [here](#r2) |
-|               Demo                | <img src="assets/hand/0v1.gif" align="middle" width="140" border="1"/> | <img src="assets/hand/hand_catch_underarm.gif" align="middle" width="140" border="1"/> | <img src="assets/hand/two_catch.gif" align="middle" width="130" border="1"/> | <img src="assets/hand/1v1.gif" align="middle" width="130" border="1"/> | <img src="assets/hand/2.gif" align="middle" width="130" border="1"/> |
 
 ## Machine Configuration
 
