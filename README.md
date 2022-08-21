@@ -118,10 +118,13 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 ```
 
 ### Select tasks
-ShadowHandOver
+| Base Environments             | Description                                                                                                                                                           | Demo |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|------|
+| ShadowHandOver                | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand.                        |   <img src="assets/hand/0v1.gif" align="middle" width="250"/>   |
+| ShadowHandCatch Over2Underarm | This environment is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand |  <img src="assets/hand/2.gif" align="middle" width="250"/>    |
 
-ShadowHandOver2Underarm
 
+**We implemented some different constraints about base environments, expanding the setting to both single-agent and multi-agent.**
 
 ## Machine Configuration
 
