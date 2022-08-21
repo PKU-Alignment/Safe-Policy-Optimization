@@ -14,6 +14,7 @@
 <div align=center>
 <img src="assets/arch.png" width="500" border="1"/>
 </div>
+
 - [SafePO-Baselines](#safepo-baselines)
   - [Overview of Algorithms](#overview-of-algorithms)
   - [Supported Environments](#supported-environments)
@@ -68,9 +69,6 @@ pip install -e .
 ```
 > For detailed instructions, please refer to [Installation.md](Installation.md).
 
-## Machine Configuration
-
-We test all algorithms and experiments in **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
 
 ## Getting Started
 ### Single-Agent
@@ -173,6 +171,9 @@ Until now we only suppose the following environments:
 |              Rewards              | Rewards is the pose distance between object and goal. You can check out the details [here](#r1) | Rewards is the pose distance between object and goal. You can check out the details [here](#r2) | Rewards is the pose distance between object and goal. You can check out the details [here](#r3) | Rewards is the pose distance between two object and  two goal, this means that both objects have to be thrown in order to be swapped over. You can check out the details [here](#r4) | Rewards is the pose distance between object and goal. You can check out the details [here](#r2) |
 |               Demo                | <img src="assets/hand/0v1.gif" align="middle" width="140" border="1"/> | <img src="assets/hand/hand_catch_underarm.gif" align="middle" width="140" border="1"/> | <img src="assets/hand/two_catch.gif" align="middle" width="130" border="1"/> | <img src="assets/hand/1v1.gif" align="middle" width="130" border="1"/> | <img src="assets/hand/2.gif" align="middle" width="130" border="1"/> |
 
+## Machine Configuration
+
+We test all algorithms and experiments in **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
 
 ## PKU-MARL Team
 The Baseline is a project contributed by MARL team at Peking University, please contact yaodong.yang@pku.edu.cn if you are interested to collaborate.
