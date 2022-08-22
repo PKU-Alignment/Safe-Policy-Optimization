@@ -19,7 +19,7 @@ def process_MultiAgentRL(args,env, config, model_dir=""):
                     config=config,
                     model_dir=model_dir
                     )
-    if args.algo in ["macpo", "happolag"]:
+    if args.algo in ["macpo", "mappolag"]:
         # safe rl
         from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.runner_macpo import Runner
         marl = Runner(vec_env=env,
@@ -27,12 +27,6 @@ def process_MultiAgentRL(args,env, config, model_dir=""):
                     model_dir=model_dir
                     )
 
-    elif args.algo == 'maddpg':
-        # off policy marl
-        from safepo.envs.safe_dexteroushands.marl_algorithms.maddpg.runner import Runner
-        marl = Runner(vec_env=env,
-            config=config,
-            model_dir=model_dir
-            )
+   
 
     return marl
