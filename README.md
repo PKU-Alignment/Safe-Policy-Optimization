@@ -4,32 +4,33 @@
 
 [![Organization](https://img.shields.io/badge/Organization-PKU_MARL-blue.svg "Organization")](https://github.com/PKU-MARL "Organization")[![Unittest](https://img.shields.io/badge/Unittest-passing-green.svg "Unittest")](https://github.com/PKU-MARL "Unittest")[![Docs](https://img.shields.io/badge/Docs-In_development-red.svg "Author")](https://github.com/PKU-MARL "Docs")[![GitHub license](https://img.shields.io/github/license/PKU-MARL/DexterousHands)](https://github.com/PKU-MARL/DexterousHands/blob/main/LICENSE)
 
-**Safe Policy Optimization (Safe PO)**  is a comprehensive benchmark based on Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, Safe PO is developed with the following key features:
+**Safe Policy Optimization (SafePO)**  is a comprehensive algorithm benchmark for Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, SafePO is developed with the following key features:
 
-- **Comprehensive RL benchmark**: We offer high-quality implementation of both single-agent and multi-agent safe reinforcement learning algorithms, including cpo, pcpo, trpo-lag, ppo-lag, focops, macpo, mappo-lag, hatrpo, etc.
+- **Comprehensive Safe RL benchmark**: We offer high-quality implementation of both single-agent safe reinforcement learning algorithms (PO, PCPO, FOCOPS, P3O, PPO-Lagrangian, TRPO-Lagrangian, PDO, CPPO-PID, RCPO, IPO, and SAC-Lagrangian) and multi-agent safe reinforcement learning algorithms (HAPPO, HAPPO-Lagrangian, IPPO, MACPO, and MAPPO).
 - **Richer interfaces**：In SafePO, you can modify the parameters of the algorithm according to your requirements. We provide customizable YAML files for each algorithm, and you can also pass in the parameters you want to change via argparse at the terminal.
-- **Fairer and more effective**：In the past, when comparing different algorithms, the number of interactions of each algorithm and the processing mode of buffer may be different. To solve this problem, we abstracted the most basic Policy Gradient class and inherited all other algorithms from this class to ensure a fairer and more reasonable performance comparison. In order to improve efficiency, we also support the parallelization of multi-core CPU, which greatly accelerates algorithm development and verification.
-- **More information**：We provide rich data visualization methods. Reinforcement learning algorithms typically involves huge number of parameters. In order to better understand the changes of each parameter in the training process, we use log files and Tensorboard to visualize them. We believe this will help developers tune each algorithm more efficiently.
+- **Fairer and more effective**：In the past, when comparing different algorithms, the number of interactions of each algorithm and the processing mode of buffer may be different. To solve this problem, we abstract the most basic Policy Gradient class and inherit all other algorithms from this class to ensure a fairer and more reasonable performance comparison. In order to improve efficiency, we also support multi-core CPU parallelization, which greatly accelerates algorithm development and verification.
+- **More information**：We provide rich data visualization methods. Reinforcement learning algorithms typically involves huge number of parameters. In order to better understand the changes of each parameter in the training process, we use log files, TensorBoard, and wandb to visualize them. We believe this will help developers tune each algorithm more efficiently.
 
 <div align=center>
 <img src="assets/arch.png" width="500" border="1"/>
 </div>
 
-- [Overview of Algorithms](#overview-of-algorithms)
-- [Supported Environments](#supported-environments)
-- [Pre-requisites](#pre-requisites)
-- [Conda-Environment](#conda-environment)
-- [Getting Started](#getting-started)
-  - [Single-Agent](#single-agent)
-  - [Multi-Agent](#multi-agent)
-  - [Select tasks](#select-tasks)
-- [Machine Configuration](#machine-configuration)
-- [PKU-MARL Team](#pku-marl-team)
+- [SafePO-Baselines](#safepo-baselines)
+  - [Overview of Algorithms](#overview-of-algorithms)
+  - [Supported Environments](#supported-environments)
+  - [Pre-requisites](#pre-requisites)
+  - [Conda-Environment](#conda-environment)
+  - [Getting Started](#getting-started)
+    - [Single-Agent](#single-agent)
+    - [Multi-Agent](#multi-agent)
+    - [Selected Tasks](#selected-tasks)
+  - [Machine Configuration](#machine-configuration)
+  - [PKU-MARL Team](#pku-marl-team)
 
 ## Overview of Algorithms
 Here we provide a table of Safe RL algorithms that the benchmark includes.
 
-**This work is currently under review. We have already implemented and tested five more algorithms: PDO, RCPO, CPPO-Pid, IPO, SAC-Lag. We will add them into the repository as soon as possible.**
+**This work is currently under review. We have already implemented and tested five more algorithms: PDO, RCPO, CPPO-PID, IPO, SAC-Lag. We will add them into the repository as soon as possible.**
 
 |Algorithm| Proceedings&Cites| Official Code Repo | Official Code Last Update | Official Github Stars |
 |:-------------:|:------------:|:---------------------------:|---------------|---------------|
@@ -41,7 +42,7 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 |[P3O](https://arxiv.org/pdf/2205.11814.pdf) | IJCAI 2022(Cite: 0) | :x: | :x: | :x: |
 |[IPO](https://ojs.aaai.org/index.php/AAAI/article/view/5932/5788) | AAAI 2020(Cite: 47) | :x: | :x: | :x: |
 |PDO | :x: | :x: | :x: | :x: |
-|[RCPO](https://arxiv.org/pdf/1805.11074.pdf) | ICLR 2019 (cite: 238) | :x: | :x: | :x: |
+|[RCPO](https://arxiv.org/pdf/1805.11074.pdf) | ICLR 2019 (Cite: 238) | :x: | :x: | :x: |
 |[CPPO-PID](https://arxiv.org/pdf/2007.03964.pdf) | Neurips 2020(Cite: 71) | [Pytorch](https://github.com/astooke/rlpyt/tree/master/rlpyt/projects/safe) | ![GitHub last commit](https://img.shields.io/github/last-commit/astooke/rlpyt?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers) |
 |[MACPO](https://arxiv.org/pdf/2110.02793.pdf) | Preprint(Cite: 4) | [Pytorch](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
 |[MAPPO_Lagrangian](https://arxiv.org/pdf/2110.02793.pdf) | Preprint(Cite: 4) | [Pytorch](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
@@ -56,7 +57,7 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 
 ## Pre-requisites
 
-To use SafePO-Baselines, you need to install environments. Please refer to [Mujoco](https://mujoco.org/), [Safety_gym](https://github.com/openai/safety-gym), [Bullet_gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs) for more details on installation. Details regarding the installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
+To use SafePO-Baselines, you need to install environments. Please refer to [Mujoco](https://mujoco.org/), [Safety-Gym](https://github.com/openai/safety-gym), [Bullet-Safety-Gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs) for more details on installation. Details regarding the installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
 
 ## Conda-Environment
 
@@ -72,13 +73,16 @@ pip install -e .
 
 ## Getting Started
 ### Single-Agent
-All algorithm codes are in file:Parallel_algorithm, for example, if you want to run ppo_lagrangian in safety_gym:Safexp-PointGoal1-v0, with cpu cores:4, seed:0,
+
+`train.py` is the entrance file. Running `train.py` with arguments about algorithms and environments does the training. For example, to run PPO-Lagrangian in Safexp-PointGoal1-v0, with 4 cpu cores and seed 0, you can use the following command:
 
 ```
-python train.py --env_id Safexp-PointGoal1-v0 --algo ppo_lagrangian --cores 4
+python train.py --env_id Safexp-PointGoal1-v0 --algo ppo_lagrangian --cores 4 --seed 0
 ```
 
-|  Argprase   | default  | info|
+Here we provide the list of common arguments: 
+
+|  Argument   | Default  | Info |
 |  ----       | ----  | ----|
 | --algo       | required | the name of algorithm exec |
 | --cores | int| the number of cpu physical cores you use|
@@ -101,36 +105,34 @@ python train.py --env_id Safexp-PointGoal1-v0 --algo ppo_lagrangian --cores 4
 |--use_entropy|bool:False| use entropy or not|
 |--use_reward_penalty| bool:False| use reward_penalty or not|
 
-E.g. if we want use trpo_lagrangian in environment: with 10 cores and seed:0, we can run the following command:
-```
-python train.py --algo trpo_lagrangian --env_id Safexp-PointGoal1-v0 --cores 10 --seed 0
-```
+
 ### Multi-Agent
-We also provide a safe MARL baseline benchmark for safe MARL research on challenging tasks of safety DexterousHands.
+We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands. HAPPO, HAPPO-Lagrangian, IPPO, MACPO, and MAPPO have already been implemented.
 
 
-> Running the benchmarks
+> Running the benchmark
 
-To train your marl algorithms, run this line in ```safepo/envs/safe_dexteroushands/```, we already implemented ```mappo|happo|ippo|macpo|happolag```:
+
+```safepo/envs/safe_dexteroushands/train_marl.py``` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
 
 ```bash
 python train_marl.py --task=ShadowHandOver --algo=macpo
 ```
 
-### Select tasks
+### Selected Tasks
 | Base Environments             | Description                                                                                                                                                           | Demo |
 |-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|------|
 | ShadowHandOver                | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand.                        |   <img src="assets/hand/0v1.gif" align="middle" width="250"/>   |
 | ShadowHandCatch Over2Underarm | This environment is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand |  <img src="assets/hand/2.gif" align="middle" width="250"/>    |
 
 
-**We implemented some different constraints about base environments, expanding the setting to both single-agent and multi-agent.**
+**We implemented some different constraints to the base environments, expanding the setting to both single-agent and multi-agent.**
 
 ## Machine Configuration
 
-We test all algorithms and experiments in **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
+We test all algorithms and experiments on **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
 
 ## PKU-MARL Team
 The Baseline is a project contributed by MARL team at Peking University, please contact yaodong.yang@pku.edu.cn if you are interested to collaborate.
-We also thank the list of contributors from the following open source repositories:
+We also thank the list of contributors of the following open source repositories:
 [Spinning Up](https://spinningup.openai.com/en/latest/), [Bullet-Safety-Gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs), [SvenG](https://github.com/SvenGronauer/RL-Safety-Algorithms), [Safety Gym](https://github.com/openai/safety-gym).
