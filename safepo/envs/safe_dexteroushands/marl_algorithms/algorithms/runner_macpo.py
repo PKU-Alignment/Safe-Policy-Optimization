@@ -74,9 +74,6 @@ class Runner:
         if self.algorithm_name == "happo":
             from algorithms.algorithms.happo_trainer import HAPPO as TrainAlgo
             from algorithms.algorithms.happo_policy import HAPPO_Policy as Policy
-        if self.algorithm_name == "hatrpo":
-            from algorithms.algorithms.hatrpo_trainer import HATRPO as TrainAlgo
-            from algorithms.algorithms.hatrpo_policy import HATRPO_Policy as Policy
         if self.algorithm_name == "mappo":
             from algorithms.algorithms.mappo_trainer import MAPPO as TrainAlgo
             from algorithms.algorithms.mappo_policy import MAPPO_Policy as Policy
@@ -84,8 +81,8 @@ class Runner:
             from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.macpo_trainer import MACPO as TrainAlgo
             from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.macpo_policy import MACPO_Policy as Policy
         if self.algorithm_name == "happolag":
-            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.happolag_trainer import R_MAPPO_Lagr as TrainAlgo
-            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.happolag_policy import MACPPOPolicy as Policy
+            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.mappolag_trainer import R_MAPPO_Lagr as TrainAlgo
+            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.mappolag_policy import MAPPO_L_Policy as Policy
         if self.algorithm_name == "ippo":
             from algorithms.algorithms.mappo_trainer import IPPO as TrainAlgo
             from algorithms.algorithms.mappo_policy import IPPO_Policy as Policy

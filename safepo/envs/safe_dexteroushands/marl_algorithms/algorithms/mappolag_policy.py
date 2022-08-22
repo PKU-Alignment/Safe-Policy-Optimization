@@ -1,21 +1,20 @@
 import torch
-from algorithms.algorithms.actor_critic import Actor, Critic
+from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.actor_critic import Actor, Critic
 from utils.util import update_linear_schedule
 
 
-class HATRPO_Policy:
+class MAPPO_L_Policy:
     """
-    HATRPO Policy  class. Wraps actor and critic networks to compute actions and value function predictions.
+    MAPPO-L Policy  class. Wraps actor and critic networks to compute actions and value function predictions.
 
     :param args: (argparse.Namespace) arguments containing relevant model and policy information.
     :param obs_space: (gym.Space) observation space.
-    :param cent_obs_space: (gym.Space) value function input space .
+    :param cent_obs_space: (gym.Space) value function input space (centralized input for MAPPO, decentralized for IPPO).
     :param action_space: (gym.Space) action space.
     :param device: (torch.device) specifies the device to run on (cpu/gpu).
     """
 
     def __init__(self, config, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
-        self.args=config
         self.device = device
         self.lr = config["lr"]
         self.critic_lr = config["critic_lr"]
@@ -27,13 +26,8 @@ class HATRPO_Policy:
         self.act_space = act_space
 
         self.actor = Actor(config, self.obs_space, self.act_space, self.device)
-
-        ######################################Please Note#########################################
-        #####   We create one critic for each agent, but they are trained with same data     #####
-        #####   and using same update setting. Therefore they have the same parameter,       #####
-        #####   you can regard them as the same critic.                                      #####
-        ##########################################################################################
         self.critic = Critic(config, self.share_obs_space, self.device)
+        self.cost_critic = Critic(config, self.share_obs_space, self.device)
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
                                                 lr=self.lr, eps=self.opti_eps,
@@ -42,6 +36,10 @@ class HATRPO_Policy:
                                                  lr=self.critic_lr,
                                                  eps=self.opti_eps,
                                                  weight_decay=self.weight_decay)
+        self.cost_optimizer = torch.optim.Adam(self.cost_critic.parameters(),
+                                               lr=self.critic_lr,
+                                               eps=self.opti_eps,
+                                               weight_decay=self.weight_decay)
 
     def lr_decay(self, episode, episodes):
         """
@@ -51,9 +49,10 @@ class HATRPO_Policy:
         """
         update_linear_schedule(self.actor_optimizer, episode, episodes, self.lr)
         update_linear_schedule(self.critic_optimizer, episode, episodes, self.critic_lr)
+        update_linear_schedule(self.cost_optimizer, episode, episodes, self.critic_lr)
 
     def get_actions(self, cent_obs, obs, rnn_states_actor, rnn_states_critic, masks, available_actions=None,
-                    deterministic=False):
+                    deterministic=False, rnn_states_cost=None):
         """
         Compute actions and value function predictions for the given inputs.
         :param cent_obs (np.ndarray): centralized input to the critic.
@@ -78,7 +77,12 @@ class HATRPO_Policy:
                                                                  deterministic)
 
         values, rnn_states_critic = self.critic(cent_obs, rnn_states_critic, masks)
-        return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
+        if rnn_states_cost is None:
+            return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
+        else:
+            cost_preds, rnn_states_cost = self.cost_critic(cent_obs, rnn_states_cost, masks)
+            return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic, cost_preds, rnn_states_cost
+
 
     def get_values(self, cent_obs, rnn_states_critic, masks):
         """
@@ -92,8 +96,20 @@ class HATRPO_Policy:
         values, _ = self.critic(cent_obs, rnn_states_critic, masks)
         return values
 
+    def get_cost_values(self, cent_obs, rnn_states_cost, masks):
+        """
+        Get constraint cost predictions.
+        :param cent_obs (np.ndarray): centralized input to the critic.
+        :param rnn_states_critic: (np.ndarray) if critic is RNN, RNN states for critic.
+        :param masks: (np.ndarray) denotes points at which RNN states should be reset.
+
+        :return values: (torch.Tensor) value function predictions.
+        """
+        cost_preds, _ = self.cost_critic(cent_obs, rnn_states_cost, masks)
+        return cost_preds
+
     def evaluate_actions(self, cent_obs, obs, rnn_states_actor, rnn_states_critic, action, masks,
-                         available_actions=None, active_masks=None):
+                         available_actions=None, active_masks=None, rnn_states_cost=None):
         """
         Get action logprobs / entropy and value function predictions for actor update.
         :param cent_obs (np.ndarray): centralized input to the critic.
@@ -110,17 +126,19 @@ class HATRPO_Policy:
         :return action_log_probs: (torch.Tensor) log probabilities of the input actions.
         :return dist_entropy: (torch.Tensor) action distribution entropy for the given inputs.
         """
+        action_log_probs, dist_entropy = self.actor.evaluate_actions(obs,
+                                                                     rnn_states_actor,
+                                                                     action,
+                                                                     masks,
+                                                                     available_actions,
+                                                                     active_masks)
 
-        action_log_probs, dist_entropy , action_mu, action_std, all_probs= self.actor.evaluate_actions(obs,
-                                                                    rnn_states_actor,
-                                                                    action,
-                                                                    masks,
-                                                                    available_actions,
-                                                                    active_masks)
         values, _ = self.critic(cent_obs, rnn_states_critic, masks)
-        return values, action_log_probs, dist_entropy, action_mu, action_std, all_probs
-
-
+        if rnn_states_cost is None:
+            return values, action_log_probs, dist_entropy
+        else:
+            cost_values, _ = self.cost_critic(cent_obs, rnn_states_cost, masks)
+            return values, action_log_probs, dist_entropy, cost_values
 
     def act(self, obs, rnn_states_actor, masks, available_actions=None, deterministic=False):
         """
