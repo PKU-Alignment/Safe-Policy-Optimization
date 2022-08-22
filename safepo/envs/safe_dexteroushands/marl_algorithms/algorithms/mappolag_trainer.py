@@ -76,7 +76,7 @@ class R_MAPPO_Lagr:
         self._accept_violation = accept_violation
 
         self.lagrangian_coef = config["lagrangian_coef_rate"] # lagrangian_coef
-        self.lamda_lagr = config["lamda_lagr"] # 0.78
+        self.lamda_lagr = config["lamda_lagr"] 
         self.safety_bound = config["safety_bound"]
 
 
