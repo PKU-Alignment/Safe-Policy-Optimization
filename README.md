@@ -124,7 +124,7 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 
 **We implement some different constraints to the base environments, expanding the setting to both single-agent and multi-agent.**
 
-<img src="assets/hand.png" align="middle" width="250"/> 
+<img src="assets/hand.png" align="middle" width="1000"/> 
 
 
 
