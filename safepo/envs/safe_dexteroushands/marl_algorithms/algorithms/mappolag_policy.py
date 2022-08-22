@@ -5,7 +5,7 @@ from utils.util import update_linear_schedule
 
 class MACPPOPolicy:
     """
-    MAPPO Policy  class. Wraps actor and critic networks to compute actions and value function predictions.
+    MAPPO-L Policy  class. Wraps actor and critic networks to compute actions and value function predictions.
 
     :param args: (argparse.Namespace) arguments containing relevant model and policy information.
     :param obs_space: (gym.Space) observation space.
