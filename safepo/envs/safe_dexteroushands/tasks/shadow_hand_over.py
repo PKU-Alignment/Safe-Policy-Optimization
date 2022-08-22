@@ -299,7 +299,7 @@ class ShadowHandOver(BaseTask):
 
         shadow_another_hand_start_pose = gymapi.Transform()
         shadow_another_hand_start_pose.p = gymapi.Vec3(0, -1, 0.5)
-        shadow_another_hand_start_pose.r = gymapi.Quat().from_euler_zyx(0, 3.1415926, 3.1415926)
+        shadow_another_hand_start_pose.r = gymapi.Quat().from_euler_zyx(0, 0, 3.1415926)
 
         object_start_pose = gymapi.Transform()
         object_start_pose.p = gymapi.Vec3()
