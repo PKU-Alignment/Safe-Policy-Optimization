@@ -3,7 +3,7 @@ from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.actor_critic imp
 from utils.util import update_linear_schedule
 
 
-class MACPPOPolicy:
+class MAPPO_L_Policy:
     """
     MAPPO-L Policy  class. Wraps actor and critic networks to compute actions and value function predictions.
 
