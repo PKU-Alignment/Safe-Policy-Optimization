@@ -109,8 +109,6 @@ Here we provide the list of common arguments:
 ### Multi-Agent
 We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands. HAPPO, HAPPO-Lagrangian, IPPO, MACPO, and MAPPO have already been implemented.
 
-
-
 ```safepo/envs/safe_dexteroushands/train_marl.py``` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
 
 ```bash
@@ -121,10 +119,28 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 | Base Environments             | Description                                                                                                                                                           | Demo |
 |-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|------|
 | ShadowHandOver                | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand.                        |   <img src="assets/hand/0v1.gif" align="middle" width="250"/>   |
-| ShadowHandCatch Over2Underarm | This environment is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand |  <img src="assets/hand/2.gif" align="middle" width="250"/>    |
+| ShadowHandCatchOver2Underarm | This environment is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand |  <img src="assets/hand/2.gif" align="middle" width="250"/>    |
 
 
 **We implement some different constraints to the base environments, expanding the setting to both single-agent and multi-agent.**
+
+<img src="assets/hand.png" align="middle" width="250"/> 
+
+
+
+## What's More
+Our team has also designed a number of more interesting safety tasks for two-handed dexterous manipulation, and this work will soon be releasing code for use by more Safe RL researchers.
+| Base Environments             | Description                                                                                                                                                           | Demo |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|------|
+| ShadowHandOverWall                | None                        |   <img src="assets/handover_wall.png" align="middle" width="150"/>   |
+| ShadowHandOverWallDown | None |  <img src="assets/handover_wall_down.png" align="middle" width="150"/>    |
+| ShadowHandCatchOver2UnderarmWall                | None                        |   <img src="assets/catchunderarm_wall.png" align="middle" width="150"/>   |
+| ShadowHandCatchOver2UnderarmWallDown | None |  <img src="assets/catchunderarm_wall_down.png" align="middle" width="150"/>    |
+
+And the safe region are :
+|  Wall   | Wall Down  | 
+|  ----       | ----  |
+|  <img src="assets/wall.png" align="middle" width="150"/>      |   <img src="assets/wall_down.png" align="middle" width="150"/>   |
 
 ## Machine Configuration
 
