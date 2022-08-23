@@ -131,7 +131,7 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 
 <img src="assets/hand.png" align="middle" width="1000"/> 
 
-More details about Safety_Joint and Safety_Finger.
+**More details about Safety_Joint and Safety_Finger.**
 <img src="assets/safe_joint.png" align="middle" width="1000"/> 
 <img src="assets/safe_finger.png" align="middle" width="1000"/> 
 
