@@ -24,7 +24,10 @@
     - [Single-Agent](#single-agent)
     - [Multi-Agent](#multi-agent)
     - [Selected Tasks](#selected-tasks)
+  - [What's More](#whats-more)
   - [Machine Configuration](#machine-configuration)
+  - [Maintenance](#maintenance)
+  - [Ethical and Responsible Use](#ethical-and-responsible-use)
   - [PKU-MARL Team](#pku-marl-team)
 
 ## Overview of Algorithms
@@ -145,6 +148,14 @@ And the safe region are :
 ## Machine Configuration
 
 We test all algorithms and experiments on **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
+
+## Maintenance
+
+This repo is under long-term maintenance of PKU-MARL team. We will keep adding new algorithms and supporting new environments as they come out. Please watch us and stay tuned!
+
+## Ethical and Responsible Use
+
+SafePO aims to benefit safe RL community research, and is released under the [Apache-2.0 license](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/LICENSE). Illegal usage or any violation of the license is not allowed.
 
 ## PKU-MARL Team
 The Baseline is a project contributed by MARL team at Peking University, please contact yaodong.yang@pku.edu.cn if you are interested to collaborate.
