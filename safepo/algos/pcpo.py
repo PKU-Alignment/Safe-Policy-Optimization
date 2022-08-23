@@ -13,14 +13,26 @@ class PCPO(TRPO):
     """
     def __init__(
             self,
-            alg: str = 'pcpo',
-            cost_limit: float = 25.,
+            algo='pcpo',
+            cost_limit=25.,
+            use_lagrangian_penalty=True,
+            use_standardized_reward=True, 
+            use_standardized_cost=True,
+            use_standardized_obs=False,
+            use_cost_value_function=True,
+            use_kl_early_stopping=True,
             **kwargs
     ):
-        super().__init__(
-            alg=alg,
+        TRPO.__init__(
+            self,
+            algo=algo,
             cost_limit=cost_limit,
-            use_cost_value_function=True,
+            use_cost_value_function=use_cost_value_function,
+            use_kl_early_stopping=use_kl_early_stopping, 
+            use_lagrangian_penalty=use_lagrangian_penalty,
+            use_standardized_reward=use_standardized_reward, 
+            use_standardized_cost=use_standardized_cost, 
+            use_standardized_obs=use_standardized_obs,
             **kwargs
         )
         self.cost_limit = cost_limit

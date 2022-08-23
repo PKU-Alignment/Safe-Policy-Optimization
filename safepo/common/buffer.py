@@ -15,7 +15,8 @@ class Buffer:
                  adv_estimation_method: str,
                  use_scaled_rewards: bool,
                  standardize_env_obs: bool,
-                 standardize_advantages: bool,
+                 use_standardized_reward: bool,
+                 use_standardized_cost: bool,
                  lam_c: float = 0.95,
                  use_reward_penalty: bool = False
                  ):
@@ -42,7 +43,8 @@ class Buffer:
         self.adv_estimation_method = adv_estimation_method
         self.use_scaled_rewards = use_scaled_rewards
         self.standardize_env_obs = standardize_env_obs
-        self.standardize_advantages = standardize_advantages
+        self.use_standardized_reward = use_standardized_reward
+        self.use_standardized_cost = use_standardized_cost
         self.ptr = 0
         self.path_start_idx = 0
         self.max_size = size
@@ -187,16 +189,19 @@ class Buffer:
 
         # TODO: pre-processing like standardization and scaling is done in
         #  Algorithm.  pre_process_data() method
-        if self.standardize_advantages:
+        if self.use_standardized_reward:
             # the next two lines implement the advantage normalization trick
             # adv_mean, adv_std = np.mean(self.adv_buf), np.std(self.adv_buf)
             adv_mean, adv_std = mpi_tools.mpi_statistics_scalar(self.adv_buf)
             self.adv_buf = (self.adv_buf - adv_mean) / (adv_std + 1.0e-8)
+            # also for cost advantages; only re-center but no rescale!
+            # cadv_mean, cadv_std = mpi_tools.mpi_statistics_scalar(self.cost_adv_buf)
+            # self.cost_adv_buf = (self.cost_adv_buf - cadv_mean)#/(cadv_std + 1.0e-8)
         
+        if self.use_standardized_cost:
             # also for cost advantages; only re-center but no rescale!
             cadv_mean, cadv_std = mpi_tools.mpi_statistics_scalar(self.cost_adv_buf)
-            self.cost_adv_buf = (self.cost_adv_buf - cadv_mean)# / (cadv_std + 1.0e-8)
-
+            self.cost_adv_buf = (self.cost_adv_buf - cadv_mean)#/(cadv_std + 1.0e-8)
         # TODO
         # self.obs_buf = self.actor_critic.obs_oms(self.obs_buf, clip=False) \
         #     if self.standardize_env_obs else self.obs_buf
@@ -204,7 +209,6 @@ class Buffer:
         data = dict(
             obs=self.obs_buf, act=self.act_buf, target_v=self.target_val_buf,
             adv=self.adv_buf, log_p=self.logp_buf,
-            # rew=self.rew_buf,
             discounted_ret=self.discounted_ret_buf,
             cost_adv=self.cost_adv_buf, target_c=self.target_cost_val_buf,
         )

@@ -8,14 +8,12 @@ class Lagrangian(abc.ABC):
     """
     def __init__(self,
                  cost_limit: float,
-                 use_lagrangian_penalty: bool,
                  lagrangian_multiplier_init: float,
                  lambda_lr: float,
                  lambda_optimizer: str
                  ):
         self.cost_limit = cost_limit
         self.lambda_lr = lambda_lr
-        self.use_lagrangian_penalty = use_lagrangian_penalty
 
         init_value = max(lagrangian_multiplier_init, 1e-5)
         self.lagrangian_multiplier = torch.nn.Parameter(

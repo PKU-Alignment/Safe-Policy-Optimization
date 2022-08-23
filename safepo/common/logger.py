@@ -136,10 +136,9 @@ def setup_logger_kwargs(exp_name=None,
     """
     # Make base path
     relpath = hms_time if datestamp else ''
-
     if seed is not None:
-        subfolder = '_'.join(['seed', str(seed).zfill(5)])
-        relpath = os.path.join(relpath, subfolder)
+        subfolder = '-'.join(['seed', str(seed).zfill(3)])
+        relpath = '-'.join([subfolder,relpath])
 
     logger_kwargs = dict(log_dir=os.path.join(base_dir, exp_name, relpath),
                          exp_name=exp_name,

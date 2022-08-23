@@ -1,3 +1,4 @@
+from re import L
 import numpy as np
 import gym
 import time
@@ -12,19 +13,46 @@ from safepo.common.buffer import Buffer
 from safepo.common.utils import get_flat_params_from
 
 class PG(PolicyGradient):
-    def __init__(self, actor, ac_kwargs, env_id, epochs, logger_kwargs,
-            adv_estimation_method='gae',algo='pg',check_freq=25,
-            entropy_coef=0.01, gamma=0.99,lam=0.95,lam_c=0.95,max_ep_len=1000,
-            max_grad_norm=0.5,num_mini_batches=16,optimizer='Adam',
-            pi_lr=3e-4,vf_lr=1e-3,steps_per_epoch=32 * 1000,target_kl=0.01,
-            train_pi_iterations=80,train_v_iterations=40,
-            use_cost_value_function=False,use_entropy=False,
-            use_exploration_noise_anneal=False,use_kl_early_stopping=False,
-            use_linear_lr_decay=True,use_max_grad_norm=False,
-            use_reward_scaling=True, use_reward_penalty=False,
-            use_shared_weights=False,use_standardized_advantages=False,
-            use_standardized_obs=True,weight_initialization = 'kaiming_uniform',
-            save_freq=10,seed=0,**kwargs):
+    def __init__(
+            self, 
+            actor, 
+            ac_kwargs, 
+            env_id, 
+            epochs, 
+            logger_kwargs,
+            adv_estimation_method='gae',
+            algo='pg',
+            check_freq=25,
+            entropy_coef=0.01, 
+            gamma=0.99,
+            lam=0.95,
+            lam_c=0.95,
+            max_ep_len=1000,
+            max_grad_norm=0.5,
+            num_mini_batches=16,
+            optimizer='Adam',
+            pi_lr=3e-4,
+            vf_lr=1e-3,
+            steps_per_epoch=32 * 1000,
+            target_kl=0.01,
+            train_pi_iterations=80,
+            train_v_iterations=40,
+            use_cost_value_function=False,
+            use_entropy=False,
+            use_exploration_noise_anneal=False,
+            use_kl_early_stopping=False,
+            use_linear_lr_decay=True,
+            use_max_grad_norm=False,
+            use_reward_scaling=True, 
+            use_reward_penalty=False,
+            use_shared_weights=False,
+            use_standardized_reward=False,
+            use_standardized_cost=False,
+            use_standardized_obs=True,
+            weight_initialization = 'kaiming_uniform',
+            save_freq=10,
+            seed=0
+        ):
         """
         Policy Gradient, 
         Args:
@@ -109,6 +137,7 @@ class PG(PolicyGradient):
             seed (int): The random seed of this run.
         """
         # Create Environment
+        self.env_id = env_id
         self.env = gym.make(env_id) if isinstance(env_id, str) else env_id
 
         # Use the environment's built_in max_episode_steps
@@ -146,7 +175,8 @@ class PG(PolicyGradient):
         self.use_reward_penalty = use_reward_penalty
         self.use_reward_scaling = use_reward_scaling
         self.use_standardized_obs = use_standardized_obs
-        self.use_standardized_advantages = use_standardized_advantages
+        self.use_standardized_reward = use_standardized_reward
+        self.use_standardized_cost = use_standardized_cost
 
         # Call assertions, Check if some variables are valid to experiment
         # You can add assert that you want to check
@@ -189,7 +219,8 @@ class PG(PolicyGradient):
             adv_estimation_method=adv_estimation_method,
             use_scaled_rewards=use_reward_scaling,
             standardize_env_obs=use_standardized_obs,
-            standardize_advantages=use_standardized_advantages,
+            use_standardized_reward=self.use_standardized_reward,
+            use_standardized_cost=self.use_standardized_cost,
             lam_c=lam_c,
             use_reward_penalty=use_reward_penalty,
         )
@@ -467,7 +498,13 @@ class PG(PolicyGradient):
             a, v, cv, logp = self.ac.step(
                 torch.as_tensor(o, dtype=torch.float32))
             next_o, r, d, info = self.env.step(a)
-            c = info.get('cost', 0.)
+            if self.env_id in ['Ant-v3', "Swimmer-v3", "HalfCheetah-v3", "Hopper-v3", "Humanoid-v3", "Walker2d-v3"]:
+                if 'y_velocity' not in info:
+                    c = np.abs(info['x_velocity'])
+                else:
+                    c = np.sqrt(info['x_velocity'] ** 2 + info['y_velocity'] ** 2)
+            else:
+                c = info.get('cost', 0.)
 
             ep_ret += r
             ep_costs += c

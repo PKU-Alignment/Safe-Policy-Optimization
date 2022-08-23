@@ -28,8 +28,8 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument('--algo', type=str, required=True,
-                        help='Choose from: {ppo, trpo, ppo_lagrangian, trpo_lagrangian, cpo, pcpo, focops}')
-    parser.add_argument('--env_id', type=str, required=True,
+                        help='Choose from: {ppo, trpo, ppo-lag, trpo-lag, cpo, pcpo, focops}')
+    parser.add_argument('--env-id', type=str, required=True,
                         help='The environment name of Safety_gym, Bullet_Safety_Gym')
     parser.add_argument('--seed', default=0, type=int,
                         help='Define the seed of experiments')

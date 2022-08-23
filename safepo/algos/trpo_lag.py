@@ -3,27 +3,32 @@ from safepo.algos.trpo import TRPO
 from safepo.algos.lagrangian_base import Lagrangian
 
 
-class TRPO_Lagrangian(TRPO,Lagrangian):
+class TRPO_Lag(TRPO,Lagrangian):
     def __init__(
             self,
-            alg: str = 'trpo_lagrangian',
+            algo: str = 'trpo-lag',
             cost_limit: float = 25.0,
             lagrangian_multiplier_init: float = 0.001,
-            lambda_lr: float = 0.05,
-            lambda_optimizer: str = 'SGD',
-            use_lagrangian_penalty: bool = True,
+            lambda_lr: float = 0.035,
+            lambda_optimizer: str = 'Adam',
+            use_lagrangian_penalty=True,
+            use_standardized_reward=True, 
+            use_standardized_cost=True,
+            use_standardized_obs=False,
+            use_cost_value_function=True,
+            use_kl_early_stopping=True,
             **kwargs
     ):
         TRPO.__init__(
             self,
-            alg=alg,
+            algo=algo,
             cost_limit=cost_limit,
-            lagrangian_multiplier_init=lagrangian_multiplier_init,
-            lambda_lr=lambda_lr,
-            lambda_optimizer=lambda_optimizer,
-            use_cost_value_function=True,
-            use_kl_early_stopping=False,
+            use_cost_value_function=use_cost_value_function,
             use_lagrangian_penalty=use_lagrangian_penalty,
+            use_standardized_reward=use_standardized_reward, 
+            use_standardized_cost=use_standardized_cost, 
+            use_standardized_obs=use_standardized_obs,
+            use_kl_early_stopping=use_kl_early_stopping,
             **kwargs
         )
 

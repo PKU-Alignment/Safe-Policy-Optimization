@@ -20,7 +20,18 @@ class CPO(TRPO):
         :param loss_pi_cost_before: Pi and cost loss last iter
     """
     def __init__(self,algo='cpo', cost_limit: float = 25., **kwargs):
-        super().__init__(algo=algo, cost_limit=cost_limit, use_cost_value_function=True, **kwargs)
+        TRPO.__init__(
+            self,
+            algo=algo, 
+            cost_limit=cost_limit, 
+            use_lagrangian_penalty=True,
+            use_standardized_reward=True, 
+            use_standardized_cost=True,
+            use_standardized_obs=False,
+            use_cost_value_function=True,
+            use_kl_early_stopping=True,
+            **kwargs
+        )
         self.cost_limit = cost_limit
         self.loss_pi_cost_before = 0.
 

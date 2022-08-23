@@ -4,21 +4,45 @@ from safepo.algos.policy_gradient import PG
 from safepo.algos.lagrangian_base import Lagrangian
 import safepo.common.mpi_tools as mpi_tools
 
-class PPO_Lagrangian(PG,Lagrangian):
+class PPO_Lag(PG,Lagrangian):
     '''
     
     '''
-    def __init__(self,alg='ppo_lagrangian', cost_limit=25., clip=0.2, lagrangian_multiplier_init=0.001,
-            lambda_lr=0.035, lambda_optimizer='Adam', use_lagrangian_penalty=True,
-            use_standardized_advantages=True, **kwargs):
+    def __init__(
+            self,
+            algo='ppo-lag', 
+            cost_limit=25., 
+            clip=0.2, 
+            lagrangian_multiplier_init=0.001,
+            lambda_lr=0.035, 
+            lambda_optimizer='Adam', 
+            use_standardized_reward=True, 
+            use_standardized_cost=True,
+            use_standardized_obs=False,
+            use_reward_scaling=False,
+            use_cost_value_function=True,
+            use_kl_early_stopping=True,
+            **kwargs
+        ):
+        PG.__init__(
+            self, 
+            algo=algo, 
+            use_cost_value_function=use_cost_value_function,
+            use_kl_early_stopping=use_kl_early_stopping, 
+            use_standardized_reward=use_standardized_reward, 
+            use_standardized_cost=use_standardized_cost, 
+            use_standardized_obs=use_standardized_obs,
+            use_reward_scaling=use_reward_scaling,
+            **kwargs
+        )
 
-        PG.__init__(self, alg=alg, cost_limit=cost_limit, lagrangian_multiplier_init=lagrangian_multiplier_init,
-            lambda_lr=lambda_lr, lambda_optimizer=lambda_optimizer, use_cost_value_function=True,
-            use_kl_early_stopping=True, use_lagrangian_penalty=use_lagrangian_penalty,
-            use_standardized_advantages=use_standardized_advantages, **kwargs)
-
-        Lagrangian.__init__(self, cost_limit=cost_limit, use_lagrangian_penalty=use_lagrangian_penalty,
-            lagrangian_multiplier_init=lagrangian_multiplier_init, lambda_lr=lambda_lr, lambda_optimizer=lambda_optimizer)
+        Lagrangian.__init__(
+            self, 
+            cost_limit=cost_limit,
+            lagrangian_multiplier_init=lagrangian_multiplier_init, 
+            lambda_lr=lambda_lr, 
+            lambda_optimizer=lambda_optimizer
+        )
 
         self.clip = clip
 
@@ -36,11 +60,10 @@ class PPO_Lagrangian(PG,Lagrangian):
         loss_pi = -(torch.min(ratio * data['adv'], ratio_clip * data['adv'])).mean()
         loss_pi -= self.entropy_coef * dist.entropy().mean()
 
-        if self.use_lagrangian_penalty:
-            # ensure that lagrange multiplier is positive
-            penalty = self.lambda_range_projection(self.lagrangian_multiplier).item()
-            loss_pi += penalty * ((ratio * data['cost_adv']).mean())
-            loss_pi /= (1 + penalty)
+        # ensure that lagrange multiplier is positive
+        penalty = self.lambda_range_projection(self.lagrangian_multiplier).item()
+        loss_pi += penalty * ((ratio * data['cost_adv']).mean())
+        loss_pi /= (1 + penalty)
 
         # Useful extra info
         approx_kl = .5 * (data['log_p'] - _log_p).mean().item()

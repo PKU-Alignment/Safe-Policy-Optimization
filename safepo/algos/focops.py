@@ -4,21 +4,43 @@ from safepo.algos.policy_gradient import PG
 from safepo.algos.lagrangian_base import Lagrangian
 
 class FOCOPS(PG,Lagrangian):
-    def __init__(self,algo='focops', eta=0.02, lam=1.5, cost_limit=25.,
-            lagrangian_multiplier_init=0.001, lambda_lr=0.05, lambda_optimizer='Adam',
-            use_lagrangian_penalty=True, use_standardized_advantages=True, **kwargs):
+    def __init__(
+            self,
+            algo='focops', 
+            eta=0.02, 
+            lam=1.5, 
+            cost_limit=25.,
+            lagrangian_multiplier_init=0.001, 
+            lambda_lr=0.05, 
+            lambda_optimizer='Adam',
+            use_lagrangian_penalty=True,
+            use_standardized_reward=True, 
+            use_standardized_cost=True,
+            use_standardized_obs=False,
+            use_cost_value_function=True,
+            use_kl_early_stopping=True,
+            **kwargs
+        ):
 
-        PG.__init__(self, algo=algo, cost_limit=cost_limit,
-            lagrangian_multiplier_init=lagrangian_multiplier_init,
-            lambda_lr=lambda_lr,lambda_optimizer=lambda_optimizer,
-            use_cost_value_function=True,use_kl_early_stopping=True,
+        PG.__init__(
+            self, 
+            algo=algo, 
+            cost_limit=cost_limit,
+            use_cost_value_function=use_cost_value_function,
+            use_kl_early_stopping=use_kl_early_stopping,
             use_lagrangian_penalty=use_lagrangian_penalty,
-            use_standardized_advantages=use_standardized_advantages,**kwargs)
+            use_standardized_reward=use_standardized_reward, 
+            use_standardized_cost=use_standardized_cost,
+            use_standardized_obs=use_standardized_obs,
+            **kwargs)
 
-        Lagrangian.__init__(self,cost_limit=cost_limit,
-            use_lagrangian_penalty=use_lagrangian_penalty,
-            lagrangian_multiplier_init=lagrangian_multiplier_init,
-            lambda_lr=lambda_lr,lambda_optimizer=lambda_optimizer)
+        Lagrangian.__init__(
+                             self,
+                             cost_limit=cost_limit,
+                             use_lagrangian_penalty=use_lagrangian_penalty,
+                             lagrangian_multiplier_init=lagrangian_multiplier_init,
+                             lambda_lr=lambda_lr,
+                             lambda_optimizer=lambda_optimizer)
         self.lam = lam
         self.eta = eta
 

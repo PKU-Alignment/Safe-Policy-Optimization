@@ -1,7 +1,6 @@
 defaults:
   actor: mlp
-  lam: 1.5
-  eta: 0.02
+  clip: 0.2
   ac_kwargs:
     pi: 
       hidden_sizes: 
@@ -16,8 +15,9 @@ defaults:
   adv_estimation_method: gae
   epochs: 500
   gamma: 0.99
-  steps_per_epoch: 30000 
+  steps_per_epoch: 30000
   use_exploration_noise_anneal: True
+  use_linear_lr_decay: False
 
 Ant-v3:
   actor: mlp
@@ -62,3 +62,4 @@ HalfCheetah-v3:
   use_exploration_noise_anneal: True
   use_linear_lr_decay: False
   cost_limit: 151.99
+
