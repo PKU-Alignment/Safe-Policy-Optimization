@@ -22,9 +22,7 @@ class CPO(TRPO):
     def __init__(self,algo='cpo', cost_limit: float = 25., **kwargs):
         TRPO.__init__(
             self,
-            algo=algo, 
-            cost_limit=cost_limit, 
-            use_lagrangian_penalty=True,
+            algo=algo,
             use_standardized_reward=True, 
             use_standardized_cost=True,
             use_standardized_obs=False,

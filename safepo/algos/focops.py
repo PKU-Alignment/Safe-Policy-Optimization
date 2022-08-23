@@ -13,7 +13,6 @@ class FOCOPS(PG,Lagrangian):
             lagrangian_multiplier_init=0.001, 
             lambda_lr=0.05, 
             lambda_optimizer='Adam',
-            use_lagrangian_penalty=True,
             use_standardized_reward=True, 
             use_standardized_cost=True,
             use_standardized_obs=False,
@@ -25,10 +24,8 @@ class FOCOPS(PG,Lagrangian):
         PG.__init__(
             self, 
             algo=algo, 
-            cost_limit=cost_limit,
             use_cost_value_function=use_cost_value_function,
             use_kl_early_stopping=use_kl_early_stopping,
-            use_lagrangian_penalty=use_lagrangian_penalty,
             use_standardized_reward=use_standardized_reward, 
             use_standardized_cost=use_standardized_cost,
             use_standardized_obs=use_standardized_obs,
@@ -37,7 +34,6 @@ class FOCOPS(PG,Lagrangian):
         Lagrangian.__init__(
                              self,
                              cost_limit=cost_limit,
-                             use_lagrangian_penalty=use_lagrangian_penalty,
                              lagrangian_multiplier_init=lagrangian_multiplier_init,
                              lambda_lr=lambda_lr,
                              lambda_optimizer=lambda_optimizer)
@@ -56,11 +52,10 @@ class FOCOPS(PG,Lagrangian):
         ratio = torch.exp(_log_p - data['log_p'])
 
         kl_new_old = torch.distributions.kl.kl_divergence(dist, self.p_dist).mean()
-        if self.use_lagrangian_penalty:
-            # ensure that lagrange multiplier is positive
-            self.penalty = torch.clamp(self.lagrangian_multiplier, 0.0, 2.0)
-            loss_pi = (kl_new_old.detach() - (1 / self.lam) * ratio * (data['adv'] - self.penalty.detach() * data['cost_adv'])) * (kl_new_old.detach() <= self.eta).type(torch.float32)
-            loss_pi = loss_pi.mean()
+        # ensure that lagrange multiplier is positive
+        self.penalty = torch.clamp(self.lagrangian_multiplier, 0.0, 2.0)
+        loss_pi = (kl_new_old.detach() - (1 / self.lam) * ratio * (data['adv'] - self.penalty.detach() * data['cost_adv'])) * (kl_new_old.detach() <= self.eta).type(torch.float32)
+        loss_pi = loss_pi.mean()
             
         # Useful extra info
         approx_kl = (0.5 * (dist.mean - data['act']) ** 2

@@ -38,4 +38,23 @@ defaults:
   gamma: 0.99
   steps_per_epoch: 30000 
   use_exploration_noise_anneal: True
-  use_linear_lr_decay: False
+
+Humanoid-v3:
+  actor: mlp
+  clip: 0.2
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 256
+        - 256
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 256
+        - 256
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 333
+  gamma: 0.99
+  steps_per_epoch: 30000 
+  use_exploration_noise_anneal: True

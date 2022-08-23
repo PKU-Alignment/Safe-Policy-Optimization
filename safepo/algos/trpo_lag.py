@@ -22,9 +22,7 @@ class TRPO_Lag(TRPO,Lagrangian):
         TRPO.__init__(
             self,
             algo=algo,
-            cost_limit=cost_limit,
             use_cost_value_function=use_cost_value_function,
-            use_lagrangian_penalty=use_lagrangian_penalty,
             use_standardized_reward=use_standardized_reward, 
             use_standardized_cost=use_standardized_cost, 
             use_standardized_obs=use_standardized_obs,
@@ -35,7 +33,6 @@ class TRPO_Lag(TRPO,Lagrangian):
         Lagrangian.__init__(
             self,
             cost_limit=cost_limit,
-            use_lagrangian_penalty=use_lagrangian_penalty,
             lagrangian_multiplier_init=lagrangian_multiplier_init,
             lambda_lr=lambda_lr,
             lambda_optimizer=lambda_optimizer
@@ -54,11 +51,10 @@ class TRPO_Lag(TRPO,Lagrangian):
         loss_pi = -(ratio * data['adv']).mean()
         loss_pi -= self.entropy_coef * dist.entropy().mean()
 
-        if self.use_lagrangian_penalty:
-            # ensure that lagrange multiplier is positive
-            penalty = torch.clamp_min(self.lagrangian_multiplier,0.0)
-            loss_pi += penalty * (ratio * data['cost_adv']).mean()
-            loss_pi /= (1 + penalty)
+        # ensure that lagrange multiplier is positive
+        penalty = torch.clamp_min(self.lagrangian_multiplier,0.0)
+        loss_pi += penalty * (ratio * data['cost_adv']).mean()
+        loss_pi /= (1 + penalty)
 
         # Useful extra info
         approx_kl = .5 * (data['log_p'] - _log_p).mean().item()

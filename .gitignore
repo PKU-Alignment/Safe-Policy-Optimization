@@ -4,3 +4,4 @@ safepo/bash-run
 safepo.egg-info/
 __pycache__/
 .vscode
+safepo/run.sh

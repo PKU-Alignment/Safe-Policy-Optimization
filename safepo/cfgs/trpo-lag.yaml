@@ -1,5 +1,6 @@
 defaults:
   actor: mlp
+
   ac_kwargs:
     pi: 
       hidden_sizes: 
@@ -16,10 +17,31 @@ defaults:
   gamma: 0.99
   steps_per_epoch: 30000
   use_exploration_noise_anneal: True
+
+Swimmer-v3:
+  actor: mlp
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  steps_per_epoch: 30000
+  cost_limit: 205.6
+  use_max_grad_norm: True
+  lam: 0.97
+  lam_c: 0.97
 
 Ant-v3:
   actor: mlp
-  clip: 0.2
   ac_kwargs:
     pi: 
       hidden_sizes: 
@@ -35,27 +57,73 @@ Ant-v3:
   epochs: 500
   gamma: 0.99
   steps_per_epoch: 30000
-  use_exploration_noise_anneal: True
-  use_linear_lr_decay: False
-  cost_limit: 103.12
+  cost_limit: 2147.5
+  use_max_grad_norm: True
+  lam: 0.97
+  lam_c: 0.97
 
 HalfCheetah-v3:
   actor: mlp
-  clip: 0.2
   ac_kwargs:
     pi: 
       hidden_sizes: 
-        - 128
-        - 128
+        - 64
+        - 64
       activation: tanh
     val: 
       hidden_sizes: 
-        - 128
-        - 128
+        - 64
+        - 64
       activation: tanh
   adv_estimation_method: gae
   epochs: 500
   gamma: 0.99
   steps_per_epoch: 30000
-  use_linear_lr_decay: False
-  cost_limit: 151.99
+  cost_limit: 2147.5
+  use_max_grad_norm: True
+  lam: 0.97
+  lam_c: 0.97
+
+Hopper-v3:
+  actor: mlp
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  steps_per_epoch: 30000
+  cost_limit: 1047
+  use_max_grad_norm: True
+  lam: 0.97
+  lam_c: 0.97
+
+Walker2d-v3:
+  actor: mlp
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  steps_per_epoch: 30000
+  cost_limit: 2410
+  use_max_grad_norm: True
+  lam: 0.97
+  lam_c: 0.97

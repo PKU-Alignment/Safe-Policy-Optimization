@@ -1,26 +1,3 @@
-Safexp-PointGoal1-v0:
-  actor: mlp
-  ac_kwargs:
-    pi: 
-      hidden_sizes: 
-        - 64
-        - 64
-      activation: tanh
-    val: 
-      hidden_sizes: 
-        - 64
-        - 64
-      activation: tanh
-  cg_damping: 0.1
-  cg_iters: 10
-  adv_estimation_method: gae
-  epochs: 500
-  gamma: 0.99
-  steps_per_epoch: 30000
-  use_exploration_noise_anneal: True
-
-# -----------------------------------------------
-
 defaults:
   actor: mlp
   ac_kwargs:

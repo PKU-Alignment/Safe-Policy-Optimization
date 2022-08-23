@@ -11,7 +11,6 @@ class P3O(PG):
             cost_limit=25., 
             clip=0.2, 
             kappa=20.0,
-            use_lagrangian_penalty=True,
             use_standardized_reward=True, 
             use_standardized_cost=True,
             use_standardized_obs=False,
@@ -20,15 +19,16 @@ class P3O(PG):
             **kwargs
         ):
 
-        super().__init__(
+        PG.__init__(
+            self,
             algo=algo, 
             use_cost_value_function=use_cost_value_function,
             use_kl_early_stopping=use_kl_early_stopping, 
-            use_lagrangian_penalty=use_lagrangian_penalty,
             use_standardized_reward=use_standardized_reward, 
             use_standardized_cost=use_standardized_cost, 
             use_standardized_obs=use_standardized_obs,
-            **kwargs)
+            **kwargs
+        )
         self.clip = clip
         self.cost_limit = cost_limit
         self.kappa = kappa

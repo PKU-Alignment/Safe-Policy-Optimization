@@ -16,8 +16,6 @@ class NPG(PG):
         PG.__init__(
             self,
             algo=algo,
-            cg_damping=cg_damping,
-            cg_iters=cg_iters,
             target_kl=target_kl,
             **kwargs)
         self.cg_damping = cg_damping

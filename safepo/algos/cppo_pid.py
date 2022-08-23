@@ -30,12 +30,9 @@ class CPPOPid(PG):
         
         PG.__init__(
             self,
-            alg=algo,
-            cost_limit=cost_limit,
-            lagrangian_multiplier_init=lagrangian_multiplier_init,
+            algo=algo,
             use_cost_value_function=use_cost_value_function,
             use_kl_early_stopping=use_kl_early_stopping, 
-            use_lagrangian_penalty=use_lagrangian_penalty,
             use_standardized_reward=use_standardized_reward, 
             use_standardized_cost=use_standardized_cost, 
             use_standardized_obs=use_standardized_obs,
@@ -45,7 +42,6 @@ class CPPOPid(PG):
 
         self.clip = clip
         self.cost_limit = cost_limit
-        self.use_lagrangian_penalty = use_lagrangian_penalty
 
         # pid
         self.pid_Kp = pid_Kp
@@ -84,12 +80,11 @@ class CPPOPid(PG):
         loss_pi = - surr_adv
         loss_pi -= self.entropy_coef * dist.entropy().mean()
 
-        if self.use_lagrangian_penalty:
-            # ensure that lagrange multiplier is positive
-            penalty = self.cost_penalty
-            # loss_pi += penalty * ((ratio * data['cost_adv']).mean())
-            loss_pi += penalty * surr_cadv
-            loss_pi /= (1 + penalty)
+        # ensure that lagrange multiplier is positive
+        penalty = self.cost_penalty
+        # loss_pi += penalty * ((ratio * data['cost_adv']).mean())
+        loss_pi += penalty * surr_cadv
+        loss_pi /= (1 + penalty)
 
         # Useful extra info
         approx_kl = .5 * (data['log_p'] - _log_p).mean().item()
