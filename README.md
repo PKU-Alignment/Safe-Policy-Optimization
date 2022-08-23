@@ -155,6 +155,10 @@ And the safe region are :
 
 We test all algorithms and experiments on **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
 
+## Future Works
+ - [ ] Cover more control algorithms: CBF, etc.
+ - [ ] Add off-policy safe and model-based safe algorithms in the repo.
+
 ## PKU-MARL Team
 The Baseline is a project contributed by MARL team at Peking University, please contact yaodong.yang@pku.edu.cn if you are interested to collaborate.
 We also thank the list of contributors of the following open source repositories:
