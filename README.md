@@ -87,28 +87,28 @@ python train.py --env-id Safexp-PointGoal1-v0 --algo ppo-lag --cores 4 --seed 0
 
 Here we provide the list of common arguments: 
 
-|  Argument   | Default  | Info |
-|  ----       | ----  | ----|
-| --algo       | required | the name of algorithm exec |
-| --cores | int| the number of cpu physical cores you use|
-| --seed | int| the seed you use|
-| --check_freq       | int: 25 | check the snyc parameter |
-| --entropy_coef | float:0.01| the parameter of entropy|
-| --gamma| float:0.99 | the value of dicount|
-| --lam | float: 0.95 | the value of GAE lambda |
-| --lam_c| float: 0.95| the value of GAE cost lambda |
-| --max_ep_len | int: 1000| unless environment have the default value else, we take 1000 as default value|
-| --max_grad_norm| float: 0.5| the clip of parameters|
-| --num_mini_batches| int: 16| used for value network tranining|
-| --optimizer| Adam | the optimizer of Policy other : SGD, other class in torch.optim|
-| --pi_lr | float: 3e-4| the learning rate of policy|
-| --steps_per_epoch| int: 32000| the number of interactor steps|
-| --target_kl | float: 0.01| the value of trust region|
-| --train_pi_iterations| int: 80| the number of policy learn iterations|
-| --train_v_iterations| int: 40| the number of value network and cost value network iterations|
-| --use_cost_value_function| bool: False| use cost_value_function or not|
-|--use_entropy|bool:False| use entropy or not|
-|--use_reward_penalty| bool:False| use reward_penalty or not|
+|  Argument()   | Default  | Info |
+|  ----------- | ------------ | ----|
+| algo       | required | the name of algorithm exec |
+| cores | int| the number of cpu physical cores you use|
+| seed | 0| the seed you use|
+| check_freq       | 25 | check the snyc parameter |
+| entropy_coef |0.01| the parameter of entropy|
+| gamma| 0.99 | the value of dicount|
+| lam | 0.95 | the value of GAE lambda |
+| lam_c| 0.95| the value of GAE cost lambda |
+| max_ep_len | 1000| unless environment have the default value else, we take 1000 as default value|
+| max_grad_norm| 0.5| the clip of parameters|
+| num_mini_batches| 16| used for value network tranining|
+| optimizer| Adam | the optimizer of Policy other : SGD, other class in torch.optim|
+| pi_lr | 3e-4| the learning rate of policy|
+| steps_per_epoch| 32000| the number of interactor steps|
+| target_kl | 0.01| the value of trust region|
+| train_pi_iterations| 80| the number of policy learn iterations|
+| train_v_iterations| 40| the number of value network and cost value network iterations|
+| use_cost_value_function| False| use cost_value_function or not|
+|use_entropy|False| use entropy or not|
+|use_reward_penalty|False| use reward_penalty or not|
 
 
 ### Multi-Agent
