@@ -26,14 +26,14 @@
     - [Selected Tasks](#selected-tasks)
   - [What's More](#whats-more)
   - [Machine Configuration](#machine-configuration)
-  - [Maintenance](#maintenance)
-  - [Ethical and Responsible Use](#ethical-and-responsible-use)
   - [PKU-MARL Team](#pku-marl-team)
 
 ## Overview of Algorithms
 Here we provide a table of Safe RL algorithms that the benchmark includes.
 
 **This work is currently under review. We have already implemented and tested five more algorithms: PDO, RCPO, CPPO-PID, IPO, SAC-Lag. We will add them into the repository as soon as possible.**
+
+**We already update IPO and CPPO-PID.**
 
 |Algorithm| Proceedings&Cites| Official Code Repo | Official Code Last Update | Official Github Stars |
 |:-------------:|:------------:|:---------------------------:|---------------|---------------|
@@ -48,7 +48,7 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 |[RCPO](https://arxiv.org/pdf/1805.11074.pdf) | ICLR 2019 (Cite: 238) | :x: | :x: | :x: |
 |[CPPO-PID](https://arxiv.org/pdf/2007.03964.pdf) | Neurips 2020(Cite: 71) | [Pytorch](https://github.com/astooke/rlpyt/tree/master/rlpyt/projects/safe) | ![GitHub last commit](https://img.shields.io/github/last-commit/astooke/rlpyt?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers) |
 |[MACPO](https://arxiv.org/pdf/2110.02793.pdf) | Preprint(Cite: 4) | [Pytorch](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
-|[MAPPO-Lag](https://arxiv.org/pdf/2110.02793.pdf) | Preprint(Cite: 4) | [Pytorch](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
+|[MAPPO_Lag](https://arxiv.org/pdf/2110.02793.pdf) | Preprint(Cite: 4) | [Pytorch](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
 |[HATRPO](https://arxiv.org/pdf/2109.11251.pdf) | ICLR 2022 (Cite: 10) | [Pytorch](https://github.com/cyanrain7/TRPO-in-MARL) |  ![GitHub last commit](https://img.shields.io/github/last-commit/cyanrain7/TRPO-in-MARL?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/cyanrain7/TRPO-in-MARL)](https://github.com/cyanrain7/TRPO-in-MARL/stargazers) |
 |[HAPPO (Purely reward optimisation)](https://arxiv.org/pdf/2109.11251.pdf) | ICLR 2022 (Cite: 10) | [Pytorch](https://github.com/cyanrain7/TRPO-in-MARL) |  ![GitHub last commit](https://img.shields.io/github/last-commit/cyanrain7/TRPO-in-MARL?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/cyanrain7/TRPO-in-MARL)](https://github.com/cyanrain7/TRPO-in-MARL/stargazers) |
 |[MAPPO (Purely reward optimisation)](https://arxiv.org/pdf/2103.01955.pdf) | Preprint(Cite: 98) | [Pytorch](https://github.com/marlbenchmark/on-policy) |  ![GitHub last commit](https://img.shields.io/github/last-commit/marlbenchmark/on-policy?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/marlbenchmark/on-policy)](https://github.com/marlbenchmark/on-policy/stargazers) |
@@ -70,6 +70,8 @@ conda activate safe
 # because the cuda version, we recommend you install pytorch manual.
 pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 torchaudio==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -e .
+conda install mpi4py
+conda install scipy
 ```
 > For detailed instructions, please refer to [Installation.md](Installation.md).
 
@@ -80,7 +82,7 @@ pip install -e .
 `train.py` is the entrance file. Running `train.py` with arguments about algorithms and environments does the training. For example, to run PPO-Lag in Safexp-PointGoal1-v0, with 4 cpu cores and seed 0, you can use the following command:
 
 ```
-python train.py --env_id Safexp-PointGoal1-v0 --algo ppo_lagrangian --cores 4 --seed 0
+python train.py --env_id Safexp-PointGoal1-v0 --algo ppo-lag --cores 4 --seed 0
 ```
 
 Here we provide the list of common arguments: 
@@ -110,7 +112,7 @@ Here we provide the list of common arguments:
 
 
 ### Multi-Agent
-We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands. HAPPO, MAPPO-Lag, IPPO, MACPO, and MAPPO have already been implemented.
+We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands. HAPPO, MAPPO-Lagrangian, IPPO, MACPO, and MAPPO have already been implemented.
 
 ```safepo/envs/safe_dexteroushands/train_marl.py``` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
 
@@ -128,6 +130,10 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 **We implement some different constraints to the base environments, expanding the setting to both single-agent and multi-agent.**
 
 <img src="assets/hand.png" align="middle" width="1000"/> 
+
+More details about Safety_Joint and Safety_Finger.
+<img src="assets/safe_joint.png" align="middle" width="1000"/> 
+<img src="assets/safe_finger.png" align="middle" width="1000"/> 
 
 
 
@@ -148,14 +154,6 @@ And the safe region are :
 ## Machine Configuration
 
 We test all algorithms and experiments on **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
-
-## Maintenance
-
-This repo is under long-term maintenance of PKU-MARL team. We will keep adding new algorithms and supporting new environments as they come out. Please watch us and stay tuned!
-
-## Ethical and Responsible Use
-
-SafePO aims to benefit safe RL community research, and is released under the [Apache-2.0 license](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/LICENSE). Illegal usage or any violation of the license is not allowed.
 
 ## PKU-MARL Team
 The Baseline is a project contributed by MARL team at Peking University, please contact yaodong.yang@pku.edu.cn if you are interested to collaborate.
