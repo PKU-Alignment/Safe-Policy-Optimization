@@ -68,6 +68,3 @@ if __name__ == '__main__':
     )
     model.compile(num_runs=args.runs, num_cores=args.cores)
     model.train()
-    model.eval()
-    if args.play:
-        model.play()
