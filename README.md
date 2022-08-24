@@ -82,7 +82,7 @@ conda install scipy
 `train.py` is the entrance file. Running `train.py` with arguments about algorithms and environments does the training. For example, to run PPO-Lag in Safexp-PointGoal1-v0, with 4 cpu cores and seed 0, you can use the following command:
 
 ```
-python train.py --env_id Safexp-PointGoal1-v0 --algo ppo_lagrangian --cores 4 --seed 0
+python train.py --env-id Safexp-PointGoal1-v0 --algo ppo-lag --cores 4 --seed 0
 ```
 
 Here we provide the list of common arguments: 
