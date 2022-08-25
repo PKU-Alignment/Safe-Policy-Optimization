@@ -36,7 +36,7 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 **This work is currently under review. We have already implemented and tested five more algorithms: PDO, RCPO, CPPO-PID, IPO, SAC-Lag. We will add them into the repository as soon as possible.**
 
 |Algorithm| Proceedings&Cites| Official Code Repo | Official Code Last Update | Official Github Stars |
-|:-------------:|:------------:|:---------------------------:|:---------------:|:---------------:|
+|:-------------:|:------------:|:-------------:|:---------------:|:---------------:|
 |[PPO-Lag](https://cdn.openai.com/safexp-short.pdf)| :x: | [Tensorflow 1 ](https://github.com/openai/safety-starter-agents)| ![GitHub last commit](https://img.shields.io/github/last-commit/openai/safety-starter-agents?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/openai/safety-starter-agents)](https://github.com/openai/safety-starter-agents/stargazers) |
 |[TRPO-Lag](https://cdn.openai.com/safexp-short.pdf)| :x: | [Tensorflow 1](https://github.com/openai/safety-starter-agents) | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/safety-starter-agents?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/openai/safety-starter-agents)](https://github.com/openai/safety-starter-agents/stargazers) |
 |[FOCOPS](https://arxiv.org/pdf/2002.06506.pdf) | Neurips 2020 (Cite: 27) | [Pytorch](https://github.com/ymzhang01/focops) | ![GitHub last commit](https://img.shields.io/github/last-commit/ymzhang01/focops?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/ymzhang01/focops)](https://github.com/ymzhang01/focops/stargazers) |
@@ -82,7 +82,7 @@ conda install scipy
 `train.py` is the entrance file. Running `train.py` with arguments about algorithms and environments does the training. For example, to run PPO-Lag in Safexp-PointGoal1-v0, with 4 cpu cores and seed 0, you can use the following command:
 
 ```
-python train.py --env_id Safexp-PointGoal1-v0 --algo ppo_lagrangian --cores 4 --seed 0
+python train.py --env-id Safexp-PointGoal1-v0 --algo ppo-lag --cores 4 --seed 0
 ```
 
 Here we provide the list of common arguments: 
