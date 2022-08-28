@@ -191,9 +191,9 @@ class Runner:
                 aver_episode_costs = torch.stack(done_episodes_costs).mean()
                 self.return_aver_cost(aver_episode_costs)
                 print("some episodes done, average rewards: {}, average costs: {}".format(aver_episode_rewards, aver_episode_costs))
-                self.writter.add_scalars("train_episode_rewards", {"aver_rewards": aver_episode_rewards},
+                self.writter.add_scalar("train_episode_rewards", aver_episode_rewards,
                                             total_num_steps)
-                self.writter.add_scalars("train_episode_costs", {"aver_costs": aver_episode_costs},
+                self.writter.add_scalar("train_episode_costs", aver_episode_costs,
                                             total_num_steps)
             # eval
             if episode % self.eval_interval == 0 and self.use_eval:
@@ -285,14 +285,6 @@ class Runner:
                                          active_masks[:, agent_id], None, costs=costs[:, agent_id],
                                          cost_preds=cost_preds[:, agent_id],
                                          rnn_states_cost=rnn_states_cost[:, agent_id], done_episodes_costs_aver=done_episodes_costs_aver, aver_episode_costs=aver_episode_costs)
-
-    def log_train(self, train_infos, total_num_steps):
-        print("average_step_rewards is {}.".format(np.mean(self.buffer[0].rewards)))
-        for agent_id in range(self.num_agents):
-            train_infos[agent_id]["average_step_rewards"] = np.mean(self.buffer[agent_id].rewards)
-            for k, v in train_infos[agent_id].items():
-                agent_k = "agent%i/" % agent_id + k
-                self.writter.add_scalars(agent_k, {agent_k: v}, total_num_steps)
 
 
     def train(self):
@@ -392,12 +384,12 @@ class Runner:
         for agent_id in range(self.num_agents):
             for k, v in train_infos[agent_id].items():
                 agent_k = "agent%i/" % agent_id + k
-                self.writter.add_scalars(agent_k, {agent_k: v}, total_num_steps)
+                self.writter.add_scalar(agent_k, v, total_num_steps)
 
     def log_env(self, env_infos, total_num_steps):
         for k, v in env_infos.items():
             if len(v) > 0:
-                self.writter.add_scalars(k, {k: np.mean(v)}, total_num_steps)
+                self.writter.add_scalar(k, np.mean(v), total_num_steps)
 
     @torch.no_grad()
     def eval(self, total_num_steps):
