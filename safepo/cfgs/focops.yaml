@@ -1,0 +1,186 @@
+defaults:
+  actor: mlp
+
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  cost_limit: 25.0
+  steps_per_epoch: 30000
+  use_discount_cost_update_lag: True
+  use_entropy: True
+  entropy_coef: 0.01
+  use_max_grad_norm: True
+  use_exploration_noise_anneal: True
+
+Swimmer-v3:
+  actor: mlp
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  steps_per_epoch: 50000
+  cost_limit: 24.52
+  use_max_grad_norm: True
+  use_discount_cost_update_lag: True
+  max_grad_norm: 40.0
+  use_entropy: True
+  entropy_coef: 0.01
+  lam: 0.95
+  lam_c: 0.95
+  vf_lr: 0.0003
+
+Ant-v3:
+  actor: mlp
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  steps_per_epoch: 50000
+  cost_limit: 103.12
+  use_max_grad_norm: True
+  use_discount_cost_update_lag: True
+  max_grad_norm: 40.0
+  use_entropy: True
+  entropy_coef: 0.01
+  lam: 0.95
+  lam_c: 0.95
+  vf_lr: 0.0003
+
+Humanoid-v3:
+  actor: mlp
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  steps_per_epoch: 50000
+  cost_limit: 20.14
+  use_discount_cost_update_lag: True
+  use_max_grad_norm: True
+  max_grad_norm: 40.0
+  use_entropy: True
+  entropy_coef: 0.01
+  lam: 0.95
+  lam_c: 0.95
+  vf_lr: 0.0003
+
+HalfCheetah-v3:
+  actor: mlp
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  steps_per_epoch: 50000
+  use_discount_cost_update_lag: True
+  cost_limit: 151.99
+  use_max_grad_norm: True
+  max_grad_norm: 40.0
+  use_entropy: True
+  entropy_coef: 0.01
+  lam: 0.95
+  lam_c: 0.95
+  vf_lr: 0.0003
+
+Hopper-v3:
+  actor: mlp
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  steps_per_epoch: 50000
+  use_discount_cost_update_lag: True
+  cost_limit: 82.75
+  use_max_grad_norm: True
+  max_grad_norm: 40.0
+  use_entropy: True
+  entropy_coef: 0.01
+  lam: 0.95
+  lam_c: 0.95
+  vf_lr: 0.0003
+
+Walker2d-v3:
+  actor: mlp
+  ac_kwargs:
+    pi: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+    val: 
+      hidden_sizes: 
+        - 64
+        - 64
+      activation: tanh
+  adv_estimation_method: gae
+  epochs: 500
+  gamma: 0.99
+  steps_per_epoch: 50000
+  cost_limit: 81.89
+  use_max_grad_norm: True
+  max_grad_norm: 40.0
+  use_entropy: True
+  use_discount_cost_update_lag: True
+  entropy_coef: 0.01
+  lam: 0.95
+  lam_c: 0.95
+  vf_lr: 0.0003
