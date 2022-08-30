@@ -22,5 +22,5 @@ REGISTRY = {
     'focops': FOCOPS,
     'p3o': P3O,
     'ipo': IPO,
-    'cppo-pid': CPPOPid
+    'cppo-pid': CPPOPid,
 }

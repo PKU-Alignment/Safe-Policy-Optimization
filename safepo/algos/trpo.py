@@ -4,16 +4,8 @@ import safepo.common.mpi_tools as mpi_tools
 from safepo.common.utils import get_flat_params_from, set_param_values_to_model
 
 class TRPO(NPG):
-    def __init__(
-                 self,
-                 algo='trpo',
-                 **kwargs
-                ):
-        NPG.__init__(
-            self, 
-            algo=algo, 
-            **kwargs
-        )
+    def __init__(self, algo='trpo', **kwargs):
+        NPG.__init__(self, algo=algo, **kwargs)
 
     def search_step_size(self, step_dir, g_flat, p_dist, data, total_steps=15, decay=0.8):
         """ 

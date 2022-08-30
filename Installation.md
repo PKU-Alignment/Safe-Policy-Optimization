@@ -40,33 +40,16 @@ install instructions if you have any trouble running the samples.
 ```
 
 
-# Known issues
+# known issues
 
-## Problem 1
+## problem1
 ```
 ImportError: /lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.29' not found (required by /home/jiamg/miniconda3/envs/safepo/lib/python3.8/site-packages/pandas/_libs/window/aggregations.cpython-38-x86_64-linux-gnu.so)
 ```
 solution
-```
-conda install libgcc
-```
+> conda install libgcc
 
-## Another version of Problem 1 
-If you see an error like this:
-```
-ImportError: /home/xyz/anaconda3/bin/../lib/libstdc++.so.6: version `GLIBCXX_3.4.20` not found (required by /home/xyz/carbgym/python/isaacgym/_bindings/linux64/gym_36.so)
-```
-That means that the libstdc++ version distributed with Anaconda is different than the one used on your system to build Isaac Gym. Anaconda does some environment shenanigans that masks the system libstdc++ with the one it installed, but it may be incompatible with how Isaac Gym was built on your system. There’s a number of ways this can be fixed and none of them are pretty. The simplest would be to “hide” the conflicting libstdc++ files that Anaconda installed by moving them to a different directory:
-```
-mkdir ${YOUR_CONDA_ENV}/lib/_unused
-mv ${YOUR_CONDA_ENV}/lib/libstdc++* ${YOUR_CONDA_ENV}/lib/_unused
-```
-This issue also appears in the official NVIDIA Isaac Gym installation documentation.
-<img src="assets/issues/glibcxx.png" width="999" border="1"/>
-
-
-
-## Problem 2
+## problem2
 ```
 /tmp/pip-install-ibsk3pie/mujoco-py_86d5be32b0b64b41b92097c8bb522d0a/mujoco_py/gl/osmesashim.c:1:10: fatal error: GL/osmesa.h: No such file or directory
           1 | #include <GL/osmesa.h>
@@ -77,12 +60,9 @@ This issue also appears in the official NVIDIA Isaac Gym installation documentat
 ```
 sudo apt install libosmesa6-dev
 
-## Problem 3
+## problem3
 ```
 error: [Errno 2] No such file or directory: 'patchelf'
       [end of output]
 ```
-```
-sudo apt-get -y install patchelf
-```
-
+> sudo apt-get -y install patchelf

@@ -47,7 +47,6 @@ class IPO(PG):
 
         ep_costs = self.logger.get_stats('EpCosts')[0]
         c = self.cost_limit - ep_costs
-        """delta_loss = - delta_adv + kappa / (b - Jc) * delta_cadv"""
 
         penalty = self.kappa / (c + 1e-8)
         if penalty < 0 or penalty > self.penalty_max:
@@ -63,7 +62,5 @@ class IPO(PG):
                      / dist.stddev ** 2).mean().item()
         ent = dist.entropy().mean().item()
         pi_info = dict(kl=approx_kl, ent=ent, ratio=ratio_clip.mean().item())
-
-
         return loss_pi, pi_info
 

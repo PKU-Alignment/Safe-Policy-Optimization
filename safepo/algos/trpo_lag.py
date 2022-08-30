@@ -11,7 +11,6 @@ class TRPO_Lag(TRPO,Lagrangian):
             lagrangian_multiplier_init: float = 0.001,
             lambda_lr: float = 0.035,
             lambda_optimizer: str = 'Adam',
-            use_lagrangian_penalty=True,
             use_standardized_reward=True, 
             use_standardized_cost=True,
             use_standardized_obs=False,

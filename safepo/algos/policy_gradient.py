@@ -37,13 +37,14 @@ class PG(PolicyGradient):
             target_kl=0.01,
             train_pi_iterations=80,
             train_v_iterations=40,
+            use_discount_cost_update_lag=False,
             use_cost_value_function=False,
             use_entropy=False,
             use_exploration_noise_anneal=False,
             use_kl_early_stopping=False,
             use_linear_lr_decay=True,
             use_max_grad_norm=False,
-            use_reward_scaling=True, 
+            use_reward_scaling=False, 
             use_reward_penalty=False,
             use_shared_weights=False,
             use_standardized_reward=False,
@@ -177,6 +178,7 @@ class PG(PolicyGradient):
         self.use_standardized_obs = use_standardized_obs
         self.use_standardized_reward = use_standardized_reward
         self.use_standardized_cost = use_standardized_cost
+        self.use_discount_cost_update_lag = use_discount_cost_update_lag
 
         # Call assertions, Check if some variables are valid to experiment
         # You can add assert that you want to check
@@ -382,9 +384,11 @@ class PG(PolicyGradient):
             # Update internals of AC
             if self.use_exploration_noise_anneal:
                 self.ac.update(frac=epoch / self.epochs)
-
             # Collect data and store
             self.roll_out()
+            if self.algo == "focops":
+                ep_costs = self.logger.get_stats('EpCosts')[0]
+                self.update_lagrange_multiplier(ep_costs)
 
             # Update: actor, critic, running statistics
             self.update()
@@ -395,7 +399,7 @@ class PG(PolicyGradient):
             # Check if all models own the same parameter values
             if epoch % self.check_freq == 0:
                 self.check_distributed_parameters()
-            # Save model to disk #TODO uncoupled
+            # Save model to disk
             if epoch == (self.epochs - 1) or epoch % self.save_freq == 0:
                 self.logger.save_state(state_dict={}, itr=None)
             if (epoch + 1) % 100 == 0:
@@ -493,7 +497,8 @@ class PG(PolicyGradient):
                 self.lagrangian_multiplier)
         else:
             penalty_param = 0
-
+        
+        # c_gamma_step = 0
         for t in range(self.local_steps_per_epoch):
             a, v, cv, logp = self.ac.step(
                 torch.as_tensor(o, dtype=torch.float32))
@@ -507,7 +512,10 @@ class PG(PolicyGradient):
                 c = info.get('cost', 0.)
 
             ep_ret += r
-            ep_costs += c
+            if self.use_discount_cost_update_lag:
+                ep_costs += (self.gamma ** ep_len) * c
+            else: 
+                ep_costs += c
             ep_len += 1
 
             # Save and log
@@ -535,8 +543,7 @@ class PG(PolicyGradient):
 
             if terminal or epoch_ended:
                 if timeout or epoch_ended:
-                    _, v, cv, _ = self.ac(
-                        torch.as_tensor(o, dtype=torch.float32))
+                    _, v, cv, _ = self.ac(torch.as_tensor(o, dtype=torch.float32))
                 else:
                     v, cv = 0., 0.
 
@@ -545,8 +552,7 @@ class PG(PolicyGradient):
 
                 # Only save EpRet / EpLen if trajectory finished
                 if terminal:  
-                    self.logger.store(EpRet=ep_ret, EpLen=ep_len,
-                                      EpCosts=ep_costs)
+                    self.logger.store(EpRet=ep_ret, EpLen=ep_len, EpCosts=ep_costs)
                 o, ep_ret, ep_costs, ep_len = self.env.reset(), 0., 0., 0
 
     def update_running_statistics(self, data):
@@ -584,7 +590,7 @@ class PG(PolicyGradient):
     def update_policy_net(self, data) -> None:
         # Get prob. distribution before updates: used to measure KL distance
         with torch.no_grad():
-            self.p_dist = self.ac.pi.dist(data['obs']) # for focops, this is ?
+            self.p_dist = self.ac.pi.detach_dist(data['obs'])
 
         # Get loss and info values before update
         pi_l_old, pi_info_old = self.compute_loss_pi(data)
@@ -611,7 +617,7 @@ class PG(PolicyGradient):
 
             if self.use_kl_early_stopping:
                 # Average KL for consistent early stopping across processes
-                if mpi_tools.mpi_avg(torch_kl) > self.target_kl:
+                if mpi_tools.mpi_avg(torch_kl) > 2.0:
                     self.logger.log(f'Reached ES criterion after {i+1} steps.')
                     break
 

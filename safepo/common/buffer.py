@@ -153,26 +153,25 @@ class Buffer:
         discounted_ret = discount_cumsum(rews, self.gamma)[:-1]
         self.discounted_ret_buf[path_slice] = discounted_ret
 
-        if self.use_reward_penalty:
-            assert penalty_param >= 0, 'reward_penalty assumes positive value.'
-            rews -= penalty_param * costs
+        # if self.use_reward_penalty:
+        #     assert penalty_param >= 0, 'reward_penalty assumes positive value.'
+        #     rews -= penalty_param * costs
 
-        if self.use_scaled_rewards:
-            # divide rewards by running return stddev.
-            # discounted_ret = discount_cumsum(rews, self.gamma)[:-1]
-            # for i, ret in enumerate(discounted_ret):
-            # update running return statistics
-            # self.actor_critic.ret_oms.update(discounted_ret)
-            # # now scale...
-            rews = self.actor_critic.ret_oms(rews, subtract_mean=False, clip=True)
+        # if self.use_scaled_rewards:
+        #     # divide rewards by running return stddev.
+        #     # discounted_ret = discount_cumsum(rews, self.gamma)[:-1]
+        #     # for i, ret in enumerate(discounted_ret):
+        #     # update running return statistics
+        #     # self.actor_critic.ret_oms.update(discounted_ret)
+        #     # # now scale...
+        #     rews = self.actor_critic.ret_oms(rews, subtract_mean=False, clip=True)
 
         adv, v_targets = self.calculate_adv_and_value_targets(vals, rews)
         self.adv_buf[path_slice] = adv
         self.target_val_buf[path_slice] = v_targets
 
         # calculate costs
-        c_adv, c_targets = self.calculate_adv_and_value_targets(cost_vs, costs,
-                                                                lam=self.lam_c)
+        c_adv, c_targets = self.calculate_adv_and_value_targets(cost_vs, costs,lam=self.lam_c)
         self.cost_adv_buf[path_slice] = c_adv
         self.target_cost_val_buf[path_slice] = c_targets
 
@@ -199,9 +198,10 @@ class Buffer:
             # self.cost_adv_buf = (self.cost_adv_buf - cadv_mean)#/(cadv_std + 1.0e-8)
         
         if self.use_standardized_cost:
+            # print("ook")
             # also for cost advantages; only re-center but no rescale!
             cadv_mean, cadv_std = mpi_tools.mpi_statistics_scalar(self.cost_adv_buf)
-            self.cost_adv_buf = (self.cost_adv_buf - cadv_mean)#/(cadv_std + 1.0e-8)
+            self.cost_adv_buf = (self.cost_adv_buf - cadv_mean)/(cadv_std + 1.0e-8)
         # TODO
         # self.obs_buf = self.actor_critic.obs_oms(self.obs_buf, clip=False) \
         #     if self.standardize_env_obs else self.obs_buf

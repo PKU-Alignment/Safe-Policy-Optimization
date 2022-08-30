@@ -23,11 +23,6 @@ class ActorCritic(nn.Module):
         self.obs_oms = OnlineMeanStd(shape=self.obs_shape) \
             if use_standardized_obs else None
 
-        ## fix
-        self.obs_shape = observation_space.shape
-        self.obs_oms = OnlineMeanStd(shape=self.obs_shape) \
-            if use_standardized_obs else None
-
         self.ac_kwargs = ac_kwargs
 
         # policy builder depends on action space

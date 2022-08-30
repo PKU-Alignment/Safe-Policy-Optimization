@@ -34,6 +34,18 @@ class MLPGaussianActor(Actor):
         mu = self.net(obs)
         return Normal(mu, self.std)
 
+    def detach_dist(self, obs):
+        mu = self.net(obs).detach()
+        return Normal(mu, self.std.detach())
+    
+    def focops_return(self, obs, act):
+        mean = self.net(obs)
+        std = torch.exp(self.log_std)
+        std = std.expand_as(mean)
+        normal = Normal(mean, std)
+        return normal.log_prob(act).sum(-1, keepdim=True), mean, std
+
+
     def log_prob_from_dist(self, pi, act) -> torch.Tensor:
         # Last axis sum needed for Torch Normal distribution
         return pi.log_prob(act).sum(axis=-1)
