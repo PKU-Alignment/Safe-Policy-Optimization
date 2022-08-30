@@ -6,9 +6,9 @@
 
 
 # Update !!!
-```
+
 1. We added a parameter to choose whether to use the discounted total cost to updateLagrange multiplier. Without any change to the previous command, you just need to add ```--use_discount_cost_update_lag True``` when run a command in terminal.
-```
+
 
 **Safe Policy Optimization (SafePO)**  is a comprehensive algorithm benchmark for Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, SafePO is developed with the following key features:
 
