@@ -122,8 +122,9 @@ We also provide a safe MARL algorithm benchmark for safe MARL research on the ch
 
 ```safepo/envs/safe_dexteroushands/train_marl.py``` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
 
-```bash
-python train_marl.py --task=ShadowHandOver --algo=macpo
+```python
+# algo: macpo, mappolag, mappo, ippo, happo
+python train_marl.py --task=ShadowHandOver --algo=macpo 
 ```
 
 ### Selected Tasks
