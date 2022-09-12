@@ -118,7 +118,7 @@ Here we provide the list of common arguments:
 
 
 ### Multi-Agent
-We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands. HAPPO, HAPPO-Lag, IPPO, MACPO, and MAPPO have already been implemented.
+We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands. HAPPO, IPPO, MACPO, MAPPO-Lag and MAPPO have already been implemented.
 
 ```safepo/envs/safe_dexteroushands/train_marl.py``` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
 
