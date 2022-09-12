@@ -80,7 +80,7 @@ class Runner:
         if self.algorithm_name == "macpo":
             from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.macpo_trainer import MACPO as TrainAlgo
             from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.macpo_policy import MACPO_Policy as Policy
-        if self.algorithm_name == "happolag":
+        if self.algorithm_name == "mappolag":
             from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.mappolag_trainer import R_MAPPO_Lagr as TrainAlgo
             from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.mappolag_policy import MAPPO_L_Policy as Policy
         if self.algorithm_name == "ippo":
