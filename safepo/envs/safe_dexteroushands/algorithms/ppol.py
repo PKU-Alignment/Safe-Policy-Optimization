@@ -3,7 +3,8 @@ import os
 import time
 
 from gym.spaces import Space
-
+import wandb
+import datetime
 import numpy as np
 import statistics
 from collections import deque
@@ -83,7 +84,6 @@ class PPOL:
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=learning_rate)
         self.cost_critic_optimizer = optim.Adam(self.cost_critic.parameters(), lr=learning_rate)
 
-
         # PPO Lagrangian 
         # self.penalty_param = torch.tensor(1.0,requires_grad=True).float()
         self.penalty_param = torch.tensor(0.0001,requires_grad=True).float()
@@ -112,13 +112,19 @@ class PPOL:
         self.current_learning_iteration = 0
 
         self.apply_reset = apply_reset
+        
+        # wandb
+        currtime = "{0:%Y-%m-%d %H:%M:%S}".format(datetime.datetime.now())
+        wandb.init(project="SafeRL-DexterousHand", name=self.log_dir.split('/')[-3] + " " + self.log_dir.split('/')[-2] + " " + currtime, entity="pku_rl")
+        config = wandb.config
+        config.learning_rate = 0.01
 
     def test(self, path):
-        self.actor.load_state_dict(torch.load(path))
+        self.actor.load_state_dict(torch.load(path, map_location=self.device))
         self.actor.eval()
 
     def load(self, path):
-        self.actor.load_state_dict(torch.load(path))
+        self.actor.load_state_dict(torch.load(path, map_location=self.device))
         self.current_learning_iteration = int(path.split("_")[-1].split(".")[0])
         print("self.current_leanring_iteration", self.current_learning_iteration)
         self.actor.train()
@@ -127,26 +133,21 @@ class PPOL:
         torch.save(self.actor.state_dict(), path)
 
     def run(self, num_learning_iterations, log_interval=1):
-        if self.is_testing:
-            print("hello")
-            # exit(0)
+        if not os.path.isdir(self.log_dir):
+            os.makedirs(self.log_dir)
         current_obs = self.vec_env.reset()
         current_states = self.vec_env.get_state()
         if self.is_testing:
-            self.load("./log/shadow_hand_over/ppol/ppol_seed0/model_10000.pt")
             while True:
                 with torch.no_grad():
                     if self.apply_reset:
                         current_obs = self.vec_env.reset()
-                    print(current_obs)
-                    self.vec_env.render()
                     # Compute the action
                     actions = self.actor.act_inference(current_obs)
                     # Step the vec_environment
                     next_obs, rews, _, dones, infos = self.vec_env.step(actions)
                     current_obs.copy_(next_obs)
         else:
-
             rewbuffer = deque(maxlen=100)
             rewbuffer.append(0)
             costbuffer = deque(maxlen=100)
@@ -206,12 +207,17 @@ class PPOL:
                 if len(ep_cost) == 0:
                     pass
                 else:
+                    print("ep_cost", np.mean(ep_cost))
                     avg_cost = np.mean(ep_cost) - self.cost_lim
                     loss_penalty = -self.penalty_param * torch.tensor(avg_cost)
                     self.penalty_optimizer.zero_grad()
                     loss_penalty.backward()
                     self.penalty_optimizer.step()
-                    print("penalty_param",self.penalty_param)
+                    # self.penalty_param = torch.clamp_min(self.penalty_param, torch.tensor(0.0))
+
+                    print("self.penalty_param", self.penalty_param)
+                    self.penalty_item2 = self.penalty_param.item()
+
                 if self.print_log:
                     rewbuffer.extend(reward_sum)
                     costbuffer.extend(cost_sum)
@@ -232,20 +238,16 @@ class PPOL:
                 self.storage.clear()
                 stop = time.time()
                 learn_time = stop - start
-
-                self.writer.add_scalar('Train/mean_reward', statistics.mean(rewbuffer),it)
-                self.writer.add_scalar('Train/mean_cost', statistics.mean(costbuffer),it)
-                self.writer.add_scalar('Train/penalty', self.penalty_param, it)
-                self.logger.store(Reward=statistics.mean(rewbuffer))
-                self.logger.store(Cost=statistics.mean(costbuffer))
-                self.logger.store(Epoch=it)
-                self.logger.log_tabular("Epoch", average_only=True)
-                self.logger.log_tabular('Reward', average_only=True)
-                self.logger.log_tabular('Cost', average_only=True)
-                self.logger.dump_tabular()
-                
-                
-                
+                if it % log_interval == 0:
+                    self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(it)))
+                if len(ep_cost) == 0:
+                    pass
+                else:
+                    self.writer.add_scalar('Train/mean_reward', statistics.mean(rewbuffer),it)
+                    self.writer.add_scalar('Train/mean_cost', statistics.mean(costbuffer),it)
+                    self.writer.add_scalar('Train/penalty', self.penalty_item2, it)
+                    print(self.penalty_item2)
+                    wandb.log({"reward": statistics.mean(rewbuffer), "costs": statistics.mean(costbuffer), "penalty_param": self.penalty_item2})
 
     def update(self):
         mean_value_loss = 0
@@ -260,7 +262,6 @@ class PPOL:
                     states_batch = self.storage.states.view(-1, *self.storage.states.size()[2:])[indices]
                 else:
                     states_batch = None
-
                 actions_batch = self.storage.actions.view(-1, self.storage.actions.size(-1))[indices]
                 target_values_batch = self.storage.values.view(-1, 1)[indices]
                 # For cost
@@ -341,15 +342,12 @@ class PPOL:
 
 
                 # Policy
-                
-                self.penalty_item = softplus(self.penalty_param).detach()
+               
                 self.penalty_item = softplus(self.penalty_param).item()
                 # exit(0)
-                #loss = -surrogate_loss + self.penalty_item * surrogate_cost_loss - self.entropy_coef * entropy_batch.mean()
+                loss = -surrogate_loss + self.penalty_item * surrogate_cost_loss - self.entropy_coef * entropy_batch.mean()
 
-                #loss /= (1 + self.penalty_item)
-
-                loss = -surrogate_loss - self.entropy_coef * entropy_batch.mean()
+                loss /= (1 + self.penalty_item)
                 # Gradient step
                 self.optimizer.zero_grad()
                 loss.backward()
