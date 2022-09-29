@@ -52,7 +52,8 @@ class PG(PolicyGradient):
             use_standardized_obs=True,
             weight_initialization = 'kaiming_uniform',
             save_freq=10,
-            seed=0
+            seed=0,
+            enable_eval=False,
         ):
         """
         Policy Gradient, 
@@ -184,17 +185,20 @@ class PG(PolicyGradient):
         # You can add assert that you want to check
         self._init_checks() 
 
-        # Set up logger and save configuration to disk
-        # Get local parameters before logger instance to avoid unnecessary print
-        self.params = locals()
-        self.logger = self._init_logger()
-        self.logger.save_config(self.params)
+        if not enable_eval:
+            # If We want to train rather than eval
+            # Set up logger and save configuration to disk
+            # Get local parameters before logger instance to avoid unnecessary print
+            self.params = locals()
+            self.logger = self._init_logger()
+            self.logger.save_config(self.params)
 
         # Set seed
         seed += 10000 * mpi_tools.proc_id()
         torch.manual_seed(seed)
         np.random.seed(seed)
         self.env.seed(seed=seed)
+
         # Setup actor-critic module
         self.ac = ConstraintActorCritic(
             actor_type=actor,
@@ -207,8 +211,9 @@ class PG(PolicyGradient):
             ac_kwargs=ac_kwargs
         )
 
-        # Set PyTorch + MPI.
-        self._init_mpi()
+        if not enable_eval:
+            # Set PyTorch + MPI.
+            self._init_mpi()
 
         # Set up experience buffer
         self.buf = Buffer(
@@ -236,17 +241,18 @@ class PG(PolicyGradient):
         # Set up scheduler for policy learning rate decay
         self.scheduler = self._init_learning_rate_scheduler()
 
-        # Set up model saving
-        self.logger.setup_torch_saver(self.ac.pi)
-        self.logger.torch_save()
+        if not enable_eval:
+            # Set up model saving
+            self.logger.setup_torch_saver(self.ac.pi)
+            self.logger.torch_save()
 
-        # Setup statistics
-        self.start_time = time.time()
-        self.epoch_time = time.time()
-        self.loss_pi_before = 0.0
-        self.loss_v_before = 0.0
-        self.loss_c_before = 0.0
-        self.logger.log('Start with training.')
+            # Setup statistics
+            self.start_time = time.time()
+            self.epoch_time = time.time()
+            self.loss_pi_before = 0.0
+            self.loss_v_before = 0.0
+            self.loss_c_before = 0.0
+            self.logger.log('Start with training.')
 
     def _init_learning_rate_scheduler(self):
         scheduler = None

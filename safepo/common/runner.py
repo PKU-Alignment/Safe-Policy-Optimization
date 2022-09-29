@@ -5,7 +5,7 @@ from safepo.common.logger import setup_logger_kwargs
 from safepo.common import multi_processing_utils
 from safepo.algos import REGISTRY
 from safepo.common.experiment_analysis import EnvironmentEvaluator
-from safepo.common.utils import get_defaults_kwargs_yaml
+from safepo.common.utils import get_defaults_kwargs_yaml, save_eval_kwargs
 class Runner(object):
 
     def __init__(self,
@@ -46,6 +46,13 @@ class Runner(object):
         self.logger_kwargs = setup_logger_kwargs(base_dir=self.log_dir,
                                                  exp_name=self.exp_name,
                                                  seed=init_seed)
+        self.default_kwargs.update({
+            'algo': algo,
+            'env_id': env_id,
+            'seed': init_seed,
+        })
+        save_eval_kwargs(self.logger_kwargs['log_dir'], self.default_kwargs)
+
         # assigned by class methods
         self.model = None
         self.env = None

@@ -2,6 +2,7 @@ import os
 import yaml
 import torch
 import numpy as np
+import safepo.common.mpi_tools as mpi_tools
 
 def get_defaults_kwargs_yaml(algo, env_id):
     path = os.path.abspath(__file__).split('/')[:-2]
@@ -13,6 +14,16 @@ def get_defaults_kwargs_yaml(algo, env_id):
             assert False, "{}.yaml error: {}".format(algo, exc)
     kwargs_name = env_id if env_id in kwargs.keys() else 'defaults'
     return kwargs[kwargs_name]
+
+def save_eval_kwargs(log_dir, eval_kwargs):
+    """
+        To save eval kwargs.
+    """
+    if mpi_tools.proc_id() == 0:
+        os.makedirs(log_dir, exist_ok=True)
+        path = os.path.join(log_dir, 'eval_kwargs.yaml')
+        with open(path, "w") as f:
+            yaml.dump(eval_kwargs, f)
 
 def get_flat_params_from(model):
     flat_params = []
