@@ -220,7 +220,7 @@ class R_MAPPO_Lagr:
         share_obs_batch, obs_batch, rnn_states_batch, rnn_states_critic_batch, actions_batch, \
         value_preds_batch, return_batch, masks_batch, active_masks_batch, old_action_log_probs_batch, \
         adv_targ, available_actions_batch, factor_batch, cost_preds_batch, cost_returns_barch, rnn_states_cost_batch, \
-        cost_adv_targ = sample
+        cost_adv_targ, aver_episode_costs = sample
 
         old_action_log_probs_batch = check(old_action_log_probs_batch).to(**self.tpdv)
         adv_targ = check(adv_targ).to(**self.tpdv)
@@ -277,7 +277,7 @@ class R_MAPPO_Lagr:
         self.policy.actor_optimizer.step()
 
         # todo: update lamda_lagr
-        delta_lamda_lagr = -((cost_values - self.safety_bound) * (1 - self.gamma) + (imp_weights * cost_adv_targ)).mean().detach()
+        delta_lamda_lagr = -((aver_episode_costs.mean() - self.safety_bound) * (1 - self.gamma) + (imp_weights * cost_adv_targ)).mean().detach()
 
         R_Relu = torch.nn.ReLU()
         new_lamda_lagr = R_Relu(self.lamda_lagr - (delta_lamda_lagr * self.lagrangian_coef))
