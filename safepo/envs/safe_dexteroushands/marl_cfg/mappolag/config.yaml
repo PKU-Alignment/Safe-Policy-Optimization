@@ -21,7 +21,7 @@ log_interval: 25
 eval_episodes: 10000
 
 safety_bound: 1
-lagrangian_coef_rate: 1.e-5
+lagrangian_coef_rate: 1.e-8
 lamda_lagr: 0.78
 
 gamma: 0.96
