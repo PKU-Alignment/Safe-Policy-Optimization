@@ -3,14 +3,11 @@ import numpy as np
 from collections import defaultdict
 from utils.util import check, get_shape_from_obs_space, get_shape_from_act_space
 
-
 def _flatten(T, N, x):
     return x.reshape(T * N, *x.shape[2:])
 
-
 def _cast(x):
-    return x.transpose(1, 0, 2).reshape(-1, *x.shape[2:])
-
+    return x.transpose(1,0,2).reshape(-1, *x.shape[2:])
 
 class SeparatedReplayBuffer(object):
     def __init__(self, config, obs_space, share_obs_space, act_space):
@@ -36,31 +33,23 @@ class SeparatedReplayBuffer(object):
         if type(share_obs_shape[-1]) == list:
             share_obs_shape = share_obs_shape[:1]
 
-        self.aver_episode_costs = np.zeros((self.episode_length + 1, self.n_rollout_threads, *obs_shape),
-                                           dtype=np.float32)
+        self.aver_episode_costs = torch.zeros(self.episode_length + 1, self.n_rollout_threads, *obs_shape, device=self.device)
 
-        self.aver_episode_costs = torch.zeros(self.episode_length + 1, self.n_rollout_threads, *obs_shape,
-                                              device=self.device)
-
-        self.share_obs = torch.zeros(self.episode_length + 1, self.n_rollout_threads, *share_obs_shape,
-                                     device=self.device)
+        self.share_obs = torch.zeros(self.episode_length + 1, self.n_rollout_threads, *share_obs_shape, device=self.device)
         self.obs = torch.zeros(self.episode_length + 1, self.n_rollout_threads, *obs_shape, device=self.device)
 
-        self.rnn_states = torch.zeros(self.episode_length + 1, self.n_rollout_threads, self.recurrent_N,
-                                      self.rnn_hidden_size, device=self.device)
+        self.rnn_states = torch.zeros(self.episode_length + 1, self.n_rollout_threads, self.recurrent_N, self.rnn_hidden_size, device=self.device)
         self.rnn_states_critic = torch.zeros_like(self.rnn_states)
 
-        self.rnn_states = torch.zeros(self.episode_length + 1, self.n_rollout_threads, self.recurrent_N,
-                                      self.rnn_hidden_size, device=self.device)
+        self.rnn_states = torch.zeros(self.episode_length + 1, self.n_rollout_threads, self.recurrent_N, self.rnn_hidden_size, device=self.device)
         self.rnn_states_critic = torch.zeros_like(self.rnn_states)
         self.rnn_states_cost = torch.zeros_like(self.rnn_states)
 
         self.value_preds = torch.zeros(self.episode_length + 1, self.n_rollout_threads, 1, device=self.device)
         self.returns = torch.zeros(self.episode_length + 1, self.n_rollout_threads, 1, device=self.device)
-
+        
         if act_space.__class__.__name__ == 'Discrete':
-            self.available_actions = torch.ones(self.episode_length + 1, self.n_rollout_threads, act_space.n,
-                                                device=self.device)
+            self.available_actions = torch.ones(self.episode_length + 1, self.n_rollout_threads, act_space.n, device=self.device)
         else:
             self.available_actions = None
 
@@ -69,7 +58,7 @@ class SeparatedReplayBuffer(object):
         self.actions = torch.zeros(self.episode_length, self.n_rollout_threads, act_shape, device=self.device)
         self.action_log_probs = torch.zeros(self.episode_length, self.n_rollout_threads, act_shape, device=self.device)
         self.rewards = torch.zeros(self.episode_length, self.n_rollout_threads, 1, device=self.device)
-
+        
         self.costs = torch.zeros_like(self.rewards)
         self.cost_preds = torch.zeros_like(self.value_preds)
         self.cost_returns = torch.zeros_like(self.returns)
@@ -84,16 +73,13 @@ class SeparatedReplayBuffer(object):
 
     def update_factor(self, factor):
         self.factor.copy_(factor)
-
     def return_aver_insert(self, aver_episode_costs):
         # self.aver_episode_costs = aver_episode_costs.copy()
         self.aver_episode_costs = aver_episode_costs.clone()
-        
-    
 
     def insert(self, share_obs, obs, rnn_states, rnn_states_critic, actions, action_log_probs,
                value_preds, rewards, masks, bad_masks=None, active_masks=None, available_actions=None, costs=None,
-               cost_preds=None, rnn_states_cost=None, done_episodes_costs_aver=None, aver_episode_costs=0):
+               cost_preds=None, rnn_states_cost=None, done_episodes_costs_aver=None, aver_episode_costs = 0):
         self.share_obs[self.step + 1].copy_(share_obs)
         self.obs[self.step + 1].copy_(obs)
         self.rnn_states[self.step + 1].copy_(rnn_states)
@@ -139,7 +125,7 @@ class SeparatedReplayBuffer(object):
             self.available_actions[self.step] = available_actions.copy_()
 
         self.step = (self.step + 1) % self.episode_length
-
+    
     def after_update(self):
         self.share_obs[0].copy_(self.share_obs[-1])
         self.obs[0].copy_(self.obs[-1])
@@ -167,15 +153,12 @@ class SeparatedReplayBuffer(object):
                 gae = 0
                 for step in reversed(range(self.rewards.shape[0])):
                     if self._use_popart or self._use_valuenorm:
-                        delta = self.rewards[step] + self.gamma * value_normalizer.denormalize(
-                            self.value_preds[step + 1]) * self.masks[step + 1] - value_normalizer.denormalize(
-                            self.value_preds[step])
+                        delta = self.rewards[step] + self.gamma * value_normalizer.denormalize(self.value_preds[step + 1]) * self.masks[step + 1] - value_normalizer.denormalize(self.value_preds[step])
                         gae = delta + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
                         gae = gae * self.bad_masks[step + 1]
                         self.returns[step] = gae + value_normalizer.denormalize(self.value_preds[step])
                     else:
-                        delta = self.rewards[step] + self.gamma * self.value_preds[step + 1] * self.masks[step + 1] - \
-                                self.value_preds[step]
+                        delta = self.rewards[step] + self.gamma * self.value_preds[step + 1] * self.masks[step + 1] - self.value_preds[step]
                         gae = delta + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
                         gae = gae * self.bad_masks[step + 1]
                         self.returns[step] = gae + self.value_preds[step]
@@ -183,28 +166,22 @@ class SeparatedReplayBuffer(object):
                 self.returns[-1] = next_value
                 for step in reversed(range(self.rewards.shape[0])):
                     if self._use_popart:
-                        self.returns[step] = (self.returns[step + 1] * self.gamma * self.masks[step + 1] + self.rewards[
-                            step]) * self.bad_masks[step + 1] \
-                                             + (1 - self.bad_masks[step + 1]) * value_normalizer.denormalize(
-                            self.value_preds[step])
+                        self.returns[step] = (self.returns[step + 1] * self.gamma * self.masks[step + 1] + self.rewards[step]) * self.bad_masks[step + 1] \
+                            + (1 - self.bad_masks[step + 1]) * value_normalizer.denormalize(self.value_preds[step])
                     else:
-                        self.returns[step] = (self.returns[step + 1] * self.gamma * self.masks[step + 1] + self.rewards[
-                            step]) * self.bad_masks[step + 1] \
-                                             + (1 - self.bad_masks[step + 1]) * self.value_preds[step]
+                        self.returns[step] = (self.returns[step + 1] * self.gamma * self.masks[step + 1] + self.rewards[step]) * self.bad_masks[step + 1] \
+                            + (1 - self.bad_masks[step + 1]) * self.value_preds[step]
         else:
             if self._use_gae:
                 self.value_preds[-1] = next_value
                 gae = 0
                 for step in reversed(range(self.rewards.shape[0])):
                     if self._use_popart or self._use_valuenorm:
-                        delta = self.rewards[step] + self.gamma * value_normalizer.denormalize(
-                            self.value_preds[step + 1]) * self.masks[step + 1] - value_normalizer.denormalize(
-                            self.value_preds[step])
+                        delta = self.rewards[step] + self.gamma * value_normalizer.denormalize(self.value_preds[step + 1]) * self.masks[step + 1] - value_normalizer.denormalize(self.value_preds[step])
                         gae = delta + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
                         self.returns[step] = gae + value_normalizer.denormalize(self.value_preds[step])
                     else:
-                        delta = self.rewards[step] + self.gamma * self.value_preds[step + 1] * self.masks[step + 1] - \
-                                self.value_preds[step]
+                        delta = self.rewards[step] + self.gamma * self.value_preds[step + 1] * self.masks[step + 1] - self.value_preds[step]
                         gae = delta + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
                         self.returns[step] = gae + self.value_preds[step]
             else:
@@ -220,15 +197,12 @@ class SeparatedReplayBuffer(object):
                 gae = 0
                 for step in reversed(range(self.costs.shape[0])):
                     if self._use_popart or self._use_valuenorm:
-                        delta = self.costs[step] + self.gamma * value_normalizer.denormalize(
-                            self.cost_preds[step + 1]) * self.masks[step + 1] - value_normalizer.denormalize(
-                            self.cost_preds[step])
+                        delta = self.costs[step] + self.gamma * value_normalizer.denormalize(self.cost_preds[step + 1]) * self.masks[step + 1] - value_normalizer.denormalize(self.cost_preds[step])
                         gae = delta + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
                         gae = gae * self.bad_masks[step + 1]
                         self.cost_returns[step] = gae + value_normalizer.denormalize(self.cost_preds[step])
                     else:
-                        delta = self.costs[step] + self.gamma * self.cost_preds[step + 1] * self.masks[step + 1] - \
-                                self.cost_preds[step]
+                        delta = self.costs[step] + self.gamma * self.cost_preds[step + 1] * self.masks[step + 1] - self.cost_preds[step]
                         gae = delta + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
                         gae = gae * self.bad_masks[step + 1]
                         self.cost_returns[step] = gae + self.cost_preds[step]
@@ -236,37 +210,30 @@ class SeparatedReplayBuffer(object):
                 self.cost_returns[-1] = next_cost
                 for step in reversed(range(self.costs.shape[0])):
                     if self._use_popart:
-                        self.cost_returns[step] = (self.cost_returns[step + 1] * self.gamma * self.masks[step + 1] +
-                                                   self.costs[step]) * self.bad_masks[step + 1] \
-                                                  + (1 - self.bad_masks[step + 1]) * value_normalizer.denormalize(
-                            self.cost_preds[step])
+                        self.cost_returns[step] = (self.cost_returns[step + 1] * self.gamma * self.masks[step + 1] + self.costs[step]) * self.bad_masks[step + 1] \
+                                             + (1 - self.bad_masks[step + 1]) * value_normalizer.denormalize(self.cost_preds[step])
                     else:
-                        self.cost_returns[step] = (self.cost_returns[step + 1] * self.gamma * self.masks[step + 1] +
-                                                   self.costs[step]) * self.bad_masks[step + 1] \
-                                                  + (1 - self.bad_masks[step + 1]) * self.cost_preds[step]
+                        self.cost_returns[step] = (self.cost_returns[step + 1] * self.gamma * self.masks[step + 1] + self.costs[step]) * self.bad_masks[step + 1] \
+                                             + (1 - self.bad_masks[step + 1]) * self.cost_preds[step]
         else:
             if self._use_gae:
                 self.cost_preds[-1] = next_cost
                 gae = 0
                 for step in reversed(range(self.costs.shape[0])):
                     if self._use_popart or self._use_valuenorm:
-                        delta = self.costs[step] + self.gamma * value_normalizer.denormalize(
-                            self.cost_preds[step + 1]) * self.masks[step + 1] - value_normalizer.denormalize(
-                            self.cost_preds[step])
+                        delta = self.costs[step] + self.gamma * value_normalizer.denormalize(self.cost_preds[step + 1]) * self.masks[step + 1] - value_normalizer.denormalize(self.cost_preds[step])
                         gae = delta + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
                         self.cost_returns[step] = gae + value_normalizer.denormalize(self.cost_preds[step])
                     else:
-                        delta = self.costs[step] + self.gamma * self.cost_preds[step + 1] * self.masks[step + 1] - \
-                                self.cost_preds[step]
+                        delta = self.costs[step] + self.gamma * self.cost_preds[step + 1] * self.masks[step + 1] - self.cost_preds[step]
                         gae = delta + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
                         self.cost_returns[step] = gae + self.cost_preds[step]
             else:
                 self.cost_returns[-1] = next_cost
                 for step in reversed(range(self.costs.shape[0])):
-                    self.cost_returns[step] = self.cost_returns[step + 1] * self.gamma * self.masks[step + 1] + \
-                                              self.costs[step]
+                    self.cost_returns[step] = self.cost_returns[step + 1] * self.gamma * self.masks[step + 1] + self.costs[step]
 
-    def feed_forward_generator(self, advantages, num_mini_batch=None, mini_batch_size=None, cost_adv=None):
+    def feed_forward_generator(self, advantages, num_mini_batch=None, mini_batch_size=None, cost_adv=None):        
         episode_length, n_rollout_threads = self.rewards.shape[0:2]
 
         batch_size = n_rollout_threads * episode_length
@@ -281,7 +248,7 @@ class SeparatedReplayBuffer(object):
             mini_batch_size = batch_size // num_mini_batch
 
         rand = torch.randperm(batch_size)
-        sampler = [rand[i * mini_batch_size:(i + 1) * mini_batch_size] for i in range(num_mini_batch)]
+        sampler = [rand[i*mini_batch_size:(i+1)*mini_batch_size] for i in range(num_mini_batch)]
 
         share_obs = self.share_obs[:-1].reshape(-1, *self.share_obs.shape[2:])
         obs = self.obs[:-1].reshape(-1, *self.obs.shape[2:])
@@ -299,7 +266,7 @@ class SeparatedReplayBuffer(object):
         masks = self.masks[:-1].reshape(-1, 1)
         active_masks = self.active_masks[:-1].reshape(-1, 1)
         action_log_probs = self.action_log_probs.reshape(-1, self.action_log_probs.shape[-1])
-        aver_episode_costs = self.aver_episode_costs  # self.aver_episode_costs[:-1].reshape(-1, *self.aver_episode_costs.shape[2:])
+        aver_episode_costs = self.aver_episode_costs # self.aver_episode_costs[:-1].reshape(-1, *self.aver_episode_costs.shape[2:])
 
         if self.factor is not None:
             # factor = self.factor.reshape(-1,1)
@@ -390,7 +357,7 @@ class SeparatedReplayBuffer(object):
                 old_action_log_probs_batch.append(self.action_log_probs[:, ind])
                 adv_targ.append(advantages[:, ind])
                 if self.factor is not None:
-                    factor_batch.append(self.factor[:, ind])
+                    factor_batch.append(self.factor[:,ind])
 
             # [N[T, dim]]
             T, N = self.episode_length, num_envs_per_batch
@@ -401,7 +368,7 @@ class SeparatedReplayBuffer(object):
             if self.available_actions is not None:
                 available_actions_batch = torch.stack(available_actions_batch, 1)
             if self.factor is not None:
-                factor_batch = torch.stack(factor_batch, 1)
+                factor_batch=torch.stack(factor_batch,1)
             value_preds_batch = torch.stack(value_preds_batch, 1)
             return_batch = torch.stack(return_batch, 1)
             masks_batch = torch.stack(masks_batch, 1)
@@ -411,8 +378,7 @@ class SeparatedReplayBuffer(object):
 
             # States is just a (N, -1) from_numpy [N[1,dim]]
             rnn_states_batch = torch.stack(rnn_states_batch, 1).reshape(N, *self.rnn_states.shape[2:])
-            rnn_states_critic_batch = torch.stack(rnn_states_critic_batch, 1).reshape(N,
-                                                                                      *self.rnn_states_critic.shape[2:])
+            rnn_states_critic_batch = torch.stack(rnn_states_critic_batch, 1).reshape(N, *self.rnn_states_critic.shape[2:])
 
             # Flatten the (T, N, ...) from_numpys to (T * N, ...)
             share_obs_batch = _flatten(T, N, share_obs_batch)
@@ -423,7 +389,7 @@ class SeparatedReplayBuffer(object):
             else:
                 available_actions_batch = None
             if self.factor is not None:
-                factor_batch = _flatten(T, N, factor_batch)
+                factor_batch=_flatten(T,N,factor_batch)
             value_preds_batch = _flatten(T, N, value_preds_batch)
             return_batch = _flatten(T, N, return_batch)
             masks_batch = _flatten(T, N, masks_batch)
@@ -448,7 +414,7 @@ class SeparatedReplayBuffer(object):
         assert data_chunks >= 2, ("need larger batch size")
 
         rand = torch.randperm(data_chunks)
-        sampler = [rand[i * mini_batch_size:(i + 1) * mini_batch_size] for i in range(num_mini_batch)]
+        sampler = [rand[i*mini_batch_size:(i+1)*mini_batch_size] for i in range(num_mini_batch)]
 
         if len(self.share_obs.shape) > 3:
             share_obs = self.share_obs[:-1].transpose(1, 0, 2, 3, 4).reshape(-1, *self.share_obs.shape[2:])
@@ -469,8 +435,7 @@ class SeparatedReplayBuffer(object):
         # rnn_states = _cast(self.rnn_states[:-1])
         # rnn_states_critic = _cast(self.rnn_states_critic[:-1])
         rnn_states = self.rnn_states[:-1].transpose(1, 0, 2, 3).reshape(-1, *self.rnn_states.shape[2:])
-        rnn_states_critic = self.rnn_states_critic[:-1].transpose(1, 0, 2, 3).reshape(-1,
-                                                                                      *self.rnn_states_critic.shape[2:])
+        rnn_states_critic = self.rnn_states_critic[:-1].transpose(1, 0, 2, 3).reshape(-1, *self.rnn_states_critic.shape[2:])
 
         if self.available_actions is not None:
             available_actions = _cast(self.available_actions[:-1])
@@ -492,22 +457,22 @@ class SeparatedReplayBuffer(object):
             for index in indices:
                 ind = index * data_chunk_length
                 # size [T+1 N M Dim]-->[T N Dim]-->[N T Dim]-->[T*N,Dim]-->[L,Dim]
-                share_obs_batch.append(share_obs[ind:ind + data_chunk_length])
-                obs_batch.append(obs[ind:ind + data_chunk_length])
-                actions_batch.append(actions[ind:ind + data_chunk_length])
+                share_obs_batch.append(share_obs[ind:ind+data_chunk_length])
+                obs_batch.append(obs[ind:ind+data_chunk_length])
+                actions_batch.append(actions[ind:ind+data_chunk_length])
                 if self.available_actions is not None:
-                    available_actions_batch.append(available_actions[ind:ind + data_chunk_length])
-                value_preds_batch.append(value_preds[ind:ind + data_chunk_length])
-                return_batch.append(returns[ind:ind + data_chunk_length])
-                masks_batch.append(masks[ind:ind + data_chunk_length])
-                active_masks_batch.append(active_masks[ind:ind + data_chunk_length])
-                old_action_log_probs_batch.append(action_log_probs[ind:ind + data_chunk_length])
-                adv_targ.append(advantages[ind:ind + data_chunk_length])
+                    available_actions_batch.append(available_actions[ind:ind+data_chunk_length])
+                value_preds_batch.append(value_preds[ind:ind+data_chunk_length])
+                return_batch.append(returns[ind:ind+data_chunk_length])
+                masks_batch.append(masks[ind:ind+data_chunk_length])
+                active_masks_batch.append(active_masks[ind:ind+data_chunk_length])
+                old_action_log_probs_batch.append(action_log_probs[ind:ind+data_chunk_length])
+                adv_targ.append(advantages[ind:ind+data_chunk_length])
                 # size [T+1 N Dim]-->[T N Dim]-->[T*N,Dim]-->[1,Dim]
                 rnn_states_batch.append(rnn_states[ind])
                 rnn_states_critic_batch.append(rnn_states_critic[ind])
                 if self.factor is not None:
-                    factor_batch.append(factor[ind:ind + data_chunk_length])
+                    factor_batch.append(factor[ind:ind+data_chunk_length])
             L, N = data_chunk_length, mini_batch_size
 
             # These are all from_numpys of size (N, L, Dim)
