@@ -18,7 +18,7 @@
 - **More information**：We provide rich data visualization methods. Reinforcement learning algorithms typically involves huge number of parameters. In order to better understand the changes of each parameter in the training process, we use log files, [TensorBoard](https://www.tensorflow.org/tensorboard), and [wandb](https://wandb.ai/) to visualize them. We believe this will help developers tune each algorithm more efficiently.
 
 <div align=center>
-<img src="assets/arch.png" width="500" border="1"/>
+<img src="assets/framework_new.png" width="500" border="1"/>
 </div>
 
 - [SafePO-Baselines](#safepo-baselines)
