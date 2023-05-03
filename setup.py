@@ -16,9 +16,6 @@ import os
 
 from setuptools import find_packages, setup
 
-with open(os.path.join("safepo", "version.txt"), "r") as file_handler:
-    __version__ = file_handler.read().strip()
-
 setup(
     name="safepo",
     packages=[package for package in find_packages() if package.startswith("safepo")],
