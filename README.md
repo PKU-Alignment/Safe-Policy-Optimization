@@ -8,7 +8,7 @@
 
 ## Update
 
-- 2023.05.03: The code base was migrated from the PKU-MARL organization to the OmniSafeAI organization.
+- **2023.05.03**: The code base was migrated from the PKU-MARL organization to the OmniSafeAI organization.
 - `TODO` Given that the repository authors of [**safety-gym**](https://github.com/openai/safety-gym) and [**bullet-safety-gym**](https://github.com/SvenGronauer/Bullet-Safety-Gym) claim to no longer be maintained, we will remove support for these two environments. SafePO will support [**Safety-Gymnasium**](https://github.com/OmniSafeAI/safety-gymnasium) that is currently under active development and maintenance.
 
 **Safe Policy Optimization (SafePO)**  is a comprehensive algorithm benchmark for Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, SafePO is developed with the following key features:

@@ -19,12 +19,6 @@ from setuptools import find_packages, setup
 with open(os.path.join("safepo", "version.txt"), "r") as file_handler:
     __version__ = file_handler.read().strip()
 
-
-long_description = """
-todo
-"""
-
-
 setup(
     name="safepo",
     packages=[package for package in find_packages() if package.startswith("safepo")],
@@ -32,29 +26,24 @@ setup(
     install_requires=[
         "psutil",
         "joblib",
-        "tensorboard",
-        "pyyaml",
-        "matplotlib",
-        "tensorboardX",
-        "gym==0.15.3"
-        # we recommend use conda install scipy and mpi4py
+        "tensorboard >= 2.8.0",
+        "pyyaml >= 6.0",
+        "matplotlib >= 3.7.1",
+        "safety-gymnasium >= 0.1.0"
     ],
     description="Pytorch version of Safe Reinforcement Learning Algorithm",
-    author="PKU-MARL",
-    url="https://github.com/PKU-MARL/safepo-Baselines",
+    author="OmniSafeAI Team",
+    url="https://github.com/OmniSafeAI/Safe-Policy-Optimization",
     author_email="jiamg.ji@gmail.com",
     keywords="Safe Single Agent Reinforcement Learning"
     "Safe Mult Agent Rinforcement Learning",
-    license="MIT",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    version=__version__,
-    python_requires=">=3.7",
-    # PyPI package information.
+    license="Apache License 2.0",
+    version="1.0.1",
+    python_requires=">=3.8",
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
 )
