@@ -1,3 +1,17 @@
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 import argparse
 import warnings
 from safepo.algos import REGISTRY
@@ -32,13 +46,13 @@ def get_defaults_kwargs_yaml(path):
 
 if __name__ == '__main__':
     """
-        It is used to visulize your model after trainning, 
+        It is used to visulize your model after trainning,
         *./mp4 files will be saved in your model directory.
 
-        Note: In this file, We use the latest interface from gym==0.26.1, 
+        Note: In this file, We use the latest interface from gym==0.26.1,
         It does not supported by current Safepo. Currently,
-        It is a testing feature in our project, and it ***only 
-        supports Safety-gym environments***, We will soon support 
+        It is a testing feature in our project, and it ***only
+        supports Safety-gym environments***, We will soon support
         gym environmrnts.
     """
 
@@ -96,7 +110,7 @@ if __name__ == '__main__':
 
                 model.ac.pi.load_state_dict(torch.load(os.path.join(path, item.name), map_location=torch.device('cpu')))
                 env = gym.make(kwargs['env_id'])
-                env.seed(seed=seed)     
+                env.seed(seed=seed)
                 out_dir = os.path.join(default_log_dir, item.name.split('.')[0])
 
                 for i in range(args.eval_ep):
@@ -132,7 +146,7 @@ if __name__ == '__main__':
             o = env.reset()
             render_list.append(env.render(**render_kwargs))
             d = False
-            
+
             while not d:
                 a, v, cv, logp = model.ac.step(
                 torch.as_tensor(o, dtype=torch.float32))

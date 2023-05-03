@@ -1,3 +1,17 @@
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 from turtle import pen
 import torch
 from safepo.algos.policy_gradient import PG
@@ -8,14 +22,14 @@ import numpy as np
 class FOCOPS(PG,Lagrangian):
     def __init__(
             self,
-            algo='focops', 
-            eta=0.02, 
-            lam=1.5, 
+            algo='focops',
+            eta=0.02,
+            lam=1.5,
             cost_limit=25.,
-            lagrangian_multiplier_init=0, 
-            lambda_lr=0.01, 
+            lagrangian_multiplier_init=0,
+            lambda_lr=0.01,
             lambda_optimizer='Adam',
-            use_standardized_reward=True, 
+            use_standardized_reward=True,
             use_standardized_cost=True,
             use_standardized_obs=True,
             use_cost_value_function=True,
@@ -24,11 +38,11 @@ class FOCOPS(PG,Lagrangian):
         ):
 
         PG.__init__(
-            self, 
-            algo=algo, 
+            self,
+            algo=algo,
             use_cost_value_function=use_cost_value_function,
             use_kl_early_stopping=use_kl_early_stopping,
-            use_standardized_reward=use_standardized_reward, 
+            use_standardized_reward=use_standardized_reward,
             use_standardized_cost=use_standardized_cost,
             use_standardized_obs=use_standardized_obs,
             **kwargs)
@@ -39,7 +53,7 @@ class FOCOPS(PG,Lagrangian):
                              lagrangian_multiplier_init=lagrangian_multiplier_init,
                              lambda_lr=lambda_lr,
                              lambda_optimizer=lambda_optimizer)
-        # replace 
+        # replace
         self.lagrangian_multiplier = 0.0
         self.lam = lam
         self.eta = eta
@@ -66,7 +80,7 @@ class FOCOPS(PG,Lagrangian):
         loss_pi = loss_pi.mean()
         loss_pi -= self.entropy_coef * dist.entropy().mean()
         # loss_pi -= 0.01 * dist.entropy().mean()
-            
+
         # Useful extra info
         approx_kl = (0.5 * (dist.mean - data['act']) ** 2
                      / dist.stddev ** 2).mean().item()
@@ -137,7 +151,7 @@ class FOCOPS(PG,Lagrangian):
         val_losses = []
         for _ in range(self.train_v_iterations):
             # Shuffle for mini-batch updates
-            np.random.shuffle(indices)  
+            np.random.shuffle(indices)
             # 0 to mini_batch_size with batch_train_size step
             for start in range(0, self.local_steps_per_epoch, mbs):
                 end = start + mbs  # iterate mini batch times
@@ -179,11 +193,11 @@ class FOCOPS(PG,Lagrangian):
         # Train cost value network
         for _ in range(self.train_v_iterations):
             # Shuffle for mini-batch updates
-            np.random.shuffle(indices)  
+            np.random.shuffle(indices)
             # 0 to mini_batch_size with batch_train_size step
             for start in range(0, self.local_steps_per_epoch, mbs):
                 # Iterate mini batch times
-                end = start + mbs  
+                end = start + mbs
                 mb_indices = indices[start:end]
 
                 self.cf_optimizer.zero_grad()

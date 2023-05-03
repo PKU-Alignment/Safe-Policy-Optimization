@@ -1,3 +1,17 @@
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 import os
 import torch
 from copy import deepcopy
@@ -17,9 +31,9 @@ class Runner(object):
                  use_mpi: bool = False, # use MPI for parallel execution.
                  ):
         '''
-            Initial Parameters  
+            Initial Parameters
         '''
-            
+
         self.algo = algo
         self.env_id = env_id
         self.log_dir = log_dir
@@ -32,7 +46,7 @@ class Runner(object):
         self.compiled = False
         self.trained = False
         self.use_mpi = use_mpi
-        
+
         self.default_kwargs = get_defaults_kwargs_yaml(algo=algo,env_id=env_id)
         self.kwargs = self.default_kwargs.copy()
         self.kwargs['seed'] = init_seed
@@ -67,7 +81,7 @@ class Runner(object):
     def _load_torch_safe(self):
         self.model = torch.load("./model.pt")
 
-    # don't use, need to fix 
+    # don't use, need to fix
     def _fill_scheduler(self, target_fn) -> None:
         """Create tasks for multi-process execution. This method is called when
         model.compile(individual_processes=True) is enabled.
@@ -96,7 +110,7 @@ class Runner(object):
 
     @classmethod
     def _run_mp_training(self, cls, **kwargs):
-        
+
         algo = kwargs.pop('algo')
         env_id = kwargs.pop('env_id')
         logger_kwargs = kwargs.pop('logger_kwargs')
@@ -120,14 +134,14 @@ class Runner(object):
         Usually, we use parallel computation.
 
         If MPI is not enabled, but the number of runs is greater than 1, then
-            start num_runs parallel processes, where each process is runs individually 
+            start num_runs parallel processes, where each process is runs individually
             Users can try this situation on your own, we exclude it.
 
         Args:
             num_runs: Number of total runs that are executed.
             num_cores: Number of total cores that are executed.
             use_mpi: use MPI for parallel execution.
-            target: 
+            target:
             kwargs_update
 
 
@@ -171,12 +185,12 @@ class Runner(object):
         else:
             # Set in evaluation mode before evaluation, which is different with *torch.no_grad()*
             # More details in https://stackoverflow.com/questions/60018578/what-does-model-eval-do-in-pytorch
-            self.model.eval()  
+            self.model.eval()
             self._evaluate_model()
             self.model.train()  # switch back to train mode
 
     def train(self, epochs=None, env=None):
-        """ 
+        """
         Train the model for a given number of epochs.
 
         Args:
@@ -185,7 +199,7 @@ class Runner(object):
                 defaults.yaml of the corresponding algorithm.
             env: gym.Env
                 provide a virtual environment for training the model.
-                
+
         """
         assert self.compiled, 'Call model.compile() before model.train()'
 

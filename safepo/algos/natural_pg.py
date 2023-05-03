@@ -1,4 +1,17 @@
-
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 import torch
 from safepo.algos.policy_gradient import PG
 import safepo.common.mpi_tools as mpi_tools
@@ -22,14 +35,14 @@ class NPG(PG):
         self.cg_iters = cg_iters
         self.target_kl = target_kl
         self.fvp_obs = None
-        self.scheduler = None  
+        self.scheduler = None
 
     def search_step_size(self,
                               step_dir,
                               g_flat,
                               p_dist,
                               data):
-        """ 
+        """
             NPG use full step_size
         """
         accept_step = 1
@@ -44,7 +57,7 @@ class NPG(PG):
         self.logger.log_tabular('Misc/H_inv_g')
 
     def Fvp(self, p):
-        """ 
+        """
             Build the Hessian-vector product based on an approximation of the KL-divergence.
             For details see John Schulman's PhD thesis (pp. 40) http://joschu.net/docs/thesis.pdf
         """

@@ -1,3 +1,17 @@
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 import torch
 import numpy as np
 from safepo.algos.trpo import TRPO
@@ -23,7 +37,7 @@ class CPO(TRPO):
         TRPO.__init__(
             self,
             algo=algo,
-            use_standardized_reward=True, 
+            use_standardized_reward=True,
             use_standardized_cost=True,
             use_standardized_obs=False,
             use_cost_value_function=True,
@@ -37,12 +51,12 @@ class CPO(TRPO):
         """
             CPO algorithm performs line-search to ensure constraint satisfaction for rewards and costs.
             :param step_dir:direction theta changes towards
-            :param g_flat:  gradient tensor of reward ,informs about how rewards improve with change of step direction 
+            :param g_flat:  gradient tensor of reward ,informs about how rewards improve with change of step direction
             :param c:how much epcost goes above limit
             :param p_dist: inform about old policy, how the old policy p performs on observation this moment
             :param optim_case: the way to optimize
             :param data: data buffer,mainly with adv, costs, values, actions, and observations
-            :param decay: how search-step reduces in line-search 
+            :param decay: how search-step reduces in line-search
         """
         # Get distance each time theta goes towards certain direction
         step_frac = 1.0
@@ -56,7 +70,7 @@ class CPO(TRPO):
         for j in range(total_steps):
             # New θ=θ_0+Δ Δ=Δdistance * direction
             new_theta = _theta_old + step_frac * step_dir
-            # Set new θ as new pi-net's parameters   
+            # Set new θ as new pi-net's parameters
             set_param_values_to_model(self.ac.pi.net, new_theta)
             # The last acceptance steps to next step
             acceptance_step = j + 1
@@ -90,10 +104,10 @@ class CPO(TRPO):
                 self.logger.log('WARNING: loss_pi not finite')
             elif loss_rew_improve < 0 if optim_case > 1 else False:
                 self.logger.log('INFO: did not improve improve <0')
-            # Change of cost's range 
+            # Change of cost's range
             elif cost_diff > max(-c, 0):
                 self.logger.log(f'INFO: no improve {cost_diff} > {max(-c, 0)}')
-            # Check KL-distance to avoid too far gap 
+            # Check KL-distance to avoid too far gap
             elif torch_kl > self.target_kl * 1.5:
                 self.logger.log(
                     f'INFO: violated KL constraint {torch_kl} at step {j + 1}.')
@@ -128,7 +142,7 @@ class CPO(TRPO):
     def compute_loss_cost_performance(self, data):
         """
            Performance of cost on this moment
-        """     
+        """
         dist, _log_p = self.ac.pi(data['obs'], data['act'])
         ratio = torch.exp(_log_p - data['log_p'])
         cost_loss = (ratio * data['cost_adv']).mean()
@@ -182,7 +196,7 @@ class CPO(TRPO):
         self.logger.log(f'c = {c}')
         self.logger.log(f'b^T b = {b_flat.dot(b_flat).item()}')
 
-        # Set variable names as used in the paper with conjugate_gradient method, 
+        # Set variable names as used in the paper with conjugate_gradient method,
         # used to solve equation(compute Hassen Matrix) instead of Natural Gradient
         p = conjugate_gradients(self.Fvp, b_flat, self.cg_iters)
         q = xHx # conjugate of matrix H
@@ -228,7 +242,7 @@ class CPO(TRPO):
                 optim_case = 0
                 self.logger.log('Alert! Attempting infeasible recovery!', 'red')
 
-        # the following computes required nu_star and lambda_star 
+        # the following computes required nu_star and lambda_star
         if optim_case in [3, 4]:
             # under 3 and 4 cases directly use trpo method
             alpha = torch.sqrt(2 * self.target_kl / (xHx + 1e-8)) # step gap fixed by KKT condition in conjugate algorithm
@@ -237,15 +251,15 @@ class CPO(TRPO):
             step_dir = alpha * x  # change step direction to gap * gradient
 
         elif optim_case in [1, 2]:
-            # in 1 and 2, 
+            # in 1 and 2,
             def project_on_set(t: torch.Tensor,
                                low: float,
                                high: float
                                ) -> torch.Tensor:
                 return torch.Tensor([max(low, min(t, high))])
             #  Analytical Solution to LQCLP, employ lambda,nu to compute final solution of argmax-OLOLQC
-            #  λ=argmax(f_a(λ),f_b(λ)) = λa_star or λb_star 
-            #  (computing formula shown in appendix) λa and λb 
+            #  λ=argmax(f_a(λ),f_b(λ)) = λa_star or λb_star
+            #  (computing formula shown in appendix) λa and λb
             lambda_a = torch.sqrt(A / B)
             lambda_b = torch.sqrt(q / (2 * self.target_kl))
             # λa_star = Proj(lambda_a ,0 ~ r/c)  λb_star=Proj(lambda_b,r/c~ +inf)
@@ -289,7 +303,7 @@ class CPO(TRPO):
             total_steps=20
         )
         # Update actor network parameters
-        # just like trpo update method 
+        # just like trpo update method
         new_theta = theta_old + final_step_dir
         set_param_values_to_model(self.ac.pi.net, new_theta)
         # Output the performance of pi policy on observation

@@ -1,3 +1,17 @@
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 import torch
 from safepo.algos.natural_pg import NPG
 import safepo.common.mpi_tools as mpi_tools
@@ -8,16 +22,16 @@ class TRPO(NPG):
         NPG.__init__(self, algo=algo, **kwargs)
 
     def search_step_size(self, step_dir, g_flat, p_dist, data, total_steps=15, decay=0.8):
-        """ 
+        """
             TRPO performs line-search until constraint satisfaction.
             main idea: search around for a satisfied step of policy update to improve loss and reward performance
             :param step_dir:direction theta changes towards
-            :param g_flat:  gradient tensor of reward ,informs about how rewards improve with change of step direction 
+            :param g_flat:  gradient tensor of reward ,informs about how rewards improve with change of step direction
             :param c:how much epcost goes above limit
             :param p_dist: inform about old policy, how the old policy p performs on observation this moment
             :param optim_case: the way to optimize
             :param data: data buffer,mainly with adv, costs, values, actions, and observations
-            :param decay: how search-step reduces in line-search 
+            :param decay: how search-step reduces in line-search
         """
         # How far to go in a single update
         step_frac = 1.0
@@ -32,7 +46,7 @@ class TRPO(NPG):
             new_theta = _theta_old + step_frac * step_dir
             # Set new params as params of net
             set_param_values_to_model(self.ac.pi.net, new_theta)
-            # The stepNo this update accept 
+            # The stepNo this update accept
             acceptance_step = j + 1
 
             with torch.no_grad():

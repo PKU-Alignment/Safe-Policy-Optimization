@@ -1,3 +1,17 @@
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 from re import L
 import numpy as np
 import gym
@@ -14,16 +28,16 @@ from safepo.common.utils import get_flat_params_from
 
 class PG(PolicyGradient):
     def __init__(
-            self, 
-            actor, 
-            ac_kwargs, 
-            env_id, 
-            epochs, 
+            self,
+            actor,
+            ac_kwargs,
+            env_id,
+            epochs,
             logger_kwargs,
             adv_estimation_method='gae',
             algo='pg',
             check_freq=25,
-            entropy_coef=0.01, 
+            entropy_coef=0.01,
             gamma=0.99,
             lam=0.95,
             lam_c=0.95,
@@ -44,7 +58,7 @@ class PG(PolicyGradient):
             use_kl_early_stopping=False,
             use_linear_lr_decay=True,
             use_max_grad_norm=False,
-            use_reward_scaling=False, 
+            use_reward_scaling=False,
             use_reward_penalty=False,
             use_shared_weights=False,
             use_standardized_reward=False,
@@ -56,7 +70,7 @@ class PG(PolicyGradient):
             enable_eval=False,
         ):
         """
-        Policy Gradient, 
+        Policy Gradient,
         Args:
             actor (string): The type of network in actor, it does not actually affect any things
                 which happen in the following.
@@ -73,7 +87,7 @@ class PG(PolicyGradient):
 
             adv_estimation_method (string): The type of advantage estimation method.
 
-            algo (string): The name of algorithm corresponding to current class, it does not actually 
+            algo (string): The name of algorithm corresponding to current class, it does not actually
                 affect any things which happen in the following.
 
             check_freq (int): The frequency for we to check if all models own the same parameter values.
@@ -102,7 +116,7 @@ class PG(PolicyGradient):
             steps_per_epoch (int): The number of time steps per epoch.
 
             target_kl (float): Roughly what KL divergence we think is appropriate
-                between new and old policies after an update. This will get used 
+                between new and old policies after an update. This will get used
                 for early stopping. (Usually small, 0.01 or 0.05.)
 
             train_pi_iterations (int): The number of iteration when we update actor network per mini batch.
@@ -114,7 +128,7 @@ class PG(PolicyGradient):
             use_entropy (bool): Use entropy penalty or not.
 
             use_exploration_noise_anneal (bool): Use exloration noise anneal or not.
-                        
+
             use_kl_early_stopping (bool): Use KL early stopping or not.
 
             use_linear_lr_decay (bool): Use linear learning rate decay or not.
@@ -130,7 +144,7 @@ class PG(PolicyGradient):
             use_standardized_advantages (bool): Use standardized advantages or not.
 
             use_standardized_obs (bool): Use standarized observation or not.
-            
+
             weight_initialization (string): The type of weight initialization method.
 
             save_freq (int): How often (in terms of gap between epochs) to save
@@ -146,9 +160,9 @@ class PG(PolicyGradient):
         if hasattr(self.env, '_max_episode_steps'):
             max_ep_len = self.env._max_episode_steps
 
-        self.gamma = gamma 
+        self.gamma = gamma
 
-        # How to calculate the advantage of reward/cost 
+        # How to calculate the advantage of reward/cost
         self.adv_estimation_method = adv_estimation_method
 
         self.algo = algo
@@ -183,7 +197,7 @@ class PG(PolicyGradient):
 
         # Call assertions, Check if some variables are valid to experiment
         # You can add assert that you want to check
-        self._init_checks() 
+        self._init_checks()
 
         if not enable_eval:
             # If We want to train rather than eval
@@ -237,7 +251,7 @@ class PG(PolicyGradient):
         self.vf_optimizer = core.get_optimizer('Adam', module=self.ac.v, lr=vf_lr)
         if use_cost_value_function:
             self.cf_optimizer = core.get_optimizer('Adam', module=self.ac.c, lr=vf_lr)
-        
+
         # Set up scheduler for policy learning rate decay
         self.scheduler = self._init_learning_rate_scheduler()
 
@@ -259,7 +273,7 @@ class PG(PolicyGradient):
         if self.use_linear_lr_decay:
             import torch.optim
             # Linear anneal
-            def lm(epoch): return 1 - epoch / self.epochs 
+            def lm(epoch): return 1 - epoch / self.epochs
             scheduler = torch.optim.lr_scheduler.LambdaLR(
                 optimizer=self.pi_optimizer,
                 lr_lambda=lm
@@ -280,7 +294,7 @@ class PG(PolicyGradient):
         return logger
 
     def _init_mpi(self):
-        """ 
+        """
             Initialize MPI specifics
         """
         if mpi_tools.num_procs() > 1:
@@ -328,7 +342,7 @@ class PG(PolicyGradient):
                 global_min = mpi_tools.mpi_min(np.sum(flat_params))
                 global_max = mpi_tools.mpi_max(np.sum(flat_params))
                 assert np.allclose(global_min, global_max), f'{key} not synced.'
-            
+
     def compute_loss_pi(self, data: dict):
         '''
             computing pi/actor loss
@@ -423,7 +437,7 @@ class PG(PolicyGradient):
         # Step the actor learning rate scheduler if provided
         if self.scheduler and self.use_linear_lr_decay:
             current_lr = self.scheduler.get_last_lr()[0]
-            self.scheduler.step()  
+            self.scheduler.step()
         else:
             current_lr = self.pi_lr
 
@@ -465,7 +479,7 @@ class PG(PolicyGradient):
         self.logger.dump_tabular()
 
     def pre_process_data(self, raw_data: dict):
-        """ 
+        """
             Pre-process data, e.g. standardize observations, rescale rewards if
                 enabled by arguments.
 
@@ -484,7 +498,7 @@ class PG(PolicyGradient):
         # If self.use_reward_scaling:
         #     rew = self.ac.ret_oms(data['rew'], subtract_mean=False, clip=True)
         #     data['rew'] = rew
-        
+
         if self.use_standardized_obs:
             assert 'obs' in data
             obs = data['obs']
@@ -503,7 +517,7 @@ class PG(PolicyGradient):
                 self.lagrangian_multiplier)
         else:
             penalty_param = 0
-        
+
         # c_gamma_step = 0
         for t in range(self.local_steps_per_epoch):
             a, v, cv, logp = self.ac.step(
@@ -520,7 +534,7 @@ class PG(PolicyGradient):
             ep_ret += r
             if self.use_discount_cost_update_lag:
                 ep_costs += (self.gamma ** ep_len) * c
-            else: 
+            else:
                 ep_costs += c
             ep_len += 1
 
@@ -557,12 +571,12 @@ class PG(PolicyGradient):
                 self.buf.finish_path(v, cv, penalty_param=float(penalty_param))
 
                 # Only save EpRet / EpLen if trajectory finished
-                if terminal:  
+                if terminal:
                     self.logger.store(EpRet=ep_ret, EpLen=ep_len, EpCosts=ep_costs)
                 o, ep_ret, ep_costs, ep_len = self.env.reset(), 0., 0., 0
 
     def update_running_statistics(self, data):
-        """ 
+        """
         Update running statistics, e.g. observation standardization,
         or reward scaling. If MPI is activated: sync across all processes.
         """
@@ -650,7 +664,7 @@ class PG(PolicyGradient):
         val_losses = []
         for _ in range(self.train_v_iterations):
             # Shuffle for mini-batch updates
-            np.random.shuffle(indices)  
+            np.random.shuffle(indices)
             # 0 to mini_batch_size with batch_train_size step
             for start in range(0, self.local_steps_per_epoch, mbs):
                 end = start + mbs  # iterate mini batch times
@@ -692,11 +706,11 @@ class PG(PolicyGradient):
         # Train cost value network
         for _ in range(self.train_v_iterations):
             # Shuffle for mini-batch updates
-            np.random.shuffle(indices)  
+            np.random.shuffle(indices)
             # 0 to mini_batch_size with batch_train_size step
             for start in range(0, self.local_steps_per_epoch, mbs):
                 # Iterate mini batch times
-                end = start + mbs  
+                end = start + mbs
                 mb_indices = indices[start:end]
 
                 self.cf_optimizer.zero_grad()
