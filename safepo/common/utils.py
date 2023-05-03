@@ -33,11 +33,10 @@ def save_eval_kwargs(log_dir, eval_kwargs):
     """
         To save eval kwargs.
     """
-    if mpi_tools.proc_id() == 0:
-        os.makedirs(log_dir, exist_ok=True)
-        path = os.path.join(log_dir, 'eval_kwargs.yaml')
-        with open(path, "w") as f:
-            yaml.dump(eval_kwargs, f)
+    os.makedirs(log_dir, exist_ok=True)
+    path = os.path.join(log_dir, 'eval_kwargs.yaml')
+    with open(path, "w") as f:
+        yaml.dump(eval_kwargs, f)
 
 def get_flat_params_from(model):
     flat_params = []

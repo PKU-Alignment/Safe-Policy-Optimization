@@ -1,0 +1,21 @@
+ac_kwargs:
+  pi:
+    activation: tanh
+    hidden_sizes:
+    - 64
+    - 64
+  val:
+    activation: tanh
+    hidden_sizes:
+    - 64
+    - 64
+actor: mlp
+adv_estimation_method: gae
+algo: ppo
+clip: 0.2
+env_id: SafetyPointGoal1-v0
+epochs: 500
+gamma: 0.99
+seed: 0
+steps_per_epoch: 30000
+use_exploration_noise_anneal: true

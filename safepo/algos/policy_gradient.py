@@ -13,8 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 from re import L
+import gymnasium
 import numpy as np
-import gym
+import safety_gymnasium
 import time
 import torch
 from copy import deepcopy
@@ -69,8 +70,7 @@ class PG(PolicyGradient):
             seed=0,
             enable_eval=False,
         ):
-        """
-        Policy Gradient,
+        """Policy Gradient.
         Args:
             actor (string): The type of network in actor, it does not actually affect any things
                 which happen in the following.
@@ -154,23 +154,20 @@ class PG(PolicyGradient):
         """
         # Create Environment
         self.env_id = env_id
-        self.env = gym.make(env_id) if isinstance(env_id, str) else env_id
-
+        self.env = safety_gymnasium.make(env_id) if isinstance(env_id, str) else env_id
         # Use the environment's built_in max_episode_steps
         if hasattr(self.env, '_max_episode_steps'):
             max_ep_len = self.env._max_episode_steps
 
-        self.gamma = gamma
-
         # How to calculate the advantage of reward/cost
         self.adv_estimation_method = adv_estimation_method
-
         self.algo = algo
         self.check_freq = check_freq
         self.entropy_coef = entropy_coef if use_entropy else 0.0
         self.epochs = epochs
         self.lam = lam
-        self.local_steps_per_epoch = steps_per_epoch // mpi_tools.num_procs()
+        self.gamma = gamma
+        self.local_steps_per_epoch = steps_per_epoch
         self.logger_kwargs = logger_kwargs
         self.max_ep_len = max_ep_len
         self.max_grad_norm = max_grad_norm
@@ -198,7 +195,7 @@ class PG(PolicyGradient):
         # Call assertions, Check if some variables are valid to experiment
         # You can add assert that you want to check
         self._init_checks()
-
+        exit(0)
         if not enable_eval:
             # If We want to train rather than eval
             # Set up logger and save configuration to disk
@@ -224,10 +221,6 @@ class PG(PolicyGradient):
             weight_initialization=weight_initialization,
             ac_kwargs=ac_kwargs
         )
-
-        if not enable_eval:
-            # Set PyTorch + MPI.
-            self._init_mpi()
 
         # Set up experience buffer
         self.buf = Buffer(
@@ -307,20 +300,12 @@ class PG(PolicyGradient):
             self.logger.log(f'Done! (took {time.time()-dt:0.3f} sec.)')
 
     def _init_checks(self):
-        """
-            Checking feasible
-        """
-        # The steps in each process should be integer
-        assert self.steps_per_epoch % mpi_tools.num_procs() == 0
-        # Ensure local each local process can experience at least one complete eposide
-        assert self.max_ep_len <= self.local_steps_per_epoch, \
-            f'Reduce number of cores ({mpi_tools.num_procs()}) or increase ' \
-            f'batch size {self.steps_per_epoch}.'
+        """Checking feasible."""
         # Ensure vilid number for iteration
         assert self.train_pi_iterations > 0
         assert self.train_v_iterations > 0
         # Ensure environment is consistent with gym
-        assert isinstance(self.env, gym.Env), 'Env is not the expected type.'
+        assert isinstance(self.env, gymnasium.Env), 'Env is not the expected type.'
 
     def algorithm_specific_logs(self):
         """

@@ -28,7 +28,7 @@ import numpy as np
 import json
 from torch.utils.tensorboard import SummaryWriter
 import warnings
-from safepo.common.mpi_tools import proc_id, mpi_statistics_scalar
+# from safepo.common.mpi_tools import proc_id, mpi_statistics_scalar
 
 
 DEBUG = 10

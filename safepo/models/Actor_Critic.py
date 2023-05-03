@@ -15,7 +15,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from gym.spaces import Box, Discrete
+from gymnasium.spaces import Box, Discrete
 from safepo.common.online_mean_std import OnlineMeanStd
 from safepo.models.MLP_Categorical_Actor import MLPCategoricalActor
 from safepo.models.MLP_Gaussian_Actor import MLPGaussianActor

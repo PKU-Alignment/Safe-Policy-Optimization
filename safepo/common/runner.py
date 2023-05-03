@@ -30,24 +30,16 @@ class Runner(object):
                  unparsed_args: list = (),
                  use_mpi: bool = False, # use MPI for parallel execution.
                  ):
-        '''
-            Initial Parameters
-        '''
+        '''Initial Parameters.'''
 
         self.algo = algo
         self.env_id = env_id
         self.log_dir = log_dir
         self.init_seed = init_seed
-        # if MPI is not used, use Python's multi-processing
-        self.multiple_individual_processes = False
         self.num_runs = 1
-        self.num_cores = 1  # set by compile()-method
-        self.training = False
-        self.compiled = False
-        self.trained = False
         self.use_mpi = use_mpi
-
         self.default_kwargs = get_defaults_kwargs_yaml(algo=algo,env_id=env_id)
+
         self.kwargs = self.default_kwargs.copy()
         self.kwargs['seed'] = init_seed
         # update algoorithm kwargs with unparsed arguments from command line
@@ -120,46 +112,6 @@ class Runner(object):
         evaluator.eval(env=env, ac=ac, num_evaluations=128)
         evaluator.close()
 
-    def compile(self,
-                num_runs=1,
-                num_cores=os.cpu_count(),
-                target='_run_mp_training',
-                **kwargs_update
-                ):
-        """
-        Compile the model.
-
-        Either use mpi for parallel computation or run N individual processes.
-
-        Usually, we use parallel computation.
-
-        If MPI is not enabled, but the number of runs is greater than 1, then
-            start num_runs parallel processes, where each process is runs individually
-            Users can try this situation on your own, we exclude it.
-
-        Args:
-            num_runs: Number of total runs that are executed.
-            num_cores: Number of total cores that are executed.
-            use_mpi: use MPI for parallel execution.
-            target:
-            kwargs_update
-
-
-        """
-        if num_runs > 1 and not self.use_mpi:
-            # First, reduce number of threads
-            fair_num_threads = max(int(torch.get_num_threads() / num_runs), 1)
-            torch.set_num_threads(fair_num_threads)
-            self.num_runs = num_runs
-            self.multiple_individual_processes = True
-            self.scheduler = multi_processing_utils.Scheduler(num_cores=num_cores)
-            target_fn = getattr(self, target)
-            self._fill_scheduler(target_fn)
-
-        self.kwargs.update(kwargs_update)
-        self.compiled = True
-        self.num_cores = num_cores
-
     def _eval_once(self, actor_critic, env, render) -> tuple:
         done = False
         self.env.render() if render else None
@@ -201,27 +153,20 @@ class Runner(object):
                 provide a virtual environment for training the model.
 
         """
-        assert self.compiled, 'Call model.compile() before model.train()'
-
-        if self.multiple_individual_processes:
-            # start all tasks which are stored in the scheduler
-            self.scheduler.run()
+        # single model training
+        if epochs is None:
+            epochs = self.kwargs.pop('epochs')
         else:
-            # single model training
-            if epochs is None:
-                epochs = self.kwargs.pop('epochs')
-            else:
-                self.kwargs.pop('epochs')  # pop to avoid double kwargs
+            self.kwargs.pop('epochs')  # pop to avoid double kwargs
 
-            # train() can also take a custom env, e.g. a virtual environment
-            env_id = self.env_id if env is None else env
-            defaults = deepcopy(self.kwargs)
-            defaults.update(epochs=epochs)
-            defaults.update(logger_kwargs=self.logger_kwargs)
-            algo = REGISTRY[self.algo](env_id=env_id,**defaults)
-            self.model, self.env = algo.learn()
+        env_id = self.env_id if env is None else env
+        defaults = deepcopy(self.kwargs)
+        defaults.update(epochs=epochs)
+        defaults.update(logger_kwargs=self.logger_kwargs)
+        algo = REGISTRY[self.algo](env_id=env_id,**defaults)
+        self.model, self.env = algo.learn()
 
-        self.trained = True
+        exit(0)
 
     def play(self) -> None:
         """ Visualize model after training."""

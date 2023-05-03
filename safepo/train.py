@@ -15,21 +15,10 @@
 import argparse
 import psutil
 import sys
-import time
-import warnings
 import safepo.common.mpi_tools as mpi_tools
 from safepo.algos import REGISTRY
 from safepo.common.runner import Runner
-
-try:
-    import safety_gym
-except ImportError:
-    warnings.warn('safety_gym package not found.')
-
-try:
-    import bullet_safety_gym
-except ImportError:
-    warnings.warn('Bullet-Safety-Gym package not found.')
+import safety_gymnasium
 
 
 if __name__ == '__main__':
@@ -62,15 +51,6 @@ if __name__ == '__main__':
     parser.add_argument('--log-dir', type=str, default=default_log_dir,
                         help='Define a log/data directory.')
     args, unparsed_args = parser.parse_known_args()
-    # Use number of physical cores as default.
-    # If also hardware threading CPUs should be used, enable this by the use_number_of_threads=True
-    use_number_of_threads = True if args.cores > physical_cores else False
-    if mpi_tools.mpi_fork(args.cores,use_number_of_threads=use_number_of_threads):
-        # Re-launches the current script with workers linked by MPI
-        sys.exit()
-    print('Unknowns:', unparsed_args) if mpi_tools.proc_id() == 0 else None
-    print('Core:', args.cores) if mpi_tools.proc_id() == 0 else None
-    print('use_mpi:', not args.no_mpi) if mpi_tools.proc_id() == 0 else None
 
     model = Runner(
         algo=args.algo,
@@ -80,8 +60,8 @@ if __name__ == '__main__':
         unparsed_args=unparsed_args,
         use_mpi=not args.no_mpi
     )
-    model.compile(num_runs=args.runs, num_cores=args.cores)
+    # model.compile(num_runs=args.runs, num_cores=args.cores)
     model.train()
-    model.eval()
-    if args.play:
-        model.play()
+    # model.eval()
+    # if args.play:
+    #     model.play()

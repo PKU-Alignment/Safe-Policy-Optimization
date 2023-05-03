@@ -19,7 +19,7 @@ from collections import namedtuple, OrderedDict
 import matplotlib.pyplot as plt
 import warnings
 import os
-import gym
+import gymnasium
 import torch
 import atexit
 import pandas
