@@ -1,14 +1,6 @@
-# SafePO-Baselines
-
 <img src="assets/logo.png" width="999" border="1"/>
 
 [![Organization](https://img.shields.io/badge/Organization-PKU_MARL-blue.svg "Organization")](https://github.com/PKU-MARL "Organization")[![Unittest](https://img.shields.io/badge/Unittest-passing-green.svg "Unittest")](https://github.com/PKU-MARL "Unittest")[![Docs](https://img.shields.io/badge/Docs-In_development-red.svg "Author")](https://github.com/PKU-MARL "Docs")[![GitHub license](https://img.shields.io/github/license/PKU-MARL/DexterousHands)](https://github.com/PKU-MARL/DexterousHands/blob/main/LICENSE)
-
-
-# Update !!!
-
-1. We added a parameter to choose whether to use the discounted total cost to updateLagrange multiplier. Without any change to the previous command, you just need to add ```--use_discount_cost_update_lag True``` when run a command in terminal.
-
 
 **Safe Policy Optimization (SafePO)**  is a comprehensive algorithm benchmark for Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, SafePO is developed with the following key features:
 
@@ -21,20 +13,19 @@
 <img src="assets/framework_new.png" width="500" border="1"/>
 </div>
 
-- [SafePO-Baselines](#safepo-baselines)
-  - [Overview of Algorithms](#overview-of-algorithms)
-  - [Supported Environments](#supported-environments)
-  - [Pre-requisites](#pre-requisites)
-  - [Conda-Environment](#conda-environment)
-  - [Getting Started](#getting-started)
-    - [Single-Agent](#single-agent)
-    - [Multi-Agent](#multi-agent)
-    - [Selected Tasks](#selected-tasks)
-  - [What's More](#whats-more)
-  - [Machine Configuration](#machine-configuration)
-  - [Maintenance](#maintenance)
-  - [Ethical and Responsible Use](#ethical-and-responsible-use)
-  - [PKU-MARL Team](#pku-marl-team)
+- [Overview of Algorithms](#overview-of-algorithms)
+- [Supported Environments](#supported-environments)
+- [Pre-requisites](#pre-requisites)
+- [Conda-Environment](#conda-environment)
+- [Getting Started](#getting-started)
+  - [Single-Agent](#single-agent)
+  - [Multi-Agent](#multi-agent)
+  - [Selected Tasks](#selected-tasks)
+- [What's More](#whats-more)
+- [Machine Configuration](#machine-configuration)
+- [Maintenance](#maintenance)
+- [Ethical and Responsible Use](#ethical-and-responsible-use)
+- [PKU-MARL Team](#pku-marl-team)
 
 ## Overview of Algorithms
 Here we provide a table of Safe RL algorithms that the benchmark includes.
@@ -91,7 +82,7 @@ conda install scipy
 python train.py --env-id Safexp-PointGoal1-v0 --algo ppo-lag --cores 4 --seed 0
 ```
 
-Here we provide the list of common arguments: 
+Here we provide the list of common arguments:
 
 |  Argument   | Default  | Info |
 |  ----       | ----  | ----|
@@ -124,7 +115,7 @@ We also provide a safe MARL algorithm benchmark for safe MARL research on the ch
 
 ```python
 # algo: macpo, mappolag, mappo, ippo, happo
-python train_marl.py --task=ShadowHandOver --algo=macpo 
+python train_marl.py --task=ShadowHandOver --algo=macpo
 ```
 
 ### Selected Tasks
@@ -136,7 +127,7 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 
 **We implement some different constraints to the base environments, expanding the setting to both single-agent and multi-agent.**
 
-<img src="assets/hand.png" align="middle" width="1000"/> 
+<img src="assets/hand.png" align="middle" width="1000"/>
 
 
 
@@ -150,7 +141,7 @@ Our team has also designed a number of more interesting safety tasks for two-han
 | ShadowHandCatchOver2UnderarmWallDown | None |  <img src="assets/catchunderarm_wall_down.png" align="middle" width="150"/>    |
 
 And the safe region are :
-|  Wall   | Wall Down  | 
+|  Wall   | Wall Down  |
 |  ----       | ----  |
 |  <img src="assets/wall.png" align="middle" width="150"/>      |   <img src="assets/wall_down.png" align="middle" width="150"/>   |
 
