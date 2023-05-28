@@ -61,15 +61,8 @@ def get_flat_gradients_from(model):
     return torch.cat(grads)
 
 def conjugate_gradients(Avp, b, nsteps, residual_tol=1e-10, eps=1e-6):
-    """
-    Conjugate gradient algorithm
-    (see https://en.wikipedia.org/wiki/Conjugate_gradient_method)
-
-    nsteps: (int): Number of iterations of conjugate gradient to perform.
-            Increasing this will lead to a more accurate approximation
-            to :math:`H^{-1} g`, and possibly slightly-improved performance,
-            but at the cost of slowing things down.
-            Also probably don't play with this hyperparameter.
+    """Conjugate gradient algorithm.
+        see https://en.wikipedia.org/wiki/Conjugate_gradient_method
     """
     x = torch.zeros_like(b)
     r = b - Avp(x)

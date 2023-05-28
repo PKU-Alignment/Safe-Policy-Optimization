@@ -38,7 +38,6 @@ if __name__ == '__main__':
         seed=args.seed,
         unparsed_args=unparsed_args,
     )
-    # model.compile(num_runs=args.runs, num_cores=args.cores)
     runner.train()
     # model.eval()
     # if args.play:
