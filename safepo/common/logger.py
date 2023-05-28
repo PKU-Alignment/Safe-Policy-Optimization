@@ -376,15 +376,15 @@ class Logger:
             self.output_file.write(" ".join(map(str, vals)) + "\n")
             self.output_file.flush()
 
-        if self.summary_writer is not None:
-            # for (k, v) in zip(self.log_headers, vals):
-            #     print(k, v)
-            # exit(0)
-            [self.summary_writer.add_scalar(k, v, global_step=self.epoch)
-                for (k, v) in zip(self.log_headers, vals)]
-            # Flushes the event file to disk. Call this method to make sure
-            # that all pending events have been written to disk.
-            self.summary_writer.flush()
+        # if self.summary_writer is not None:
+        #     # for (k, v) in zip(self.log_headers, vals):
+        #     #     print(k, v)
+        #     # exit(0)
+        #     [self.summary_writer.add_scalar(k, v, global_step=self.epoch)
+        #         for (k, v) in zip(self.log_headers, vals)]
+        #     # Flushes the event file to disk. Call this method to make sure
+        #     # that all pending events have been written to disk.
+        #     self.summary_writer.flush()
 
         # free logged information in all processes...
         self.log_current_row.clear()
@@ -473,14 +473,6 @@ class EpochLogger(Logger):
         if val is not None:
             super().log_tabular(key, val)
         else:
-            stats = self.get_stats(key, min_and_max)
-            if min_and_max or std:
-                super().log_tabular(key + '/Mean', stats[0])
-            else:
-                super().log_tabular(key, stats[0])
-            if std:
-                super().log_tabular(key + '/Std', stats[1])
-            if min_and_max:
-                super().log_tabular(key + '/Min', stats[2])
-                super().log_tabular(key + '/Max', stats[3])
+            v = self.epoch_dict[key]
+            super().log_tabular(key, v)
         self.epoch_dict[key] = []

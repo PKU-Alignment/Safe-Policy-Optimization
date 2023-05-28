@@ -23,11 +23,11 @@ class Critic(nn.Module):
     def __init__(self, obs_dim, hidden_sizes, activation, shared=None):
         super().__init__()
         if shared is None:
-            self.net = build_mlp_network([obs_dim] + list(hidden_sizes) + [1],
-                                           activation=activation)
-        else:  # use shared layers
+            self.net = build_mlp_network([obs_dim]+list(hidden_sizes)+[1], activation=activation)
+        else:
             value_head = nn.Linear(hidden_sizes[-1], 1)
             self.net = nn.Sequential(shared, value_head, nn.Identity())
 
     def forward(self, obs):
+        """Forward."""
         return torch.squeeze(self.net(obs),-1)

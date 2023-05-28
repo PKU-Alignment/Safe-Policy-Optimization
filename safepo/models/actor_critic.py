@@ -15,24 +15,22 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from gymnasium.spaces import Box, Discrete
-
 from safepo.common.online_mean_std import OnlineMeanStd
 from safepo.models.critic import Critic
-from safepo.models.MLP_Categorical_Actor import MLPCategoricalActor
 from safepo.models.gaussian_actor import MLPGaussianActor
 from safepo.models.model_utils import build_mlp_network
 
 
 class ActorCritic(nn.Module):
-    def __init__(self,
-                 observation_space,
-                 action_space,
-                 use_standardized_obs,
-                 use_scaled_rewards,
-                 use_shared_weights,
-                 policy_config,
-                 weight_initialization='kaiming_uniform'
+    def __init__(
+        self,
+        observation_space,
+        action_space,
+        use_standardized_obs,
+        use_scaled_rewards,
+        use_shared_weights,
+        policy_config,
+        weight_initialization='kaiming_uniform'
     ):
         super().__init__()
         self.obs_shape = observation_space.shape
@@ -54,25 +52,26 @@ class ActorCritic(nn.Module):
         else:
             shared = None
 
-        self.pi = MLPGaussianActor(obs_dim=obs_dim,
-                           act_dim=act_dim,
-                           shared=shared,
-                           weight_initialization=weight_initialization,
-                           **ac_kwargs['pi'])
-        self.v = Critic(obs_dim,
-                           shared=shared,
-                           **ac_kwargs['val'])
+        self.actor = MLPGaussianActor(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            shared=shared,
+            weight_initialization=weight_initialization,
+            **policy_config['actor']
+        )
+        self.critic = Critic(
+            obs_dim,
+            shared=shared,
+            **policy_config['critic']
+        )
 
         self.ret_oms = OnlineMeanStd(shape=(1,)) if use_scaled_rewards else None
 
-    def forward(self,
-                obs: torch.Tensor
-                ) -> tuple:
+    def forward(self, obs: torch.Tensor) -> tuple:
+        """Forward."""
         return self.step(obs)
 
-    def step(self,
-             obs: torch.Tensor
-             ):
+    def step(self, obs: torch.Tensor):
         """
             If training, this includes exploration noise!
             Expects that obs is not pre-processed.
@@ -96,9 +95,8 @@ class ActorCritic(nn.Module):
 
         return a.numpy(), v.numpy(), logp_a.numpy()
 
-    def act(self,
-            obs: torch.Tensor
-            ) -> np.ndarray:
+    def act(self, obs: torch.Tensor) -> np.ndarray:
+        """Act."""
         return self.step(obs)[0]
 
     def update(self, frac):
@@ -111,5 +109,5 @@ class ActorCritic(nn.Module):
                 e.g. 10 / 100 = 0.1
 
         """
-        if hasattr(self.pi, 'set_log_std'):
-            self.pi.set_log_std(1 - frac)
+        if hasattr(self.actor, 'set_log_std'):
+            self.actor.set_log_std(1 - frac)

@@ -28,9 +28,9 @@ defaults:
         - 64
         - 64
       activation: tanh
-  adv_type: gae
+  advantage_type: gae
   epochs: 500
-  steps_per_epoch: 30000
+  steps_per_epoch: 6000
   use_exploration_noise_anneal: True
   use_linear_lr_decay: False
   check_freq: 25
@@ -42,8 +42,8 @@ defaults:
   max_grad_norm: 0.5
   num_mini_batches: 16
   optimizer: Adam
-  pi_lr: 3e-4
-  vf_lr: 1e-3
+  pi_lr: 0.0003
+  vf_lr: 0.001
   target_kl: 0.01
   train_pi_iterations: 80
   train_v_iterations: 40

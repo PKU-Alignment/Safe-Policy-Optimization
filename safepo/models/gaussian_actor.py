@@ -23,13 +23,14 @@ from safepo.models.model_utils import build_mlp_network
 
 class MLPGaussianActor(Actor):
     def __init__(
-            self,
-            obs_dim,
-            act_dim,
-            hidden_sizes,
-            activation,
-            weight_initialization,
-            shared=None):
+        self,
+        obs_dim,
+        act_dim,
+        hidden_sizes,
+        activation,
+        weight_initialization,
+        shared=None
+    ):
         super().__init__(obs_dim, act_dim, weight_initialization)
         log_std = np.log(0.5) * np.ones(self.act_dim, dtype=np.float32)
         self.log_std = torch.nn.Parameter(torch.as_tensor(log_std),
@@ -60,7 +61,6 @@ class MLPGaussianActor(Actor):
         std = std.expand_as(mean)
         normal = Normal(mean, std)
         return normal.log_prob(act).sum(-1, keepdim=True), mean, std
-
 
     def log_prob_from_dist(self, pi, act) -> torch.Tensor:
         # Last axis sum needed for Torch Normal distribution

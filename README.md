@@ -1,4 +1,6 @@
-<img src="assets/logo.png" width="999" border="1"/>
+<div align="center">
+  <img src="assets/logo.png" width="75%"/>
+</div>
 
 <div align="center">
 
@@ -6,6 +8,10 @@
 [![License](https://img.shields.io/github/license/PKU-Alignment/OmniSafe?label=license)](#license)
 
 </div>
+
+# TODO
+
+- [] Clear the parameter with models
 
 ## Update
 
@@ -84,7 +90,6 @@ conda install scipy
 ```
 
 > For detailed instructions, please refer to [Installation.md](Installation.md).
-
 
 ## Getting Started
 

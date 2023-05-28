@@ -38,14 +38,13 @@ class ConstraintActorCritic(ActorCritic):
             use_shared_weights=use_shared_weights,
             weight_initialization=weight_initialization
         )
-        self.c = Critic(
+        self.cost_critic = Critic(
             obs_dim=self.obs_shape[0],
             shared=None,
-            **self.ac_kwargs['val'])
+            **policy_config['critic']
+        )
 
-    def step(self,
-             obs: torch.Tensor
-             ) -> tuple:
+    def step(self, obs: torch.Tensor) -> tuple:
         """ Produce action, value, log_prob(action).
             If training, this includes exploration noise!
 
@@ -58,12 +57,12 @@ class ConstraintActorCritic(ActorCritic):
                 # Note: do the updates at the end of batch!
                 # self.obs_oms.update(obs) if self.training else None
                 obs = self.obs_oms(obs)
-            v = self.v(obs)
-            c = self.c(obs)
+            v = self.critic(obs)
+            c = self.cost_critic(obs)
 
             if self.training:
-                a, logp_a = self.pi.sample(obs)
+                a, logp_a = self.actor.sample(obs)
             else:
-                a, logp_a = self.pi.predict(obs)
+                a, logp_a = self.actor.predict(obs)
 
         return a.numpy(), v.numpy(), c.numpy(), logp_a.numpy()
