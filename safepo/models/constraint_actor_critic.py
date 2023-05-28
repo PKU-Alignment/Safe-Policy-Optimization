@@ -13,15 +13,31 @@
 # limitations under the License.
 # ==============================================================================
 import torch
-from safepo.models.Critic import Critic
-from safepo.models.Actor_Critic import ActorCritic
+
+from safepo.models.actor_critic import ActorCritic
+from safepo.models.critic import Critic
+
 
 class ConstraintActorCritic(ActorCritic):
     def __init__(
             self,
-            **kwargs
+            policy_config,
+            observation_space,
+            action_space,
+            use_standardized_obs,
+            use_scaled_rewards,
+            use_shared_weights,
+            weight_initialization
     ):
-        super().__init__(**kwargs)
+        super().__init__(
+            policy_config=policy_config,
+            observation_space=observation_space,
+            action_space=action_space,
+            use_standardized_obs=use_standardized_obs,
+            use_scaled_rewards=use_scaled_rewards,
+            use_shared_weights=use_shared_weights,
+            weight_initialization=weight_initialization
+        )
         self.c = Critic(
             obs_dim=self.obs_shape[0],
             shared=None,

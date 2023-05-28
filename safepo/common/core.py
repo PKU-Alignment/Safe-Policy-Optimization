@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+import numpy as np
+import scipy.signal
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import scipy.signal
 
 registered_actors = dict()  # global dict that holds pointers to functions
 

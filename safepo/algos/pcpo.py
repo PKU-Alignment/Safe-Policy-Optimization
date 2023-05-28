@@ -13,11 +13,14 @@
 # limitations under the License.
 # ==============================================================================
 import torch
-from safepo.algos.trpo import TRPO
+
 import safepo.common.mpi_tools as mpi_tools
-from safepo.common.utils import get_flat_params_from, set_param_values_to_model,\
-                                set_param_values_to_model,get_flat_gradients_from,\
-                                conjugate_gradients
+from safepo.algos.trpo import TRPO
+from safepo.common.utils import (conjugate_gradients, get_flat_gradients_from,
+                                 get_flat_params_from,
+                                 set_param_values_to_model)
+
+
 class PCPO(TRPO):
     """
         Paper name: Constrained Policy Optimization Algorithm.

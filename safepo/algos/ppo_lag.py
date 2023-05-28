@@ -13,9 +13,11 @@
 # limitations under the License.
 # ==============================================================================
 import torch
-from safepo.algos.policy_gradient import PG
-from safepo.algos.lagrangian_base import Lagrangian
+
 import safepo.common.mpi_tools as mpi_tools
+from safepo.algos.lagrangian_base import Lagrangian
+from safepo.algos.policy_gradient import PG
+
 
 class PPO_Lag(PG,Lagrangian):
     '''

@@ -18,16 +18,18 @@ Logs to a tab-separated-values file (path/to/output_directory/progress.txt)
 Source:
     https://github.com/openai/spinningup/blob/master/spinup/utils/logx.py
 """
-import joblib
-import torch
+import atexit
+import json
+import os
 import os.path as osp
 import time
-import atexit
-import os
-import numpy as np
-import json
-from torch.utils.tensorboard import SummaryWriter
 import warnings
+
+import joblib
+import numpy as np
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 # from safepo.common.mpi_tools import proc_id, mpi_statistics_scalar
 
 
@@ -120,7 +122,7 @@ def setup_logger_kwargs(exp_name=None,
                         hms_time=time.strftime("%Y-%m-%d__%H-%M-%S"),
                         datestamp=True,
                         level=1,
-                        use_tensor_board=True,
+                        use_tensorboard=True,
                         verbose=True):
     """
     Sets up the output_dir for a logger and returns a dict for logger kwargs.
@@ -153,7 +155,7 @@ def setup_logger_kwargs(exp_name=None,
     logger_kwargs = dict(log_dir=os.path.join(base_dir, exp_name, relpath),
                          exp_name=exp_name,
                          level=level, # dont use
-                         use_tensor_board=use_tensor_board,
+                         use_tensorboard=use_tensorboard,
                          verbose=verbose)
     return logger_kwargs
 
@@ -171,8 +173,8 @@ class Logger:
                  output_fname='progress.txt',
                  debug: bool = False,
                  exp_name=None,
-                 level: int = 1,  # verbosity level
-                 use_tensor_board=True,
+                 level: int = 1,
+                 use_tensorboard=True,
                  verbose=True):
         """
         Initialize a Logger.
@@ -193,19 +195,15 @@ class Logger:
                 should give them all the same ``exp_name``.)
         """
         self.log_dir = log_dir
-        self.debug = debug if proc_id() == 0 else False
+        self.debug = debug
         self.level = level
-        # only the MPI root process is allowed to print information to console
-        self.verbose = verbose if proc_id() == 0 else False
+        self.verbose = verbose
 
-        if proc_id() == 0:
-            os.makedirs(self.log_dir, exist_ok=True)
-            self.output_file = open(osp.join(self.log_dir, output_fname), 'w')
-            atexit.register(self.output_file.close)
-            print(colorize(f"Logging data to {self.output_file.name}",
-                           'cyan', bold=True))
-        else:
-            self.output_file = None
+        os.makedirs(self.log_dir, exist_ok=True)
+        self.output_file = open(osp.join(self.log_dir, output_fname), 'w')
+        atexit.register(self.output_file.close)
+        print(colorize(f"Logging data to {self.output_file.name}",
+                        'cyan', bold=True))
 
         self.epoch = 0
         self.first_row = True
@@ -215,16 +213,14 @@ class Logger:
         self.torch_saver_elements = None
 
         # Setup tensor board logging if enabled and MPI root process
-        self.summary_writer = SummaryWriter(os.path.join(self.log_dir, 'tb')) \
-            if use_tensor_board and proc_id() == 0 else None
+        self.summary_writer = SummaryWriter(os.path.join(self.log_dir, 'tb'))
 
     def close(self):
         """Close opened output files immediately after training in order to
         avoid number of open files overflow. Avoids the following error:
         OSError: [Errno 24] Too many open files
         """
-        if proc_id() == 0:
-            self.output_file.close()
+        self.output_file.close()
 
     def debug(self, msg, color='yellow'):
         """Print a colorized message to stdout."""
@@ -268,18 +264,17 @@ class Logger:
             logger = EpochLogger(**logger_kwargs)
             logger.save_config(locals())
         """
-        if proc_id() == 0:  # only root process logs configurations
-            config_json = convert_json(config)
-            if self.exp_name is not None:
-                config_json['exp_name'] = self.exp_name
+        config_json = convert_json(config)
+        if self.exp_name is not None:
+            config_json['exp_name'] = self.exp_name
 
-            output = json.dumps(config_json, separators=(',', ':\t'), indent=4,
-                                sort_keys=True)
-            if self.verbose and self.level > 0:
-                print(colorize('Run with config:', color='yellow', bold=True))
-                print(output)
-            with open(osp.join(self.log_dir, "config.json"), 'w') as out:
-                out.write(output)
+        output = json.dumps(config_json, separators=(',', ':\t'), indent=4,
+                            sort_keys=True)
+        if self.verbose and self.level > 0:
+            print(colorize('Run with config:', color='yellow', bold=True))
+            print(output)
+        with open(osp.join(self.log_dir, "config.json"), 'w') as out:
+            out.write(output)
 
     def save_state(self, state_dict, itr=None):
         """
@@ -302,14 +297,13 @@ class Logger:
 
             itr: An int, or None. Current iteration of training.
         """
-        if proc_id() ==0:
-            fname = 'state.pkl' if itr is None else 'state%d.pkl' % itr
-            try:
-                joblib.dump(state_dict, osp.join(self.log_dir, fname))
-            except:
-                self.log('Warning: could not pickle state_dict.', color='red')
-            if hasattr(self, 'torch_saver_elements'):
-                self.torch_save(itr)
+        fname = 'state.pkl' if itr is None else 'state%d.pkl' % itr
+        try:
+            joblib.dump(state_dict, osp.join(self.log_dir, fname))
+        except:
+            self.log('Warning: could not pickle state_dict.', color='red')
+        if hasattr(self, 'torch_saver_elements'):
+            self.torch_save(itr)
 
     def setup_torch_saver(self, what_to_save):
         """
@@ -328,73 +322,69 @@ class Logger:
         self.torch_saver_elements = what_to_save
 
     def torch_save(self, itr=None):
-        """
-        Saves the PyTorch model (or models).
-        """
-        if proc_id() == 0:
-            self.log('Save model to disk...')
-            assert self.torch_saver_elements is not None,\
-                "First have to setup saving with self.setup_torch_saver"
-            fpath = 'torch_save'
-            fpath = osp.join(self.log_dir, fpath)
-            fname = 'model' + ('%d' % itr if itr is not None else '') + '.pt'
-            fname = osp.join(fpath, fname)
-            os.makedirs(fpath, exist_ok=True)
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                # We are using a non-recommended way of saving PyTorch models,
-                # by pickling whole objects (which are dependent on the exact
-                # directory structure at the time of saving) as opposed to
-                # just saving network weights. This works sufficiently well
-                # for the purposes of Spinning Up, but you may want to do
-                # something different for your personal PyTorch project.
-                # We use a catch_warnings() context to avoid the warnings about
-                # not being able to save the source code.
-                torch.save(self.torch_saver_elements, fname)
-            torch.save(self.torch_saver_elements.state_dict(), fname)
-            self.log('Done.')
+        """Saves the PyTorch model (or models)."""
+
+        self.log('Save model to disk...')
+        assert self.torch_saver_elements is not None,\
+            "First have to setup saving with self.setup_torch_saver"
+        fpath = 'torch_save'
+        fpath = osp.join(self.log_dir, fpath)
+        fname = 'model' + ('%d' % itr if itr is not None else '') + '.pt'
+        fname = osp.join(fpath, fname)
+        os.makedirs(fpath, exist_ok=True)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # We are using a non-recommended way of saving PyTorch models,
+            # by pickling whole objects (which are dependent on the exact
+            # directory structure at the time of saving) as opposed to
+            # just saving network weights. This works sufficiently well
+            # for the purposes of Spinning Up, but you may want to do
+            # something different for your personal PyTorch project.
+            # We use a catch_warnings() context to avoid the warnings about
+            # not being able to save the source code.
+            torch.save(self.torch_saver_elements, fname)
+        torch.save(self.torch_saver_elements.state_dict(), fname)
+        self.log('Done.')
 
     def dump_tabular(self) -> None:
-        """
-        Write all of the diagnostics from the current iteration.
+        """Write all of the diagnostics from the current iteration.
 
         Writes both to stdout, and to the output file.
         """
-        if proc_id() == 0:
-            vals = list()
-            self.epoch += 1
-            # Print formatted information into console
-            key_lens = [len(key) for key in self.log_headers]
-            max_key_len = max(15, max(key_lens))
-            keystr = '%' + '%d' % max_key_len
-            fmt = "| " + keystr + "s | %15s |"
-            n_slashes = 22 + max_key_len
-            print("-" * n_slashes) if self.verbose and self.level > 0 else None
-            for key in self.log_headers:
-                val = self.log_current_row.get(key, "")
-                valstr = "%8.3g" % val if hasattr(val, "__float__") else val
-                if self.verbose and self.level > 0:
-                    print(fmt % (key, valstr))
-                vals.append(val)
+        vals = list()
+        self.epoch += 1
+        # Print formatted information into console
+        key_lens = [len(key) for key in self.log_headers]
+        max_key_len = max(15, max(key_lens))
+        keystr = '%' + '%d' % max_key_len
+        fmt = "| " + keystr + "s | %15s |"
+        n_slashes = 22 + max_key_len
+        print("-" * n_slashes) if self.verbose and self.level > 0 else None
+        for key in self.log_headers:
+            val = self.log_current_row.get(key, "")
+            valstr = "%8.3g" % val if hasattr(val, "__float__") else val
             if self.verbose and self.level > 0:
-                print("-" * n_slashes, flush=True)
+                print(fmt % (key, valstr))
+            vals.append(val)
+        if self.verbose and self.level > 0:
+            print("-" * n_slashes, flush=True)
 
-            # Write into the output file (can be any text file format, e.g. CSV)
-            if self.output_file is not None:
-                if self.first_row:
-                    self.output_file.write(" ".join(self.log_headers) + "\n")
-                self.output_file.write(" ".join(map(str, vals)) + "\n")
-                self.output_file.flush()
+        # Write into the output file (can be any text file format, e.g. CSV)
+        if self.output_file is not None:
+            if self.first_row:
+                self.output_file.write(" ".join(self.log_headers) + "\n")
+            self.output_file.write(" ".join(map(str, vals)) + "\n")
+            self.output_file.flush()
 
-            if self.summary_writer is not None:
-                # for (k, v) in zip(self.log_headers, vals):
-                #     print(k, v)
-                # exit(0)
-                [self.summary_writer.add_scalar(k, v, global_step=self.epoch)
-                 for (k, v) in zip(self.log_headers, vals)]
-                # Flushes the event file to disk. Call this method to make sure
-                # that all pending events have been written to disk.
-                self.summary_writer.flush()
+        if self.summary_writer is not None:
+            # for (k, v) in zip(self.log_headers, vals):
+            #     print(k, v)
+            # exit(0)
+            [self.summary_writer.add_scalar(k, v, global_step=self.epoch)
+                for (k, v) in zip(self.log_headers, vals)]
+            # Flushes the event file to disk. Call this method to make sure
+            # that all pending events have been written to disk.
+            self.summary_writer.flush()
 
         # free logged information in all processes...
         self.log_current_row.clear()
@@ -426,8 +416,14 @@ class EpochLogger(Logger):
     to record the desired values.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, log_dir, exp_name, level=1, use_tensorboard=True, verbose=True):
+        super().__init__(
+            log_dir=log_dir,
+            exp_name=exp_name,
+            level=level,
+            use_tensorboard=use_tensorboard,
+            verbose=verbose
+        )
         self.epoch_dict = dict()
 
     def dump_tabular(self):
@@ -436,9 +432,9 @@ class EpochLogger(Logger):
         for k, v in self.epoch_dict.items():
             if len(v) > 0:
                 print(f'epoch_dict: key={k} was not logged.')
-            # assert len(v) > 0, f'epoch_dict: key={k} was not logged.'
 
     def get_stats(self, key, with_min_and_max=False):
+        """Get mean/std and optional min/max of a key in the epoch_dict."""
         assert key in self.epoch_dict, f'key={key} not in dict'
         v = self.epoch_dict[key]
         vals = np.concatenate(v) if isinstance(v[0], np.ndarray) and len(
@@ -446,8 +442,7 @@ class EpochLogger(Logger):
         return mpi_statistics_scalar(vals, with_min_and_max=with_min_and_max)
 
     def store(self, **kwargs):
-        """
-        Save something into the epoch_logger's current state.
+        """Save something into the epoch_logger's current state.
 
         Provide an arbitrary number of keyword arguments with numerical
         values.
@@ -458,8 +453,7 @@ class EpochLogger(Logger):
             self.epoch_dict[k].append(v)
 
     def log_tabular(self, key, val=None, min_and_max=False, std=False):
-        """
-        Log a value or possibly the mean/std/min/max values of a diagnostic.
+        """Log a value or possibly the mean/std/min/max values of a diagnostic.
 
         Args:
             key (string): The name of the diagnostic. If you are logging a

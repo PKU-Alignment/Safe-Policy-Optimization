@@ -13,8 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 import multiprocessing as mp
-from queue import Empty
 import time
+from queue import Empty
+
 from safepo.common.logger import colorize
 
 

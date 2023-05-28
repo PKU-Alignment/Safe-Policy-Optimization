@@ -13,9 +13,11 @@
 # limitations under the License.
 # ==============================================================================
 import torch
-from safepo.algos.natural_pg import NPG
+
 import safepo.common.mpi_tools as mpi_tools
+from safepo.algos.natural_pg import NPG
 from safepo.common.utils import get_flat_params_from, set_param_values_to_model
+
 
 class TRPO(NPG):
     def __init__(self, algo='trpo', **kwargs):

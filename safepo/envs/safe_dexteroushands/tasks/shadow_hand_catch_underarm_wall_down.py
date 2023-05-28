@@ -5,16 +5,17 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from matplotlib.pyplot import axis
-import numpy as np
+import datetime
 import os
 import random
+
+import numpy as np
 import torch
-import datetime
-from utils.torch_jit_utils import *
+from isaacgym import gymapi, gymtorch
+from matplotlib.pyplot import axis
 from tasks.hand_base.base_task import BaseTask
-from isaacgym import gymtorch
-from isaacgym import gymapi
+from utils.torch_jit_utils import *
+
 
 class ShadowHandCatchUnderarmWallDown(BaseTask):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless, agent_index=[[[0, 1, 2, 3, 4, 5]], [[0, 1, 2, 3, 4, 5]]], is_multi_agent=False, algo="ppol"):

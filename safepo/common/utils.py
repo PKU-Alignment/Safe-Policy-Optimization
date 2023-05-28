@@ -13,10 +13,14 @@
 # limitations under the License.
 # ==============================================================================
 import os
-import yaml
-import torch
+
+import random
 import numpy as np
+import torch
+import yaml
+
 import safepo.common.mpi_tools as mpi_tools
+
 
 def get_defaults_kwargs_yaml(algo, env_id):
     path = os.path.abspath(__file__).split('/')[:-2]
@@ -107,3 +111,13 @@ def set_param_values_to_model(model, vals):
             param.data = new_values
             i += size  # increment array position
     assert i == len(vals), f'Lengths do not match: {i} vs. {len(vals)}'
+
+
+def seed_everything(seed: int) -> None:
+    """Set global random seed for reproducibility."""
+    os.environ['PYTHONHASHSEED'] = str(seed)
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)

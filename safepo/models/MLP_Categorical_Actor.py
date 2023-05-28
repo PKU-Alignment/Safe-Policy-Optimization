@@ -13,8 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 from torch.distributions.categorical import Categorical
-from safepo.models.Actor import Actor
+
+from safepo.models.actor import Actor
 from safepo.models.model_utils import build_mlp_network
+
 
 class MLPCategoricalActor(Actor):
 

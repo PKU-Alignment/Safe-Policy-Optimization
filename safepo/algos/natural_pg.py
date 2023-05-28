@@ -13,9 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 import torch
-from safepo.algos.policy_gradient import PG
+
 import safepo.common.mpi_tools as mpi_tools
-from safepo.common.utils import get_flat_params_from, conjugate_gradients, get_flat_gradients_from,set_param_values_to_model
+from safepo.algos.policy_gradient import PG
+from safepo.common.utils import (conjugate_gradients, get_flat_gradients_from,
+                                 get_flat_params_from,
+                                 set_param_values_to_model)
+
 
 class NPG(PG):
     def __init__(

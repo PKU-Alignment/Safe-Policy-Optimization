@@ -1,5 +1,6 @@
 import torch.nn as nn
-from .util import init, get_clones
+
+from .util import get_clones, init
 
 """MLP modules."""
 

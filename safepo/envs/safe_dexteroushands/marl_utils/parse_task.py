@@ -5,26 +5,26 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from tasks.shadow_hand_over import ShadowHandOver
-from tasks.shadow_hand_catch_underarm import ShadowHandCatchUnderarm
-from tasks.shadow_hand_two_catch_underarm import ShadowHandTwoCatchUnderarm
+import json
+
+from tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
 from tasks.shadow_hand_catch_abreast import ShadowHandCatchAbreast
-from tasks.shadow_hand_lift_underarm import ShadowHandLiftUnderarm
 from tasks.shadow_hand_catch_over2underarm import ShadowHandCatchOver2Underarm
+from tasks.shadow_hand_catch_underarm import ShadowHandCatchUnderarm
 from tasks.shadow_hand_door_close_inward import ShadowHandDoorCloseInward
 from tasks.shadow_hand_door_close_outward import ShadowHandDoorCloseOutward
 from tasks.shadow_hand_door_open_inward import ShadowHandDoorOpenInward
 from tasks.shadow_hand_door_open_outward import ShadowHandDoorOpenOutward
-from tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
-
-from safepo.envs.safe_dexteroushands.tasks.base.vec_task import VecTaskCPU, VecTaskGPU, VecTaskPython
-from safepo.envs.safe_dexteroushands.tasks.base.multi_vec_task import MultiVecTaskPython
-
+from tasks.shadow_hand_lift_underarm import ShadowHandLiftUnderarm
+from tasks.shadow_hand_over import ShadowHandOver
+from tasks.shadow_hand_two_catch_underarm import ShadowHandTwoCatchUnderarm
 from utils.config import warn_task_name
 
-import json
-
-
+from safepo.envs.safe_dexteroushands.tasks.base.multi_vec_task import \
+    MultiVecTaskPython
+from safepo.envs.safe_dexteroushands.tasks.base.vec_task import (VecTaskCPU,
+                                                                 VecTaskGPU,
+                                                                 VecTaskPython)
 
 
 def parse_task(args, cfg, cfg_train, sim_params, agent_index):

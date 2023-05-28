@@ -13,14 +13,16 @@
 # limitations under the License.
 # ==============================================================================
 import argparse
-import warnings
-from safepo.algos import REGISTRY
 import os
-import yaml
-import torch
-import numpy as np
+import warnings
+
 import gym
+import numpy as np
+import torch
+import yaml
 from gym.utils.save_video import save_video
+
+from safepo.algos import REGISTRY
 # from gym.wrappers import Monitor
 from safepo.common.logger import setup_logger_kwargs
 

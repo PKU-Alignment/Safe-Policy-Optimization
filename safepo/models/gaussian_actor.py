@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 from torch.distributions.normal import Normal
-from safepo.models.Actor import Actor
+
+from safepo.models.actor import Actor
 from safepo.models.model_utils import build_mlp_network
+
 
 class MLPGaussianActor(Actor):
     def __init__(

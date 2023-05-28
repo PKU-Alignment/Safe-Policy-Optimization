@@ -13,21 +13,49 @@
 # limitations under the License.
 # ==============================================================================
 defaults:
-  actor: mlp
-  ac_kwargs:
-    pi:
+  algo: pg
+  seed: 0
+  env_id: "SafetyPointGoal1-v0"
+  policy:
+    type: mlp
+    actor:
       hidden_sizes:
         - 64
         - 64
       activation: tanh
-    val:
+    critic:
       hidden_sizes:
         - 64
         - 64
       activation: tanh
-  adv_estimation_method: gae
+  adv_type: gae
   epochs: 500
-  gamma: 0.99
   steps_per_epoch: 30000
   use_exploration_noise_anneal: True
   use_linear_lr_decay: False
+  check_freq: 25
+  entropy_coef: 0.0
+  gamma: 0.99
+  lam: 0.95
+  lam_c: 0.95
+  max_ep_len: 1000
+  max_grad_norm: 0.5
+  num_mini_batches: 16
+  optimizer: Adam
+  pi_lr: 3e-4
+  vf_lr: 1e-3
+  target_kl: 0.01
+  train_pi_iterations: 80
+  train_v_iterations: 40
+  use_discount_cost_update_lag: False
+  use_cost_value_function: False
+  use_kl_early_stopping: False
+  use_max_grad_norm: False
+  use_reward_scaling: False
+  use_reward_penalty: False
+  use_shared_weights: False
+  use_standardized_reward: False
+  use_standardized_cost: False
+  use_standardized_obs: True
+  weight_initialization: kaiming_uniform
+  save_freq: 10

@@ -5,17 +5,16 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from ast import arg
 import os
+import random
 import sys
-import yaml
-
-from isaacgym import gymapi
-from isaacgym import gymutil
+from ast import arg
 
 import numpy as np
-import random
 import torch
+import yaml
+from isaacgym import gymapi, gymutil
+
 my_device = None
 
 def set_np_formatting():

@@ -12,60 +12,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 from gymnasium.spaces import Box, Discrete
+
 from safepo.common.online_mean_std import OnlineMeanStd
+from safepo.models.critic import Critic
 from safepo.models.MLP_Categorical_Actor import MLPCategoricalActor
-from safepo.models.MLP_Gaussian_Actor import MLPGaussianActor
-from safepo.models.Critic import Critic
+from safepo.models.gaussian_actor import MLPGaussianActor
 from safepo.models.model_utils import build_mlp_network
+
+
 class ActorCritic(nn.Module):
     def __init__(self,
-                 actor_type,
                  observation_space,
                  action_space,
                  use_standardized_obs,
                  use_scaled_rewards,
                  use_shared_weights,
-                 ac_kwargs,
+                 policy_config,
                  weight_initialization='kaiming_uniform'
-                 ):
+    ):
         super().__init__()
         self.obs_shape = observation_space.shape
         self.obs_oms = OnlineMeanStd(shape=self.obs_shape) \
             if use_standardized_obs else None
 
-        self.ac_kwargs = ac_kwargs
-
         # policy builder depends on action space
-        if isinstance(action_space, Box):
-
-            actor_fn = MLPGaussianActor
-            act_dim = action_space.shape[0]
-        elif isinstance(action_space, Discrete):
-            # distribution_type = 'categorical'
-            actor_fn = MLPCategoricalActor
-            act_dim = action_space.n
-        else:
-            raise ValueError
-
+        act_dim = action_space.shape[0]
         obs_dim = observation_space.shape[0]
-        layer_units = [obs_dim] + list(ac_kwargs['pi']['hidden_sizes'])
-        act = ac_kwargs['pi']['activation']
+        layer_units = [obs_dim] + list(policy_config['actor']['hidden_sizes'])
+        activation_function = policy_config['actor']['activation']
         if use_shared_weights:
             shared = build_mlp_network(
                 layer_units,
-                activation=act,
+                activation=activation_function,
                 weight_initialization=weight_initialization,
-                output_activation=act
+                output_activation=activation_function
             )
         else:
             shared = None
 
-        # actor_fn = get_registered_actor_fn(actor_type, distribution_type)
-        self.pi = actor_fn(obs_dim=obs_dim,
+        self.pi = MLPGaussianActor(obs_dim=obs_dim,
                            act_dim=act_dim,
                            shared=shared,
                            weight_initialization=weight_initialization,

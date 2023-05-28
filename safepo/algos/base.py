@@ -13,6 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 import abc
+
+
 class Algorithm(abc.ABC):
     @abc.abstractmethod
     def learn(self) -> tuple:

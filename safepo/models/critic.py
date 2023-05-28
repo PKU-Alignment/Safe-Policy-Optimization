@@ -14,7 +14,9 @@
 # ==============================================================================
 import torch
 import torch.nn as nn
+
 from safepo.models.model_utils import build_mlp_network
+
 
 class Critic(nn.Module):
 

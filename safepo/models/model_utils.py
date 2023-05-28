@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
+
+
 def initialize_layer(
         init_function: str,
         layer: torch.nn.Module

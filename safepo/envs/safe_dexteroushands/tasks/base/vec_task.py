@@ -5,12 +5,11 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
+import numpy as np
+import torch
 from gym import spaces
-
 from isaacgym import gymtorch
 from isaacgym.torch_utils import to_torch
-import torch
-import numpy as np
 
 
 # VecEnv Wrapper for RL training

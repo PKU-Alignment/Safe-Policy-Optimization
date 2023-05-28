@@ -1,6 +1,8 @@
-import numpy as np
 import math
+
+import numpy as np
 import torch
+
 
 def check(input):
     if type(input) == np.ndarray:

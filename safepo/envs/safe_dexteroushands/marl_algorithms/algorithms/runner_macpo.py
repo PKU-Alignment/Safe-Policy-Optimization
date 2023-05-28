@@ -1,22 +1,22 @@
+import os
+import statistics
+import time
+from collections import deque
 from curses import KEY_SUSPEND
 from datetime import datetime
-import os
-import time
-
-from gym.spaces import Space
+from itertools import chain
 
 import numpy as np
-import statistics
-from collections import deque
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from gym.spaces import Space
 from torch.utils.tensorboard import SummaryWriter
-
-from itertools import chain
-from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.utils.separated_buffer_macpo import SeparatedReplayBuffer
 from utils.util import update_linear_schedule
+
+from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.utils.separated_buffer_macpo import \
+    SeparatedReplayBuffer
+
 
 def _t2n(x):
     return x.detach().cpu().numpy()
@@ -72,20 +72,27 @@ class Runner:
             os.makedirs(self.save_dir)
 
         if self.algorithm_name == "happo":
+            from algorithms.algorithms.happo_policy import \
+                HAPPO_Policy as Policy
             from algorithms.algorithms.happo_trainer import HAPPO as TrainAlgo
-            from algorithms.algorithms.happo_policy import HAPPO_Policy as Policy
         if self.algorithm_name == "mappo":
+            from algorithms.algorithms.mappo_policy import \
+                MAPPO_Policy as Policy
             from algorithms.algorithms.mappo_trainer import MAPPO as TrainAlgo
-            from algorithms.algorithms.mappo_policy import MAPPO_Policy as Policy
         if self.algorithm_name == "macpo":
-            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.macpo_trainer import MACPO as TrainAlgo
-            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.macpo_policy import MACPO_Policy as Policy
+            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.macpo_policy import \
+                MACPO_Policy as Policy
+            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.macpo_trainer import \
+                MACPO as TrainAlgo
         if self.algorithm_name == "mappolag":
-            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.mappolag_trainer import R_MAPPO_Lagr as TrainAlgo
-            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.mappolag_policy import MAPPO_L_Policy as Policy
+            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.mappolag_policy import \
+                MAPPO_L_Policy as Policy
+            from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.mappolag_trainer import \
+                R_MAPPO_Lagr as TrainAlgo
         if self.algorithm_name == "ippo":
+            from algorithms.algorithms.mappo_policy import \
+                IPPO_Policy as Policy
             from algorithms.algorithms.mappo_trainer import IPPO as TrainAlgo
-            from algorithms.algorithms.mappo_policy import IPPO_Policy as Policy
         print(self.algorithm_name)
         self.policy = []
         for agent_id in range(self.num_agents):

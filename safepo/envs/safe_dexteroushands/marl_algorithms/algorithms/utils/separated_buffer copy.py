@@ -1,8 +1,9 @@
-import torch
-import numpy as np
 from collections import defaultdict
 
-from macpo.utils.util import check, get_shape_from_obs_space, get_shape_from_act_space
+import numpy as np
+import torch
+from macpo.utils.util import (check, get_shape_from_act_space,
+                              get_shape_from_obs_space)
 
 
 def _flatten(T, N, x):

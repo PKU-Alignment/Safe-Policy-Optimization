@@ -1,16 +1,16 @@
-from datetime import datetime
 import os
-import time
-
-from gym.spaces import Space
-import torch.nn.functional as F
-import numpy as np
 import statistics
+import time
 from collections import deque
-from torch.nn.functional import softplus
+from datetime import datetime
+
+import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
+from gym.spaces import Space
+from torch.nn.functional import softplus
 from torch.utils.tensorboard import SummaryWriter
 
 from .storage import RolloutStorage

@@ -2,7 +2,9 @@
 
 <div align="center">
 
-[![Organization](https://img.shields.io/badge/Organization-OmniSafeAI-blue.svg "Organization")](https://github.com/OmniSafeAI "Organization")[![Unittest](https://img.shields.io/badge/Unittest-passing-green.svg "Unittest")](https://github.com/PKU-MARL "Unittest")[![Docs](https://img.shields.io/badge/Docs-In_development-red.svg "Author")](https://github.com/PKU-MARL "Docs")[![GitHub license](https://img.shields.io/github/license/PKU-MARL/DexterousHands)](https://github.com/PKU-MARL/DexterousHands/blob/main/LICENSE)
+[![Organization](https://img.shields.io/badge/Organization-OmniSafeAI-blue.svg "Organization")](https://github.com/OmniSafeAI "Organization")
+[![Unittest](https://img.shields.io/badge/Unittest-passing-green.svg "Unittest")](https://github.com/PKU-MARL "Unittest")
+[![GitHub license](https://img.shields.io/github/license/PKU-Alignment/Safe-Policy-Optimization)](https://github.com/PKU-Alignment/Safe-Policy-Optimization/blob/main/LICENSE)
 
 </div>
 

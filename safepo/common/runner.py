@@ -13,56 +13,54 @@
 # limitations under the License.
 # ==============================================================================
 import os
-import torch
 from copy import deepcopy
-from safepo.common.logger import setup_logger_kwargs
-from safepo.common import multi_processing_utils
+
+import torch
+
 from safepo.algos import REGISTRY
+from safepo.common import multi_processing_utils
 from safepo.common.experiment_analysis import EnvironmentEvaluator
+from safepo.common.logger import setup_logger_kwargs
 from safepo.common.utils import get_defaults_kwargs_yaml, save_eval_kwargs
+
+
 class Runner(object):
 
     def __init__(self,
-                 algo: str, # algorithms
-                 env_id: str, # environment-name
-                 log_dir: str, # the path of log directory
-                 init_seed: int, # the seed of experiment
-                 unparsed_args: list = (),
-                 use_mpi: bool = False, # use MPI for parallel execution.
-                 ):
+                 algo: str,
+                 env_id: str,
+                 log_dir: str,
+                 seed: int,
+                 unparsed_args: list = ()):
         '''Initial Parameters.'''
 
         self.algo = algo
         self.env_id = env_id
-        self.log_dir = log_dir
-        self.init_seed = init_seed
-        self.num_runs = 1
-        self.use_mpi = use_mpi
-        self.default_kwargs = get_defaults_kwargs_yaml(algo=algo,env_id=env_id)
-
-        self.kwargs = self.default_kwargs.copy()
-        self.kwargs['seed'] = init_seed
-        # update algoorithm kwargs with unparsed arguments from command line
+        self.configs = get_defaults_kwargs_yaml(algo=algo, env_id=env_id)
+        # update algorithm kwargs with unparsed arguments from command line
         keys = [k[2:] for k in unparsed_args[0::2]]  # remove -- from argument
         values = [eval(v) for v in unparsed_args[1::2]]
         unparsed_dict = {k: v for k, v in zip(keys, values)}
-        self.kwargs.update(**unparsed_dict)
-        # e.g. Safexp-PointGoal1-v0/ppo
-        self.exp_name = os.path.join(self.env_id, self.algo)
-        self.logger_kwargs = setup_logger_kwargs(base_dir=self.log_dir,
+        self.configs.update(**unparsed_dict)
+        # e.g. Safexp-PointGoal1-v0-ppo
+        self.exp_name = '-'.join([self.env_id, self.algo, "seed-" + str(seed)])
+        self.logger_kwargs = setup_logger_kwargs(base_dir=log_dir,
                                                  exp_name=self.exp_name,
-                                                 seed=init_seed)
-        self.default_kwargs.update({
+                                                 seed=seed)
+        self.configs.update({
             'algo': algo,
             'env_id': env_id,
-            'seed': init_seed,
+            'seed': seed
         })
-        save_eval_kwargs(self.logger_kwargs['log_dir'], self.default_kwargs)
+
+        self.configs.update({'logger_kwargs': self.logger_kwargs})
+
+        # save_eval_kwargs(self.kwargs['log_dir'], self.kwargs)
 
         # assigned by class methods
-        self.model = None
-        self.env = None
-        self.scheduler = None
+        # self.model = None
+        # self.env = None
+        # self.scheduler = None
 
     def _evaluate_model(self):
         evaluator = EnvironmentEvaluator(log_dir=self.logger_kwargs['log_dir'])
@@ -141,32 +139,10 @@ class Runner(object):
             self._evaluate_model()
             self.model.train()  # switch back to train mode
 
-    def train(self, epochs=None, env=None):
-        """
-        Train the model for a given number of epochs.
-
-        Args:
-            epochs: int
-                Number of epoch to train. If None, use the standard setting from the
-                defaults.yaml of the corresponding algorithm.
-            env: gym.Env
-                provide a virtual environment for training the model.
-
-        """
-        # single model training
-        if epochs is None:
-            epochs = self.kwargs.pop('epochs')
-        else:
-            self.kwargs.pop('epochs')  # pop to avoid double kwargs
-
-        env_id = self.env_id if env is None else env
-        defaults = deepcopy(self.kwargs)
-        defaults.update(epochs=epochs)
-        defaults.update(logger_kwargs=self.logger_kwargs)
-        algo = REGISTRY[self.algo](env_id=env_id,**defaults)
-        self.model, self.env = algo.learn()
-
-        exit(0)
+    def train(self):
+        """Train the agent."""
+        agent = REGISTRY[self.algo](configs=self.configs)
+        self.model, self.env = agent.learn()
 
     def play(self) -> None:
         """ Visualize model after training."""

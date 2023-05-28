@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+from collections import deque, namedtuple
+
 import torch
-from collections import namedtuple, deque
-from safepo.algos.policy_gradient import PG
+
 from safepo.algos.lagrangian_base import Lagrangian
+from safepo.algos.policy_gradient import PG
+
 
 class CPPOPid(PG):
     def __init__(

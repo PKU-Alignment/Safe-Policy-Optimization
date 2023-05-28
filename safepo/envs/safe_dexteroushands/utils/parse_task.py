@@ -5,28 +5,30 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from tasks.shadow_hand_over import ShadowHandOver
-from tasks.shadow_hand_catch_underarm import ShadowHandCatchUnderarm
-from tasks.shadow_hand_two_catch_underarm import ShadowHandTwoCatchUnderarm
+import json
+
+from tasks.hand_base.multi_vec_task import (MultiVecTaskPython,
+                                            SingleVecTaskPythonArm)
+from tasks.hand_base.vec_task import (VecTaskCPU, VecTaskGPU, VecTaskPython,
+                                      VecTaskPythonArm)
+from tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
 from tasks.shadow_hand_catch_abreast import ShadowHandCatchAbreast
-from tasks.shadow_hand_lift_underarm import ShadowHandLiftUnderarm
 from tasks.shadow_hand_catch_over2underarm import ShadowHandCatchOver2Underarm
+from tasks.shadow_hand_catch_underarm import ShadowHandCatchUnderarm
 from tasks.shadow_hand_door_close_inward import ShadowHandDoorCloseInward
 from tasks.shadow_hand_door_close_outward import ShadowHandDoorCloseOutward
 from tasks.shadow_hand_door_open_inward import ShadowHandDoorOpenInward
 from tasks.shadow_hand_door_open_outward import ShadowHandDoorOpenOutward
-from tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
-from tasks.ShadowHandCatchOver2underarm_Safe_finger import ShadowHandCatchOver2Underarm_Safe_finger
-from tasks.ShadowHandCatchOver2underarm_Safe_joint import ShadowHandCatchOver2Underarm_Safe_joint
+from tasks.shadow_hand_lift_underarm import ShadowHandLiftUnderarm
+from tasks.shadow_hand_over import ShadowHandOver
+from tasks.shadow_hand_two_catch_underarm import ShadowHandTwoCatchUnderarm
+from tasks.ShadowHandCatchOver2underarm_Safe_finger import \
+    ShadowHandCatchOver2Underarm_Safe_finger
+from tasks.ShadowHandCatchOver2underarm_Safe_joint import \
+    ShadowHandCatchOver2Underarm_Safe_joint
 from tasks.ShadowHandOver_Safe_finger import ShadowHandOver_Safe_finger
 from tasks.ShadowHandOver_Safe_joint import ShadowHandOver_Safe_joint
-
-from tasks.hand_base.vec_task import VecTaskCPU, VecTaskGPU, VecTaskPython, VecTaskPythonArm
-from tasks.hand_base.multi_vec_task import MultiVecTaskPython, SingleVecTaskPythonArm
-
 from utils.config import warn_task_name
-
-import json
 
 
 def parse_task(args, cfg, cfg_train, sim_params, agent_index):

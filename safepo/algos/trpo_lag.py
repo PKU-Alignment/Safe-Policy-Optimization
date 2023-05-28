@@ -13,8 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 import torch
-from safepo.algos.trpo import TRPO
+
 from safepo.algos.lagrangian_base import Lagrangian
+from safepo.algos.trpo import TRPO
 
 
 class TRPO_Lag(TRPO,Lagrangian):

@@ -12,63 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+import time
+from copy import deepcopy
 from re import L
+
 import gymnasium
 import numpy as np
 import safety_gymnasium
-import time
 import torch
-from copy import deepcopy
-from safepo.common import core
-from safepo.models.Constraint_Actor_Critic import ConstraintActorCritic
-from safepo.common.logger import EpochLogger
+
 import safepo.common.mpi_tools as mpi_tools
 from safepo.algos.base import PolicyGradient
+from safepo.common import core
 from safepo.common.buffer import Buffer
-from safepo.common.utils import get_flat_params_from
+from safepo.common.logger import EpochLogger
+from safepo.common.utils import get_flat_params_from, seed_everything
+from safepo.models.constraint_actor_critic import ConstraintActorCritic
+
 
 class PG(PolicyGradient):
     def __init__(
             self,
-            actor,
-            ac_kwargs,
-            env_id,
-            epochs,
-            logger_kwargs,
-            adv_estimation_method='gae',
-            algo='pg',
-            check_freq=25,
-            entropy_coef=0.01,
-            gamma=0.99,
-            lam=0.95,
-            lam_c=0.95,
-            max_ep_len=1000,
-            max_grad_norm=0.5,
-            num_mini_batches=16,
-            optimizer='Adam',
-            pi_lr=3e-4,
-            vf_lr=1e-3,
-            steps_per_epoch=32 * 1000,
-            target_kl=0.01,
-            train_pi_iterations=80,
-            train_v_iterations=40,
-            use_discount_cost_update_lag=False,
-            use_cost_value_function=False,
-            use_entropy=False,
-            use_exploration_noise_anneal=False,
-            use_kl_early_stopping=False,
-            use_linear_lr_decay=True,
-            use_max_grad_norm=False,
-            use_reward_scaling=False,
-            use_reward_penalty=False,
-            use_shared_weights=False,
-            use_standardized_reward=False,
-            use_standardized_cost=False,
-            use_standardized_obs=True,
-            weight_initialization = 'kaiming_uniform',
-            save_freq=10,
-            seed=0,
-            enable_eval=False,
+            configs
         ):
         """Policy Gradient.
         Args:
@@ -152,76 +117,32 @@ class PG(PolicyGradient):
 
             seed (int): The random seed of this run.
         """
-        # Create Environment
-        self.env_id = env_id
-        self.env = safety_gymnasium.make(env_id) if isinstance(env_id, str) else env_id
-        # Use the environment's built_in max_episode_steps
-        if hasattr(self.env, '_max_episode_steps'):
-            max_ep_len = self.env._max_episode_steps
+        # create Environment
+        self.env_id = configs['env_id']
+        self.configs = configs
+        self.env = safety_gymnasium.make(self.env_id)
 
-        # How to calculate the advantage of reward/cost
-        self.adv_estimation_method = adv_estimation_method
-        self.algo = algo
-        self.check_freq = check_freq
-        self.entropy_coef = entropy_coef if use_entropy else 0.0
-        self.epochs = epochs
-        self.lam = lam
-        self.gamma = gamma
-        self.local_steps_per_epoch = steps_per_epoch
-        self.logger_kwargs = logger_kwargs
-        self.max_ep_len = max_ep_len
-        self.max_grad_norm = max_grad_norm
-        self.num_mini_batches = num_mini_batches
-        self.pi_lr = pi_lr
-        self.vf_lr = vf_lr
-        self.save_freq = save_freq
-        self.seed = seed
-        self.steps_per_epoch = steps_per_epoch
-        self.target_kl = target_kl
-        self.train_pi_iterations = train_pi_iterations
-        self.train_v_iterations = train_v_iterations
-        self.use_cost_value_function = use_cost_value_function
-        self.use_exploration_noise_anneal = use_exploration_noise_anneal
-        self.use_kl_early_stopping = use_kl_early_stopping
-        self.use_linear_lr_decay = use_linear_lr_decay
-        self.use_max_grad_norm = use_max_grad_norm
-        self.use_reward_penalty = use_reward_penalty
-        self.use_reward_scaling = use_reward_scaling
-        self.use_standardized_obs = use_standardized_obs
-        self.use_standardized_reward = use_standardized_reward
-        self.use_standardized_cost = use_standardized_cost
-        self.use_discount_cost_update_lag = use_discount_cost_update_lag
-
-        # Call assertions, Check if some variables are valid to experiment
-        # You can add assert that you want to check
+        # check if some variables are valid to experiment
         self._init_checks()
-        exit(0)
-        if not enable_eval:
-            # If We want to train rather than eval
-            # Set up logger and save configuration to disk
-            # Get local parameters before logger instance to avoid unnecessary print
-            self.params = locals()
-            self.logger = self._init_logger()
-            self.logger.save_config(self.params)
+        self.logger = EpochLogger(**self.configs['logger_kwargs'])
+        self.logger.save_config(self.configs)
 
         # Set seed
-        seed += 10000 * mpi_tools.proc_id()
-        torch.manual_seed(seed)
-        np.random.seed(seed)
-        self.env.seed(seed=seed)
+        seed_everything(self.configs['seed'])
 
-        # Setup actor-critic module
-        self.ac = ConstraintActorCritic(
-            actor_type=actor,
+        # setup actor-critic module
+        self.policy = ConstraintActorCritic(
+            policy_config=self.configs['policy'],
             observation_space=self.env.observation_space,
             action_space=self.env.action_space,
-            use_standardized_obs=use_standardized_obs,
-            use_scaled_rewards=use_reward_scaling,
-            use_shared_weights=use_shared_weights,
-            weight_initialization=weight_initialization,
-            ac_kwargs=ac_kwargs
+            use_standardized_obs=configs['use_standardized_obs'],
+            use_scaled_rewards=configs['use_reward_scaling'],
+            use_shared_weights=configs['use_shared_weights'],
+            weight_initialization=configs['weight_initialization']
         )
 
+        print("hello world")
+        exit(0)
         # Set up experience buffer
         self.buf = Buffer(
             actor_critic=self.ac,
@@ -248,23 +169,23 @@ class PG(PolicyGradient):
         # Set up scheduler for policy learning rate decay
         self.scheduler = self._init_learning_rate_scheduler()
 
-        if not enable_eval:
-            # Set up model saving
-            self.logger.setup_torch_saver(self.ac.pi)
-            self.logger.torch_save()
+        # Set up model saving
+        self.logger.setup_torch_saver(self.ac.pi)
+        self.logger.torch_save()
 
-            # Setup statistics
-            self.start_time = time.time()
-            self.epoch_time = time.time()
-            self.loss_pi_before = 0.0
-            self.loss_v_before = 0.0
-            self.loss_c_before = 0.0
-            self.logger.log('Start with training.')
+        # Setup statistics
+        self.start_time = time.time()
+        self.epoch_time = time.time()
+        self.loss_pi_before = 0.0
+        self.loss_v_before = 0.0
+        self.loss_c_before = 0.0
+        self.logger.log('Start with training.')
 
     def _init_learning_rate_scheduler(self):
         scheduler = None
         if self.use_linear_lr_decay:
             import torch.optim
+
             # Linear anneal
             def lm(epoch): return 1 - epoch / self.epochs
             scheduler = torch.optim.lr_scheduler.LambdaLR(
@@ -273,23 +194,8 @@ class PG(PolicyGradient):
             )
         return scheduler
 
-    def _init_logger(self):
-        """
-            Initialize Epoch logger
-        """
-        # Remove objects
-        self.params.pop('self')
-        # Combine inner parameters dictionary with outter
-        if 'kwargs' in self.params:
-            self.params.update(**self.params.pop('kwargs'))
-        # Initialize logger
-        logger = EpochLogger(**self.logger_kwargs)
-        return logger
-
     def _init_mpi(self):
-        """
-            Initialize MPI specifics
-        """
+        """Initialize MPI specifics."""
         if mpi_tools.num_procs() > 1:
             # Avoid slowdowns from PyTorch + MPI combo
             mpi_tools.setup_torch_for_mpi()
@@ -300,17 +206,14 @@ class PG(PolicyGradient):
             self.logger.log(f'Done! (took {time.time()-dt:0.3f} sec.)')
 
     def _init_checks(self):
-        """Checking feasible."""
-        # Ensure vilid number for iteration
-        assert self.train_pi_iterations > 0
-        assert self.train_v_iterations > 0
-        # Ensure environment is consistent with gym
+        """Check feasible."""
+
+        # ensure environment is consistent with gymnasium
         assert isinstance(self.env, gymnasium.Env), 'Env is not the expected type.'
 
     def algorithm_specific_logs(self):
-        """
-            Use this method to collect log information.
-            e.g. log lagrangian for lagrangian-base , log q, r, s, c for cpo, etc
+        """Use this method to collect log information.
+        e.g. log lagrangian for lagrangian-base , log q, r, s, c for cpo, etc
         """
         pass
 

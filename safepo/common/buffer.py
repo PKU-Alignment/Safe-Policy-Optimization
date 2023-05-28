@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-import torch
 import numpy as np
-from safepo.common.core import combined_shape,discount_cumsum
-from safepo.common.vtrace import calculate_v_trace
+import torch
+
 import safepo.common.mpi_tools as mpi_tools
+from safepo.common.core import combined_shape, discount_cumsum
+from safepo.common.vtrace import calculate_v_trace
+
 
 class Buffer:
     def __init__(self,

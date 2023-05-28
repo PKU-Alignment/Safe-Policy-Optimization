@@ -1,4 +1,5 @@
 import torch.nn as nn
+
 from .util import init
 
 """CNN Modules and utils."""

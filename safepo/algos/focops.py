@@ -13,11 +13,14 @@
 # limitations under the License.
 # ==============================================================================
 from turtle import pen
-import torch
-from safepo.algos.policy_gradient import PG
-from safepo.algos.lagrangian_base import Lagrangian
-import safepo.common.mpi_tools as mpi_tools
+
 import numpy as np
+import torch
+
+import safepo.common.mpi_tools as mpi_tools
+from safepo.algos.lagrangian_base import Lagrangian
+from safepo.algos.policy_gradient import PG
+
 
 class FOCOPS(PG,Lagrangian):
     def __init__(

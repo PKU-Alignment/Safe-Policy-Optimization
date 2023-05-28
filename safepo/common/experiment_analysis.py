@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-import os
-import json
-import numpy as np
-from collections import namedtuple, OrderedDict
-import matplotlib.pyplot as plt
-import warnings
-import os
-import gymnasium
-import torch
 import atexit
+import json
+import os
+import warnings
+from collections import OrderedDict, namedtuple
+
+import gymnasium
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas
+import torch
+
 import safepo.common.mpi_tools as mpi_tools
 
 
