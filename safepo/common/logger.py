@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""
-Some simple logging functionality, inspired by rllab's logging.
-Logs to a tab-separated-values file (path/to/output_directory/progress.txt)
-Source:
-    https://github.com/openai/spinningup/blob/master/spinup/utils/logx.py
-"""
 import atexit
 import json
 import os
