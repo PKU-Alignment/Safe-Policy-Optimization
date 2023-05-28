@@ -2,8 +2,7 @@
 
 <div align="center">
 
-[![Organization](https://img.shields.io/badge/Organization-OmniSafeAI-blue.svg "Organization")](https://github.com/OmniSafeAI "Organization")
-[![Unittest](https://img.shields.io/badge/Unittest-passing-green.svg "Unittest")](https://github.com/PKU-MARL "Unittest")
+[![Organization](https://img.shields.io/badge/Organization-PKU-Alignment-blue.svg "Organization")](https://github.com/PKU-Alignment "Organization")
 [![GitHub license](https://img.shields.io/github/license/PKU-Alignment/Safe-Policy-Optimization)](https://github.com/PKU-Alignment/Safe-Policy-Optimization/blob/main/LICENSE)
 
 </div>
