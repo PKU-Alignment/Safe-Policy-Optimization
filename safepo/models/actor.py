@@ -24,24 +24,24 @@ class Actor(nn.Module):
         self.weight_initialization = weight_initialization
 
     def dist(self, obs):
-        '''
-            Returns:
-                torch.distributions.Distribution
-        '''
+        """
+        Returns:
+            torch.distributions.Distribution
+        """
         raise NotImplementedError
 
     def log_prob_from_dist(self, pi, act):
-        '''
-            Returns:
-                torch.Tensor
-        '''
+        """
+        Returns:
+            torch.Tensor
+        """
         raise NotImplementedError
 
     def forward(self, obs, act=None) -> tuple:
-        '''
-            Returns:
-                the distributions for given obs and the log likelihood of given actions under the distributions.
-        '''
+        """
+        Returns:
+            the distributions for given obs and the log likelihood of given actions under the distributions.
+        """
         pi = self.dist(obs)
         logp_a = None
         if act is not None:
@@ -53,8 +53,8 @@ class Actor(nn.Module):
 
     def predict(self, obs) -> tuple:
         """
-            Returns:
-                Predict action based on observation without exploration noise.
-                Use this method for evaluation purposes.
+        Returns:
+            Predict action based on observation without exploration noise.
+            Use this method for evaluation purposes.
         """
         return self.sample(obs)

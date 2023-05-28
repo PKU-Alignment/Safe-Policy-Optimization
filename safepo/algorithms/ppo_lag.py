@@ -19,26 +19,25 @@ from safepo.algorithms.lagrangian_base import Lagrangian
 from safepo.algorithms.policy_gradient import PG
 
 
-class PPO_Lag(PG,Lagrangian):
-    '''
+class PPO_Lag(PG, Lagrangian):
+    """ """
 
-    '''
     def __init__(
-            self,
-            algo='ppo-lag',
-            cost_limit=25.,
-            clip=0.2,
-            lagrangian_multiplier_init=0.001,
-            lambda_lr=0.035,
-            lambda_optimizer='Adam',
-            use_standardized_reward=True,
-            use_standardized_cost=True,
-            use_standardized_obs=False,
-            use_reward_scaling=False,
-            use_cost_value_function=True,
-            use_kl_early_stopping=True,
-            **kwargs
-        ):
+        self,
+        algo="ppo-lag",
+        cost_limit=25.0,
+        clip=0.2,
+        lagrangian_multiplier_init=0.001,
+        lambda_lr=0.035,
+        lambda_optimizer="Adam",
+        use_standardized_reward=True,
+        use_standardized_cost=True,
+        use_standardized_obs=False,
+        use_reward_scaling=False,
+        use_cost_value_function=True,
+        use_kl_early_stopping=True,
+        **kwargs
+    ):
         PG.__init__(
             self,
             algo=algo,
@@ -56,32 +55,30 @@ class PPO_Lag(PG,Lagrangian):
             cost_limit=cost_limit,
             lagrangian_multiplier_init=lagrangian_multiplier_init,
             lambda_lr=lambda_lr,
-            lambda_optimizer=lambda_optimizer
+            lambda_optimizer=lambda_optimizer,
         )
 
         self.clip = clip
 
     def algorithm_specific_logs(self):
         super().algorithm_specific_logs()
-        self.logger.log_tabular('LagrangeMultiplier',
-                                self.lagrangian_multiplier.item())
-
+        self.logger.log_tabular("LagrangeMultiplier", self.lagrangian_multiplier.item())
 
     def compute_loss_pi(self, data: dict):
         # Policy loss
-        dist, _log_p = self.ac.pi(data['obs'], data['act'])
-        ratio = torch.exp(_log_p - data['log_p'])
-        ratio_clip = torch.clamp(ratio, 1-self.clip, 1+self.clip)
-        loss_pi = -(torch.min(ratio * data['adv'], ratio_clip * data['adv'])).mean()
+        dist, _log_p = self.ac.pi(data["obs"], data["act"])
+        ratio = torch.exp(_log_p - data["log_p"])
+        ratio_clip = torch.clamp(ratio, 1 - self.clip, 1 + self.clip)
+        loss_pi = -(torch.min(ratio * data["adv"], ratio_clip * data["adv"])).mean()
         loss_pi -= self.entropy_coef * dist.entropy().mean()
 
         # ensure that lagrange multiplier is positive
         penalty = self.lambda_range_projection(self.lagrangian_multiplier).item()
-        loss_pi += penalty * ((ratio * data['cost_adv']).mean())
-        loss_pi /= (1 + penalty)
+        loss_pi += penalty * ((ratio * data["cost_adv"]).mean())
+        loss_pi /= 1 + penalty
 
         # Useful extra info
-        approx_kl = .5 * (data['log_p'] - _log_p).mean().item()
+        approx_kl = 0.5 * (data["log_p"] - _log_p).mean().item()
         ent = dist.entropy().mean().item()
         pi_info = dict(kl=approx_kl, ent=ent, ratio=ratio.mean().item())
 
@@ -92,7 +89,7 @@ class PPO_Lag(PG,Lagrangian):
         # pre-process data
         data = self.pre_process_data(raw_data)
         # Note that logger already uses MPI statistics across all processes..
-        ep_costs = self.logger.get_stats('EpCosts')[0]
+        ep_costs = self.logger.get_stats("EpCosts")[0]
         # First update Lagrange multiplier parameter
         self.update_lagrange_multiplier(ep_costs)
         # now update policy and value network

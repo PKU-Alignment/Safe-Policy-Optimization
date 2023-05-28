@@ -30,24 +30,25 @@ class ActorCritic(nn.Module):
         use_scaled_rewards,
         use_shared_weights,
         policy_config,
-        weight_initialization='kaiming_uniform'
+        weight_initialization="kaiming_uniform",
     ):
         super().__init__()
         self.obs_shape = observation_space.shape
-        self.obs_oms = OnlineMeanStd(shape=self.obs_shape) \
-            if use_standardized_obs else None
+        self.obs_oms = (
+            OnlineMeanStd(shape=self.obs_shape) if use_standardized_obs else None
+        )
 
         # policy builder depends on action space
         act_dim = action_space.shape[0]
         obs_dim = observation_space.shape[0]
-        layer_units = [obs_dim] + list(policy_config['actor']['hidden_sizes'])
-        activation_function = policy_config['actor']['activation']
+        layer_units = [obs_dim] + list(policy_config["actor"]["hidden_sizes"])
+        activation_function = policy_config["actor"]["activation"]
         if use_shared_weights:
             shared = build_mlp_network(
                 layer_units,
                 activation=activation_function,
                 weight_initialization=weight_initialization,
-                output_activation=activation_function
+                output_activation=activation_function,
             )
         else:
             shared = None
@@ -57,13 +58,9 @@ class ActorCritic(nn.Module):
             act_dim=act_dim,
             shared=shared,
             weight_initialization=weight_initialization,
-            **policy_config['actor']
+            **policy_config["actor"]
         )
-        self.critic = Critic(
-            obs_dim,
-            shared=shared,
-            **policy_config['critic']
-        )
+        self.critic = Critic(obs_dim, shared=shared, **policy_config["critic"])
 
         self.ret_oms = OnlineMeanStd(shape=(1,)) if use_scaled_rewards else None
 
@@ -73,14 +70,14 @@ class ActorCritic(nn.Module):
 
     def step(self, obs: torch.Tensor):
         """
-            If training, this includes exploration noise!
-            Expects that obs is not pre-processed.
+        If training, this includes exploration noise!
+        Expects that obs is not pre-processed.
 
-            Returns:
-                action, value, log_prob(action)
-            Note:
-                Training mode can be activated with ac.train()
-                Evaluation mode is activated by ac.eval()
+        Returns:
+            action, value, log_prob(action)
+        Note:
+            Training mode can be activated with ac.train()
+            Evaluation mode is activated by ac.eval()
         """
         with torch.no_grad():
             if self.obs_oms:
@@ -109,5 +106,5 @@ class ActorCritic(nn.Module):
                 e.g. 10 / 100 = 0.1
 
         """
-        if hasattr(self.actor, 'set_log_std'):
+        if hasattr(self.actor, "set_log_std"):
             self.actor.set_log_std(1 - frac)

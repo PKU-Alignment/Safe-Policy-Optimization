@@ -30,11 +30,10 @@ class Algorithm(abc.ABC):
 
 
 class PolicyGradient(Algorithm, abc.ABC):
-
     # More detailed in https://stackoverflow.com/questions/7196376/python-abstractmethod-decorator
     @abc.abstractmethod
     def roll_out(self):
         """
-            collect data and store to experience buffer.
+        collect data and store to experience buffer.
         """
         pass

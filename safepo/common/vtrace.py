@@ -15,14 +15,15 @@
 import numpy as np
 
 
-def calculate_v_trace(policy_action_probs: np.ndarray,
-                      values: np.ndarray,  # including bootstrap
-                      rewards: np.ndarray,  # including bootstrap
-                      behavior_action_probs: np.ndarray,
-                      gamma=0.99,
-                      rho_bar=1.0,
-                      c_bar=1.0
-                      ) -> tuple:
+def calculate_v_trace(
+    policy_action_probs: np.ndarray,
+    values: np.ndarray,  # including bootstrap
+    rewards: np.ndarray,  # including bootstrap
+    behavior_action_probs: np.ndarray,
+    gamma=0.99,
+    rho_bar=1.0,
+    c_bar=1.0,
+) -> tuple:
     """
     calculate V-trace targets for off-policy actor-critic learning recursively
     as proposed in: Espeholt et al. 2018, IMPALA
@@ -37,7 +38,7 @@ def calculate_v_trace(policy_action_probs: np.ndarray,
     :param c_bar:
     :return: V-trace targets, shape=(batch_size, sequence_length)
     """
-    assert values.ndim == 1, 'Please provide 1d-arrays'
+    assert values.ndim == 1, "Please provide 1d-arrays"
     assert rewards.ndim == 1
     assert policy_action_probs.ndim == 1
     assert behavior_action_probs.ndim == 1
@@ -62,7 +63,6 @@ def calculate_v_trace(policy_action_probs: np.ndarray,
 
     # calculate q_targets
     v_s_plus_1 = np.append(v_s[1:], values[-1])
-    policy_advantage = clip_rhos * (
-                rewards[:-1] + gamma * v_s_plus_1 - values[:-1])
+    policy_advantage = clip_rhos * (rewards[:-1] + gamma * v_s_plus_1 - values[:-1])
 
     return v_s, policy_advantage, clip_rhos

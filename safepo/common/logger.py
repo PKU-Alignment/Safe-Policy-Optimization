@@ -43,7 +43,7 @@ color2num = dict(
     magenta=35,
     cyan=36,
     white=37,
-    crimson=38
+    crimson=38,
 )
 
 
@@ -56,13 +56,12 @@ def is_json_serializable(v):
 
 
 def convert_json(obj):
-    """ Convert obj to a version which can be serialized with JSON. """
+    """Convert obj to a version which can be serialized with JSON."""
     if is_json_serializable(obj):
         return obj
     else:
         if isinstance(obj, dict):
-            return {convert_json(k): convert_json(v)
-                    for k, v in obj.items()}
+            return {convert_json(k): convert_json(v) for k, v in obj.items()}
 
         elif isinstance(obj, tuple):
             return (convert_json(x) for x in obj)
@@ -70,23 +69,28 @@ def convert_json(obj):
         elif isinstance(obj, list):
             return [convert_json(x) for x in obj]
 
-        elif hasattr(obj, '__name__') and not ('lambda' in obj.__name__):
+        elif hasattr(obj, "__name__") and not ("lambda" in obj.__name__):
             return convert_json(obj.__name__)
 
-        elif hasattr(obj, '__dict__') and obj.__dict__:
-            obj_dict = {convert_json(k): convert_json(v)
-                        for k, v in obj.__dict__.items()}
+        elif hasattr(obj, "__dict__") and obj.__dict__:
+            obj_dict = {
+                convert_json(k): convert_json(v) for k, v in obj.__dict__.items()
+            }
             return {str(obj): obj_dict}
 
         return str(obj)
 
 
 def filter_values_in_dict(dic):
-    """ Drop keys from dictionary which are not int, float, bool or str."""
+    """Drop keys from dictionary which are not int, float, bool or str."""
     cleared_dict = dict()
-    for (k, v) in dic.items():
-        if isinstance(v, int) or isinstance(v, float) \
-                or isinstance(v, str) or isinstance(v, bool):
+    for k, v in dic.items():
+        if (
+            isinstance(v, int)
+            or isinstance(v, float)
+            or isinstance(v, str)
+            or isinstance(v, bool)
+        ):
             cleared_dict[k] = v
         if isinstance(v, dict):
             filtered = filter_values_in_dict(v)
@@ -104,20 +108,24 @@ def colorize(string, color, bold=False, highlight=False):
     """
     attr = []
     num = color2num[color]
-    if highlight: num += 10
+    if highlight:
+        num += 10
     attr.append(str(num))
-    if bold: attr.append('1')
-    return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), string)
+    if bold:
+        attr.append("1")
+    return "\x1b[%sm%s\x1b[0m" % (";".join(attr), string)
 
 
-def setup_logger_kwargs(exp_name=None,
-                        seed=None,
-                        base_dir=None,
-                        hms_time=time.strftime("%Y-%m-%d__%H-%M-%S"),
-                        datestamp=True,
-                        level=1,
-                        use_tensorboard=True,
-                        verbose=True):
+def setup_logger_kwargs(
+    exp_name=None,
+    seed=None,
+    base_dir=None,
+    hms_time=time.strftime("%Y-%m-%d__%H-%M-%S"),
+    datestamp=True,
+    level=1,
+    use_tensorboard=True,
+    verbose=True,
+):
     """
     Sets up the output_dir for a logger and returns a dict for logger kwargs.
     If no seed is given and datestamp is false,
@@ -141,16 +149,18 @@ def setup_logger_kwargs(exp_name=None,
         logger_kwargs, a dict containing output_dir and exp_name.
     """
     # Make base path
-    relpath = hms_time if datestamp else ''
+    relpath = hms_time if datestamp else ""
     if seed is not None:
-        subfolder = '-'.join(['seed', str(seed).zfill(3)])
-        relpath = '-'.join([subfolder,relpath])
+        subfolder = "-".join(["seed", str(seed).zfill(3)])
+        relpath = "-".join([subfolder, relpath])
 
-    logger_kwargs = dict(log_dir=os.path.join(base_dir, exp_name, relpath),
-                         exp_name=exp_name,
-                         level=level, # dont use
-                         use_tensorboard=use_tensorboard,
-                         verbose=verbose)
+    logger_kwargs = dict(
+        log_dir=os.path.join(base_dir, exp_name, relpath),
+        exp_name=exp_name,
+        level=level,  # dont use
+        use_tensorboard=use_tensorboard,
+        verbose=verbose,
+    )
     return logger_kwargs
 
 
@@ -162,14 +172,16 @@ class Logger:
     state of a training run, and the trained model.
     """
 
-    def __init__(self,
-                 log_dir,
-                 output_fname='progress.txt',
-                 debug: bool = False,
-                 exp_name=None,
-                 level: int = 1,
-                 use_tensorboard=True,
-                 verbose=True):
+    def __init__(
+        self,
+        log_dir,
+        output_fname="progress.txt",
+        debug: bool = False,
+        exp_name=None,
+        level: int = 1,
+        use_tensorboard=True,
+        verbose=True,
+    ):
         """
         Initialize a Logger.
 
@@ -194,10 +206,9 @@ class Logger:
         self.verbose = verbose
 
         os.makedirs(self.log_dir, exist_ok=True)
-        self.output_file = open(osp.join(self.log_dir, output_fname), 'w')
+        self.output_file = open(osp.join(self.log_dir, output_fname), "w")
         atexit.register(self.output_file.close)
-        print(colorize(f"Logging data to {self.output_file.name}",
-                        'cyan', bold=True))
+        print(colorize(f"Logging data to {self.output_file.name}", "cyan", bold=True))
 
         self.epoch = 0
         self.first_row = True
@@ -207,7 +218,7 @@ class Logger:
         self.torch_saver_elements = None
 
         # Setup tensor board logging if enabled and MPI root process
-        self.summary_writer = SummaryWriter(os.path.join(self.log_dir, 'tb'))
+        self.summary_writer = SummaryWriter(os.path.join(self.log_dir, "tb"))
 
     def close(self):
         """Close opened output files immediately after training in order to
@@ -216,12 +227,12 @@ class Logger:
         """
         self.output_file.close()
 
-    def debug(self, msg, color='yellow'):
+    def debug(self, msg, color="yellow"):
         """Print a colorized message to stdout."""
         if self.debug:
             print(colorize(msg, color, bold=False))
 
-    def log(self, msg, color='green'):
+    def log(self, msg, color="green"):
         """Print a colorized message to stdout."""
         if self.verbose and self.level > 0:
             print(colorize(msg, color, bold=False))
@@ -238,8 +249,14 @@ class Logger:
         if self.first_row:
             self.log_headers.append(key)
         else:
-            assert key in self.log_headers, "Trying to introduce a new key %s that you didn't include in the first iteration" % key
-        assert key not in self.log_current_row, "You already set %s this iteration. Maybe you forgot to call dump_tabular()" % key
+            assert key in self.log_headers, (
+                "Trying to introduce a new key %s that you didn't include in the first iteration"
+                % key
+            )
+        assert key not in self.log_current_row, (
+            "You already set %s this iteration. Maybe you forgot to call dump_tabular()"
+            % key
+        )
         self.log_current_row[key] = val
 
     def save_config(self, config):
@@ -260,14 +277,15 @@ class Logger:
         """
         config_json = convert_json(config)
         if self.exp_name is not None:
-            config_json['exp_name'] = self.exp_name
+            config_json["exp_name"] = self.exp_name
 
-        output = json.dumps(config_json, separators=(',', ':\t'), indent=4,
-                            sort_keys=True)
+        output = json.dumps(
+            config_json, separators=(",", ":\t"), indent=4, sort_keys=True
+        )
         if self.verbose and self.level > 0:
-            print(colorize('Run with config:', color='yellow', bold=True))
+            print(colorize("Run with config:", color="yellow", bold=True))
             print(output)
-        with open(osp.join(self.log_dir, "config.json"), 'w') as out:
+        with open(osp.join(self.log_dir, "config.json"), "w") as out:
             out.write(output)
 
     def save_state(self, state_dict, itr=None):
@@ -291,12 +309,12 @@ class Logger:
 
             itr: An int, or None. Current iteration of training.
         """
-        fname = 'state.pkl' if itr is None else 'state%d.pkl' % itr
+        fname = "state.pkl" if itr is None else "state%d.pkl" % itr
         try:
             joblib.dump(state_dict, osp.join(self.log_dir, fname))
         except:
-            self.log('Warning: could not pickle state_dict.', color='red')
-        if hasattr(self, 'torch_saver_elements'):
+            self.log("Warning: could not pickle state_dict.", color="red")
+        if hasattr(self, "torch_saver_elements"):
             self.torch_save(itr)
 
     def setup_torch_saver(self, what_to_save):
@@ -318,12 +336,13 @@ class Logger:
     def torch_save(self, itr=None):
         """Saves the PyTorch model (or models)."""
 
-        self.log('Save model to disk...')
-        assert self.torch_saver_elements is not None,\
-            "First have to setup saving with self.setup_torch_saver"
-        fpath = 'torch_save'
+        self.log("Save model to disk...")
+        assert (
+            self.torch_saver_elements is not None
+        ), "First have to setup saving with self.setup_torch_saver"
+        fpath = "torch_save"
         fpath = osp.join(self.log_dir, fpath)
-        fname = 'model' + ('%d' % itr if itr is not None else '') + '.pt'
+        fname = "model" + ("%d" % itr if itr is not None else "") + ".pt"
         fname = osp.join(fpath, fname)
         os.makedirs(fpath, exist_ok=True)
         with warnings.catch_warnings():
@@ -338,7 +357,7 @@ class Logger:
             # not being able to save the source code.
             torch.save(self.torch_saver_elements, fname)
         torch.save(self.torch_saver_elements.state_dict(), fname)
-        self.log('Done.')
+        self.log("Done.")
 
     def dump_tabular(self) -> None:
         """Write all of the diagnostics from the current iteration.
@@ -350,7 +369,7 @@ class Logger:
         # Print formatted information into console
         key_lens = [len(key) for key in self.log_headers]
         max_key_len = max(15, max(key_lens))
-        keystr = '%' + '%d' % max_key_len
+        keystr = "%" + "%d" % max_key_len
         fmt = "| " + keystr + "s | %15s |"
         n_slashes = 22 + max_key_len
         print("-" * n_slashes) if self.verbose and self.level > 0 else None
@@ -416,7 +435,7 @@ class EpochLogger(Logger):
             exp_name=exp_name,
             level=level,
             use_tensorboard=use_tensorboard,
-            verbose=verbose
+            verbose=verbose,
         )
         self.epoch_dict = dict()
 
@@ -425,14 +444,17 @@ class EpochLogger(Logger):
         # Check if all values from dict are dumped -> prevent memory overflow
         for k, v in self.epoch_dict.items():
             if len(v) > 0:
-                print(f'epoch_dict: key={k} was not logged.')
+                print(f"epoch_dict: key={k} was not logged.")
 
     def get_stats(self, key, with_min_and_max=False):
         """Get mean/std and optional min/max of a key in the epoch_dict."""
-        assert key in self.epoch_dict, f'key={key} not in dict'
+        assert key in self.epoch_dict, f"key={key} not in dict"
         v = self.epoch_dict[key]
-        vals = np.concatenate(v) if isinstance(v[0], np.ndarray) and len(
-            v[0].shape) > 0 else v
+        vals = (
+            np.concatenate(v)
+            if isinstance(v[0], np.ndarray) and len(v[0].shape) > 0
+            else v
+        )
         return mpi_statistics_scalar(vals, with_min_and_max=with_min_and_max)
 
     def store(self, **kwargs):

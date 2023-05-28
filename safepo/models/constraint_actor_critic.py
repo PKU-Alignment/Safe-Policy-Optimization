@@ -20,14 +20,14 @@ from safepo.models.critic import Critic
 
 class ConstraintActorCritic(ActorCritic):
     def __init__(
-            self,
-            policy_config,
-            observation_space,
-            action_space,
-            use_standardized_obs,
-            use_scaled_rewards,
-            use_shared_weights,
-            weight_initialization
+        self,
+        policy_config,
+        observation_space,
+        action_space,
+        use_standardized_obs,
+        use_scaled_rewards,
+        use_shared_weights,
+        weight_initialization,
     ):
         super().__init__(
             policy_config=policy_config,
@@ -36,21 +36,19 @@ class ConstraintActorCritic(ActorCritic):
             use_standardized_obs=use_standardized_obs,
             use_scaled_rewards=use_scaled_rewards,
             use_shared_weights=use_shared_weights,
-            weight_initialization=weight_initialization
+            weight_initialization=weight_initialization,
         )
         self.cost_critic = Critic(
-            obs_dim=self.obs_shape[0],
-            shared=None,
-            **policy_config['critic']
+            obs_dim=self.obs_shape[0], shared=None, **policy_config["critic"]
         )
 
     def step(self, obs: torch.Tensor) -> tuple:
-        """ Produce action, value, log_prob(action).
-            If training, this includes exploration noise!
+        """Produce action, value, log_prob(action).
+        If training, this includes exploration noise!
 
-            Note:
-                Training mode can be activated with ac.train()
-                Evaluation mode is activated by ac.eval()
+        Note:
+            Training mode can be activated with ac.train()
+            Evaluation mode is activated by ac.eval()
         """
         with torch.no_grad():
             if self.obs_oms:

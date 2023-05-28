@@ -26,16 +26,16 @@ from safepo.algorithms.trpo import TRPO
 from safepo.algorithms.trpo_lag import TRPO_Lag
 
 REGISTRY = {
-    'pg': PG,
-    'npg': NPG,
-    'trpo': TRPO,
-    'ppo': PPO,
-    'trpo-lag':TRPO_Lag,
-    'ppo-lag': PPO_Lag,
-    'cpo': CPO,
-    'pcpo': PCPO,
-    'focops': FOCOPS,
-    'p3o': P3O,
-    'ipo': IPO,
-    'cppo-pid': CPPOPid,
+    "pg": PG,
+    "npg": NPG,
+    "trpo": TRPO,
+    "ppo": PPO,
+    "trpo-lag": TRPO_Lag,
+    "ppo-lag": PPO_Lag,
+    "cpo": CPO,
+    "pcpo": PCPO,
+    "focops": FOCOPS,
+    "p3o": P3O,
+    "ipo": IPO,
+    "cppo-pid": CPPOPid,
 }

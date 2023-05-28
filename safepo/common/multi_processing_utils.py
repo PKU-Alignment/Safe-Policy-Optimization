@@ -19,10 +19,9 @@ from queue import Empty
 from safepo.common.logger import colorize
 
 
-def spawn_runner_in_new_process(pid: int,
-                                task_queue: mp.Queue,
-                                result_queue: mp.Queue = None,
-                                verbose: bool = True):
+def spawn_runner_in_new_process(
+    pid: int, task_queue: mp.Queue, result_queue: mp.Queue = None, verbose: bool = True
+):
     """A child process that receives seeds from a queue and runs the passed function.
 
     Parameters
@@ -42,10 +41,9 @@ def spawn_runner_in_new_process(pid: int,
 
     """
     # create runner instance in child processes' space
-    runner = TaskRunner(pid=pid,
-                        task_queue=task_queue,
-                        result_queue=result_queue,
-                        verbose=verbose)
+    runner = TaskRunner(
+        pid=pid, task_queue=task_queue, result_queue=result_queue, verbose=verbose
+    )
     runner.run()
 
 
@@ -63,7 +61,7 @@ class TaskRunner:
         self.result_queue = result_queue
         self.done = False
         self.verbose = verbose
-        print('Started runner with pid = {}'.format(pid)) if verbose else None
+        print("Started runner with pid = {}".format(pid)) if verbose else None
 
     def run(self):
         while not self.done:
@@ -75,8 +73,13 @@ class TaskRunner:
                 target_fn = received_task.target_function
                 kwargs = received_task.kwargs
 
-                print(colorize(f'INFO: pid {self.pid} executes with seed={_id}',
-                               color='green', bold=True))
+                print(
+                    colorize(
+                        f"INFO: pid {self.pid} executes with seed={_id}",
+                        color="green",
+                        bold=True,
+                    )
+                )
                 # f'\nkwargs: {received_task.kwargs}')
                 # call the target function with kwargs
                 kwargs.update(seed=_id)
@@ -88,14 +91,15 @@ class TaskRunner:
 
             except Empty:
                 self.done = True
-                print(f'Stop queue runner with pid = {self.pid}.')
+                print(f"Stop queue runner with pid = {self.pid}.")
 
 
 class Scheduler:
-    def __init__(self,
-                 num_cores: int,
-                 verbose: bool = False,
-                 ):
+    def __init__(
+        self,
+        num_cores: int,
+        verbose: bool = False,
+    ):
         """The scheduler manages the tasks which are executed on a machine.
         The tasks are distributed over all available cores.
 
@@ -121,25 +125,25 @@ class Scheduler:
                 done = True
         return outputs
 
-    def fill(self,
-             tasks: list
-             ) -> None:
+    def fill(self, tasks: list) -> None:
         """Fill the queue with tasks."""
         [self.task_queue.put(t) for t in tasks]
 
     def run(self):
         # Spawn child processes
         child_processes = [
-            mp.Process(target=spawn_runner_in_new_process,
-                       args=(
-                       pid, self.task_queue, self.result_queue, self.verbose))
+            mp.Process(
+                target=spawn_runner_in_new_process,
+                args=(pid, self.task_queue, self.result_queue, self.verbose),
+            )
             for pid in range(self.num_cores)
         ]
         for cp in child_processes:  # start child processes
             cp.start()
             time.sleep(0.1)
-        print(colorize('INFO: All workers started.',
-                       color='green', highlight=True)) if self.verbose else None
+        print(
+            colorize("INFO: All workers started.", color="green", highlight=True)
+        ) if self.verbose else None
 
         [cp.join() for cp in child_processes]  # join workers
-        print('INFO: All workers joined.') if self.verbose else None
+        print("INFO: All workers joined.") if self.verbose else None

@@ -29,12 +29,11 @@ class MLPGaussianActor(Actor):
         hidden_sizes,
         activation,
         weight_initialization,
-        shared=None
+        shared=None,
     ):
         super().__init__(obs_dim, act_dim, weight_initialization)
         log_std = np.log(0.5) * np.ones(self.act_dim, dtype=np.float32)
-        self.log_std = torch.nn.Parameter(torch.as_tensor(log_std),
-                                          requires_grad=False)
+        self.log_std = torch.nn.Parameter(torch.as_tensor(log_std), requires_grad=False)
 
         if shared is not None:  # use shared layers
             action_head = nn.Linear(hidden_sizes[-1], act_dim)
@@ -44,7 +43,7 @@ class MLPGaussianActor(Actor):
             self.net = build_mlp_network(
                 layers,
                 activation=activation,
-                weight_initialization=weight_initialization
+                weight_initialization=weight_initialization,
             )
 
     def dist(self, obs):
@@ -74,22 +73,21 @@ class MLPGaussianActor(Actor):
         return a, logp_a
 
     def set_log_std(self, frac):
-        """ To support annealing exploration noise.
-            frac is annealing from 1. to 0 over course of training"""
+        """To support annealing exploration noise.
+        frac is annealing from 1. to 0 over course of training"""
         assert 0 <= frac <= 1
         new_stddev = 0.499 * frac + 0.01  # annealing from 0.5 to 0.01
         log_std = np.log(new_stddev) * np.ones(self.act_dim, dtype=np.float32)
-        self.log_std = torch.nn.Parameter(torch.as_tensor(log_std),
-                                          requires_grad=False)
+        self.log_std = torch.nn.Parameter(torch.as_tensor(log_std), requires_grad=False)
 
     @property
     def std(self):
-        """ Standard deviation of distribution."""
+        """Standard deviation of distribution."""
         return torch.exp(self.log_std)
 
     def predict(self, obs):
-        """ Predict action based on observation without exploration noise.
-            Use this method for evaluation purposes. """
+        """Predict action based on observation without exploration noise.
+        Use this method for evaluation purposes."""
         action = self.net(obs)
         log_p = torch.ones_like(action)  # avoid type conflicts at evaluation
 

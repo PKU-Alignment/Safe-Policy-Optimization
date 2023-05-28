@@ -17,41 +17,40 @@ import torch
 import torch.nn as nn
 
 
-def initialize_layer(
-        init_function: str,
-        layer: torch.nn.Module
-):
-    if init_function == 'kaiming_uniform':  # this the default!
+def initialize_layer(init_function: str, layer: torch.nn.Module):
+    if init_function == "kaiming_uniform":  # this the default!
         nn.init.kaiming_uniform_(layer.weight, a=np.sqrt(5))
-    elif init_function == 'xavier_normal':
+    elif init_function == "xavier_normal":
         nn.init.xavier_normal_(layer.weight)
     # glorot is also known as xavier uniform
-    elif init_function == 'glorot' or init_function == 'xavier_uniform':
+    elif init_function == "glorot" or init_function == "xavier_uniform":
         nn.init.xavier_uniform_(layer.weight)
-    elif init_function == 'orthogonal':  # matches values from baselines repo.
+    elif init_function == "orthogonal":  # matches values from baselines repo.
         nn.init.orthogonal_(layer.weight, gain=np.sqrt(2))
     else:
         raise NotImplementedError
 
+
 def convert_str_to_torch_functional(activation):
     if isinstance(activation, str):  # convert string to torch functional
         activations = {
-            'identity': nn.Identity,
-            'relu': nn.ReLU,
-            'sigmoid': nn.Sigmoid,
-            'softplus': nn.Softplus,
-            'tanh': nn.Tanh
+            "identity": nn.Identity,
+            "relu": nn.ReLU,
+            "sigmoid": nn.Sigmoid,
+            "softplus": nn.Softplus,
+            "tanh": nn.Tanh,
         }
         assert activation in activations
         activation = activations[activation]
     assert issubclass(activation, torch.nn.Module)
     return activation
 
+
 def build_mlp_network(
-        sizes,
-        activation,
-        output_activation='identity',
-        weight_initialization='kaiming_uniform'
+    sizes,
+    activation,
+    output_activation="identity",
+    weight_initialization="kaiming_uniform",
 ):
     activation = convert_str_to_torch_functional(activation)
     output_activation = convert_str_to_torch_functional(output_activation)
