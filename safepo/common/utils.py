@@ -34,6 +34,7 @@ def get_defaults_kwargs_yaml(algo, env_id):
     kwargs_name = env_id if env_id in kwargs.keys() else "defaults"
     return kwargs[kwargs_name]
 
+
 def save_eval_kwargs(log_dir, eval_kwargs):
     """To save eval kwargs."""
     os.makedirs(log_dir, exist_ok=True)

@@ -17,13 +17,13 @@ from copy import deepcopy
 
 from tqdm import tqdm
 
-import gymnasium
 import numpy as np
 import safety_gymnasium
 import torch
+import torch.optim
 
 from safepo.algorithms.base import PolicyGradient
-from safepo.common import core
+from safepo.common.core import get_optimizer
 from safepo.common.buffer import Buffer
 from safepo.common.logger import EpochLogger
 from safepo.common.utils import seed_everything
@@ -32,102 +32,20 @@ from safepo.models.constraint_actor_critic import ConstraintActorCritic
 
 class PG(PolicyGradient):
     def __init__(self, configs):
-        """Policy Gradient.
-        Args:
-            actor (string): The type of network in actor, it does not actually affect any things
-                which happen in the following.
-
-            ac_kwargs (dictionary): Information about actor and critic's net work configuration,
-                it originates from {algo}.yaml file to describe [hidden layers] and [activation function].
-
-            env_id (string): The name of environment we want to roll out.
-
-            epochs (int): The number of epochs we want to roll out.
-
-            logger_kwargs (dictionary): The information about logger configuration which originates
-                from [runner module].
-
-            adv_estimation_method (string): The type of advantage estimation method.
-
-            algo (string): The name of algorithm corresponding to current class, it does not actually
-                affect any things which happen in the following.
-
-            check_freq (int): The frequency for we to check if all models own the same parameter values.
-                (for mpi multi-process purpose)
-
-            entropy_coef (float): The discount coefficient for entropy penalty, if parameters[use_entropy=True].
-
-            gamma (float): The gamma for GAE.
-
-            lam (float): The lambda for reward GAE.
-
-            lam_c (float): The lambda for cost GAE.
-
-            max_ep_len (int): The maximum timesteps of an episode.
-
-            max_grad_norm (float): If parameters[use_max_grad_norm=True], use this parameter to normalize gradient.
-
-            num_mini_batches (int): The number of mini batches we want to update actor and critic after one epoch.
-
-            optimizer (string): The type of optimizer.
-
-            pi_lr (float): The learning rate of actor network.
-
-            vf_lr (float): The learning rate of critic network.
-
-            steps_per_epoch (int): The number of time steps per epoch.
-
-            target_kl (float): Roughly what KL divergence we think is appropriate
-                between new and old policies after an update. This will get used
-                for early stopping. (Usually small, 0.01 or 0.05.)
-
-            train_pi_iterations (int): The number of iteration when we update actor network per mini batch.
-
-            train_v_iterations (int): The number of iteration when we update critic network per mini batch.
-
-            use_cost_value_function (bool): Use cost value function or not.
-
-            use_entropy (bool): Use entropy penalty or not.
-
-            use_exploration_noise_anneal (bool): Use exloration noise anneal or not.
-
-            use_kl_early_stopping (bool): Use KL early stopping or not.
-
-            use_linear_lr_decay (bool): Use linear learning rate decay or not.
-
-            use_max_grad_norm (bool): Use maximum gradient normalization or not.
-
-            use_reward_scaling (bool): Use reward scaling or not.
-
-            use_reward_penalty (bool): Use cost to penalize reward or not.
-
-            use_shared_weights (bool): Use shared weights between actor and critic network or not.
-
-            use_standardized_advantages (bool): Use standardized advantages or not.
-
-            use_standardized_obs (bool): Use standarized observation or not.
-
-            weight_initialization (string): The type of weight initialization method.
-
-            save_freq (int): How often (in terms of gap between epochs) to save
-                the current policy and value function.
-
-            seed (int): The random seed of this run.
-        """
+        """Policy Gradient."""
         # create Environment
         self.env_id = configs["env_id"]
         self.configs = configs
         self.env = safety_gymnasium.make(self.env_id)
 
-        # check if some variables are valid to experiment
-        self._init_checks()
+        # set up logger
         self.logger = EpochLogger(**self.configs["logger_kwargs"])
         self.logger.save_config(self.configs)
 
-        # Set seed
+        # set seed
         seed_everything(self.configs["seed"])
 
-        # setup actor-critic module
+        # setup policy module
         self.policy = ConstraintActorCritic(
             policy_config=self.configs["policy"],
             observation_space=self.env.observation_space,
@@ -138,7 +56,7 @@ class PG(PolicyGradient):
             weight_initialization=configs["weight_initialization"],
         )
 
-        # Set up experience buffer
+        # set up buffer
         self.buf = Buffer(
             policy=self.policy,
             obs_dim=self.env.observation_space.shape,
@@ -155,19 +73,19 @@ class PG(PolicyGradient):
             use_reward_penalty=configs["use_reward_penalty"],
         )
 
-        # Set up optimizers for policy and value function
-        self.pi_optimizer = core.get_optimizer(
+        # set up optimizers for policy module
+        self.pi_optimizer = get_optimizer(
             configs["optimizer"], module=self.policy.actor, lr=configs["pi_lr"]
         )
-        self.vf_optimizer = core.get_optimizer(
+        self.vf_optimizer = get_optimizer(
             "Adam", module=self.policy.critic, lr=configs["vf_lr"]
         )
         if configs["use_cost_value_function"]:
-            self.cf_optimizer = core.get_optimizer(
+            self.cf_optimizer = get_optimizer(
                 "Adam", module=self.policy.cost_critic, lr=configs["vf_lr"]
             )
 
-        # Set up scheduler for policy learning rate decay
+        # set up scheduler for policy learning rate decay
         self.scheduler = self._init_learning_rate_scheduler()
 
         # Set up model saving
@@ -185,8 +103,6 @@ class PG(PolicyGradient):
     def _init_learning_rate_scheduler(self):
         scheduler = None
         if self.configs["use_linear_lr_decay"]:
-            import torch.optim
-
             # Linear anneal
             def lm(epoch):
                 return 1 - epoch / self.epochs
@@ -195,12 +111,6 @@ class PG(PolicyGradient):
                 optimizer=self.pi_optimizer, lr_lambda=lm
             )
         return scheduler
-
-    def _init_checks(self):
-        """Check feasible."""
-
-        # ensure environment is consistent with gymnasium
-        assert isinstance(self.env, gymnasium.Env), "Env is not the expected type."
 
     def algorithm_specific_logs(self):
         """Use this method to collect log information.
@@ -392,27 +302,15 @@ class PG(PolicyGradient):
                 ep_costs += cost
             ep_len += 1
 
-            # Save and log
-            # Notes:
-            #   - raw observations are stored to buffer (later transformed)
-            #   - reward scaling is performed in buf
-            self.buf.store(
-                obs=obs,
-                act=action,
-                rew=reward,
-                val=value,
-                logp=logp,
-                cost=cost,
-                cost_val=cost_value,
-            )
+            # save to buffer
+            self.buf.store(obs=obs, act=action, rew=reward, val=value, logp=logp, cost=cost, cost_val=cost_value)
 
-            # Store values for statistic purpose
+            # store values for statistic purpose
             if self.configs["use_cost_value_function"]:
                 self.logger.store(**{"Values/V": value, "Values/C": cost_value})
             else:
                 self.logger.store(**{"Values/V": value})
 
-            # Update observation
             obs = next_obs
 
             timeout = ep_len == self.configs["max_ep_len"]
@@ -427,7 +325,7 @@ class PG(PolicyGradient):
                 else:
                     value, cost_value = 0.0, 0.0
 
-                # Automatically compute GAE in buffer
+                # compute GAE in buffer
                 self.buf.finish_path(
                     value, cost_value, penalty_param=float(penalty_param)
                 )
@@ -438,18 +336,6 @@ class PG(PolicyGradient):
                 obs, info = self.env.reset()
                 ep_ret, ep_costs, ep_len = 0.0, 0.0, 0
 
-    # def update_running_statistics(self, data):
-    #     """
-    #     Update running statistics, e.g. observation standardization,
-    #     or reward scaling. If MPI is activated: sync across all processes.
-    #     """
-    #     if self.configs['use_standardized_obs']:
-    #         self.policy.obs_oms.update(data['obs'])
-
-    #     # Apply Implement Reward scaling
-    #     if self.configs['use_reward_scaling']:
-    #         self.policy.ret_oms.update(data['discounted_ret'])
-
     def update(self):
         """
         Update actor, critic, running statistics
@@ -457,18 +343,10 @@ class PG(PolicyGradient):
         raw_data = self.buf.get()
         # Pre-process data: standardize observations, advantage estimation, etc.
         data = self.pre_process_data(raw_data)
-
-        # Update critic using epoch data
         self.update_value_net(data=data)
-        # Update cost critic using epoch data
         if self.configs["use_cost_value_function"]:
             self.update_cost_net(data=data)
-        # Update actor using epoch data
         self.update_policy_net(data=data)
-
-        # Update running statistics, e.g. observation standardization
-        # Note: observations from are raw outputs from environment
-        # self.update_running_statistics(raw_data)
 
     def update_policy_net(self, data) -> None:
         # Get prob. distribution before updates: used to measure KL distance
@@ -548,18 +426,8 @@ class PG(PolicyGradient):
         )
 
     def update_cost_net(self, data: dict) -> None:
-        """Some child classes require additional updates,
-        e.g. Lagrangian-PPO needs Lagrange multiplier parameter.
-        """
-        # Ensure we have some key components
-        assert self.configs["use_cost_value_function"]
-        assert hasattr(self, "cf_optimizer")
-        assert "target_c" in data, f"provided keys: {data.keys()}"
-
-        if self.configs["use_cost_value_function"]:
-            self.loss_c_before = self.compute_loss_c(
-                data["obs"], data["target_c"]
-            ).item()
+        """Update cost value function"""
+        self.loss_c_before = self.compute_loss_c(data["obs"], data["target_c"]).item()
 
         # Divide whole local epoch data into mini_batches which is mbs size
         mbs = self.configs["steps_per_epoch"] // self.configs["num_mini_batches"]
