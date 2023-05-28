@@ -11,8 +11,9 @@
 
 # TODO
 
-- [] Clear the parameter with models
-
+- [ ] Clear the parameter with models
+- [ ] Clean PolicyGradient Code
+- [ ] Delete Adam, Linear Decay
 ## Update
 
 - **2023.05.03**: The code base was migrated from the PKU-MARL organization to the OmniSafeAI organization.
@@ -40,7 +41,6 @@
   - [Selected Tasks](#selected-tasks)
 - [What's More](#whats-more)
 - [Machine Configuration](#machine-configuration)
-- [Maintenance](#maintenance)
 - [Ethical and Responsible Use](#ethical-and-responsible-use)
 - [PKU-MARL Team](#pku-marl-team)
 
@@ -167,16 +167,11 @@ And the safe region are :
 
 We test all algorithms and experiments on **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**.
 
-## Maintenance
-
-This repo is under long-term maintenance of PKU-MARL team. We will keep adding new algorithms and supporting new environments as they come out. Please watch us and stay tuned!
-
 ## Ethical and Responsible Use
 
 SafePO aims to benefit safe RL community research, and is released under the [Apache-2.0 license](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/LICENSE). Illegal usage or any violation of the license is not allowed.
 
 ## PKU-MARL Team
 
-The Baseline is a project contributed by OmniSafeAI team at Peking University, please contact yaodong.yang@pku.edu.cn if you are interested to collaborate.
-We also thank the list of contributors of the following open source repositories:
-[Spinning Up](https://spinningup.openai.com/en/latest/), [Bullet-Safety-Gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs), [SvenG](https://github.com/SvenGronauer/RL-Safety-Algorithms), [Safety-Gym](https://github.com/openai/safety-gym).
+The Baseline is a project contributed by PKU-Alignment at Peking University. We also thank the list of contributors of the following open source repositories:
+[Spinning Up](https://spinningup.openai.com/en/latest/), [Bullet-Safety-Gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs), [Safety-Gym](https://github.com/openai/safety-gym).
