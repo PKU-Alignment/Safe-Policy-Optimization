@@ -14,8 +14,6 @@
 # ==============================================================================
 import numpy as np
 import torch
-
-import safepo.common.mpi_tools as mpi_tools
 from safepo.common.core import combined_shape, discount_cumsum
 from safepo.common.vtrace import calculate_v_trace
 

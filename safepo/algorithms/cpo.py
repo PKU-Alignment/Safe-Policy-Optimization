@@ -15,7 +15,6 @@
 import numpy as np
 import torch
 
-import safepo.common.mpi_tools as mpi_tools
 from safepo.algorithms.trpo import TRPO
 from safepo.common.utils import (
     conjugate_gradients,

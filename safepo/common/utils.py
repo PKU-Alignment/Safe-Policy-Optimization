@@ -21,16 +21,18 @@ import yaml
 
 
 def get_defaults_kwargs_yaml(algo, env_id):
-    path = os.path.abspath(__file__).split("/")[:-2]
-    cfg_path = os.path.join("/", *path, "configs", "{}.yaml".format(algo))
-    with open(cfg_path, "r") as f:
+    """To get default kwargs from yaml file."""
+    current_dir = os.path.dirname(__file__)
+    project_dir = os.path.abspath(os.path.join(current_dir, '..'))
+    cfg_path = f'{project_dir}/configs/{algo}.yaml'
+
+    with open(cfg_path, 'r', encoding='utf-8') as f:
         try:
             kwargs = yaml.load(f, Loader=yaml.FullLoader)
         except yaml.YAMLError as exc:
-            assert False, "{}.yaml error: {}".format(algo, exc)
+            assert False, f'{algo}.yaml error: {exc}'
     kwargs_name = env_id if env_id in kwargs.keys() else "defaults"
     return kwargs[kwargs_name]
-
 
 def save_eval_kwargs(log_dir, eval_kwargs):
     """To save eval kwargs."""

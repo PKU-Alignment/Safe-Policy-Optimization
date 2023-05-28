@@ -15,9 +15,6 @@
 import numpy as np
 import torch
 
-import safepo.common.mpi_tools as mpi_tools
-
-
 class OnlineMeanStd(torch.nn.Module):
     """
     Track mean and standard deviation of inputs with incremental formula.

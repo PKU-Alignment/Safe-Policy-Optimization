@@ -17,7 +17,6 @@ from turtle import pen
 import numpy as np
 import torch
 
-import safepo.common.mpi_tools as mpi_tools
 from safepo.algorithms.lagrangian_base import Lagrangian
 from safepo.algorithms.policy_gradient import PG
 

@@ -31,7 +31,7 @@ if __name__ == "__main__":
         "--env-id",
         type=str,
         required=True,
-        help="The environment name of Safety_gym, Bullet_Safety_Gym",
+        help="The environment name.",
     )
     parser.add_argument(
         "--seed", default=0, type=int, help="Define the seed of experiments"
