@@ -15,7 +15,7 @@
 import torch
 import torch.nn.functional as F
 
-from safepo.algos.policy_gradient import PG
+from safepo.algorithms.policy_gradient import PG
 
 
 class IPO(PG):

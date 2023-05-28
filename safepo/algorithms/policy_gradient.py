@@ -23,7 +23,7 @@ import safety_gymnasium
 import torch
 
 import safepo.common.mpi_tools as mpi_tools
-from safepo.algos.base import PolicyGradient
+from safepo.algorithms.base import PolicyGradient
 from safepo.common import core
 from safepo.common.buffer import Buffer
 from safepo.common.logger import EpochLogger

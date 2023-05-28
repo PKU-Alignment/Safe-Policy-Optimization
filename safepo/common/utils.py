@@ -19,12 +19,9 @@ import numpy as np
 import torch
 import yaml
 
-import safepo.common.mpi_tools as mpi_tools
-
-
 def get_defaults_kwargs_yaml(algo, env_id):
     path = os.path.abspath(__file__).split('/')[:-2]
-    cfg_path = os.path.join('/', *path,'cfgs',"{}.yaml".format(algo))
+    cfg_path = os.path.join('/', *path,'configs',"{}.yaml".format(algo))
     with open(cfg_path, "r") as f:
         try:
             kwargs = yaml.load(f, Loader=yaml.FullLoader)
@@ -34,15 +31,14 @@ def get_defaults_kwargs_yaml(algo, env_id):
     return kwargs[kwargs_name]
 
 def save_eval_kwargs(log_dir, eval_kwargs):
-    """
-        To save eval kwargs.
-    """
+    """To save eval kwargs."""
     os.makedirs(log_dir, exist_ok=True)
     path = os.path.join(log_dir, 'eval_kwargs.yaml')
     with open(path, "w") as f:
         yaml.dump(eval_kwargs, f)
 
 def get_flat_params_from(model):
+    """Get all model parameters as a single vector."""
     flat_params = []
     for name, param in model.named_parameters():
         if param.requires_grad:
@@ -54,6 +50,7 @@ def get_flat_params_from(model):
     return torch.cat(flat_params)
 
 def get_flat_gradients_from(model):
+    """Get all model gradients as a single vector."""
     grads = []
     for name, param in model.named_parameters():
         if param.requires_grad and param.grad is not None:

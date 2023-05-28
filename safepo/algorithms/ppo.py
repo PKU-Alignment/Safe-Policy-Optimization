@@ -14,7 +14,7 @@
 # ==============================================================================
 import torch
 
-from safepo.algos.policy_gradient import PG
+from safepo.algorithms.policy_gradient import PG
 
 
 class PPO(PG):

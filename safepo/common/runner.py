@@ -17,7 +17,7 @@ from copy import deepcopy
 
 import torch
 
-from safepo.algos import REGISTRY
+from safepo.algorithms import REGISTRY
 from safepo.common import multi_processing_utils
 from safepo.common.experiment_analysis import EnvironmentEvaluator
 from safepo.common.logger import setup_logger_kwargs

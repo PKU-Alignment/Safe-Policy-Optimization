@@ -18,8 +18,8 @@ import numpy as np
 import torch
 
 import safepo.common.mpi_tools as mpi_tools
-from safepo.algos.lagrangian_base import Lagrangian
-from safepo.algos.policy_gradient import PG
+from safepo.algorithms.lagrangian_base import Lagrangian
+from safepo.algorithms.policy_gradient import PG
 
 
 class FOCOPS(PG,Lagrangian):

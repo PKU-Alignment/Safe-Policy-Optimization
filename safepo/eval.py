@@ -22,7 +22,7 @@ import torch
 import yaml
 from gym.utils.save_video import save_video
 
-from safepo.algos import REGISTRY
+from safepo.algorithms import REGISTRY
 # from gym.wrappers import Monitor
 from safepo.common.logger import setup_logger_kwargs
 

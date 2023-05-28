@@ -16,7 +16,7 @@ import numpy as np
 import torch
 
 import safepo.common.mpi_tools as mpi_tools
-from safepo.algos.trpo import TRPO
+from safepo.algorithms.trpo import TRPO
 from safepo.common.utils import (conjugate_gradients, get_flat_gradients_from,
                                  get_flat_params_from,
                                  set_param_values_to_model)

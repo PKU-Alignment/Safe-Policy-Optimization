@@ -16,8 +16,8 @@ from collections import deque, namedtuple
 
 import torch
 
-from safepo.algos.lagrangian_base import Lagrangian
-from safepo.algos.policy_gradient import PG
+from safepo.algorithms.lagrangian_base import Lagrangian
+from safepo.algorithms.policy_gradient import PG
 
 
 class CPPOPid(PG):
