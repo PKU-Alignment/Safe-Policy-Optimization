@@ -12,37 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+import numpy as np
+import scipy.signal
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import scipy.signal
 
 registered_actors = dict()  # global dict that holds pointers to functions
 
 
 def get_optimizer(opt: str, module: torch.nn.Module, lr: float):
     """
-        Returns an initialized optimizer from PyTorch.
+    Returns an initialized optimizer from PyTorch.
     """
-    assert hasattr(optim, opt), f'Optimizer={opt} not found in torch.'
+    assert hasattr(optim, opt), f"Optimizer={opt} not found in torch."
     optimizer = getattr(optim, opt)
 
     return optimizer(module.parameters(), lr=lr)
 
 
-def initialize_layer(
-        init_function: str,
-        layer: torch.nn.Module
-):
-    if init_function == 'kaiming_uniform':  # this the default!
+def initialize_layer(init_function: str, layer: torch.nn.Module):
+    if init_function == "kaiming_uniform":  # this the default!
         nn.init.kaiming_uniform_(layer.weight, a=np.sqrt(5))
-    elif init_function == 'xavier_normal':
+    elif init_function == "xavier_normal":
         nn.init.xavier_normal_(layer.weight)
     # glorot is also known as xavier uniform
-    elif init_function == 'glorot' or init_function == 'xavier_uniform':
+    elif init_function == "glorot" or init_function == "xavier_uniform":
         nn.init.xavier_uniform_(layer.weight)
-    elif init_function == 'orthogonal':  # matches values from baselines repo.
+    elif init_function == "orthogonal":  # matches values from baselines repo.
         nn.init.orthogonal_(layer.weight, gain=np.sqrt(2))
     else:
         raise NotImplementedError
@@ -50,18 +47,20 @@ def initialize_layer(
 
 def register_actor(actor_name):
     """
-        register actor into global dict
+    register actor into global dict
     """
+
     def wrapper(func):
         registered_actors[actor_name] = func
         return func
+
     return wrapper
 
 
 def get_registered_actor_fn(actor_type: str, distribution_type: str):
-    assert distribution_type == 'categorical' or distribution_type == 'gaussian'
-    actor_fn = actor_type + '_' + distribution_type
-    msg = f'Did not find: {actor_fn} in registered actors.'
+    assert distribution_type == "categorical" or distribution_type == "gaussian"
+    actor_fn = actor_type + "_" + distribution_type
+    msg = f"Did not find: {actor_fn} in registered actors."
     assert actor_fn in registered_actors, msg
     return registered_actors[actor_fn]
 
@@ -70,7 +69,6 @@ def combined_shape(length: int, shape=None):
     if shape is None:
         return (length,)
     return (length, shape) if np.isscalar(shape) else (length, *shape)
-
 
 
 def count_vars(module):

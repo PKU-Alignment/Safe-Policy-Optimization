@@ -5,16 +5,19 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-from ast import arg
-import numpy as np
 import random
+from ast import arg
 
-from utils.config import set_np_formatting, set_seed, get_args, parse_sim_params, load_cfg
-from utils.parse_task import parse_task
-from utils.process_sarl import *
+import numpy as np
 from algorithms import REGISTRY
 from algorithms.module import Actor, Critic
+from utils.config import (get_args, load_cfg, parse_sim_params,
+                          set_np_formatting, set_seed)
 from utils.Logger import EpochLogger
+from utils.parse_task import parse_task
+from utils.process_sarl import *
+
+
 def train(logdir):
 
     print("Algorithm: ", args.algo)

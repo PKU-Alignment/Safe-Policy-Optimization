@@ -1,10 +1,14 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from utils.util import get_gard_norm, huber_loss, mse_loss
-from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.utils.popart import PopArt
-from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.actor_critic import Actor, Critic
 from algorithms.utils.util import check
+from utils.util import get_gard_norm, huber_loss, mse_loss
+
+from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.actor_critic import (
+    Actor, Critic)
+from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.utils.popart import \
+    PopArt
+
 
 class HAPPO():
     """

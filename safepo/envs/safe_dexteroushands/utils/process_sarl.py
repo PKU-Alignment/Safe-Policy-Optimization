@@ -525,7 +525,7 @@ def process_ddpg(args, env, cfg_train, logdir):
 
 
 def process_trpo(args, env, cfg_train, logdir):
-    from algorithms.rl.trpo import TRPO, Actor,Critic
+    from algorithms.rl.trpo import TRPO, Actor, Critic
     learn_cfg = cfg_train["learn"]
     is_testing = learn_cfg["test"]
     chkpt = learn_cfg["resume"]

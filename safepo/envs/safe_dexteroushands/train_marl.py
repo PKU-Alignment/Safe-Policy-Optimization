@@ -1,7 +1,8 @@
-from marl_utils.config import set_np_formatting, set_seed, get_args, parse_sim_params, load_cfg
+from marl_utils.config import (get_args, load_cfg, parse_sim_params,
+                               set_np_formatting, set_seed)
 from marl_utils.parse_task import parse_task
-from marl_utils.process_sarl import *
 from marl_utils.process_marl import process_MultiAgentRL
+from marl_utils.process_sarl import *
 
 
 def train():

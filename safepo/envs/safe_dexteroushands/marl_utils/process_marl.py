@@ -14,14 +14,16 @@ def process_MultiAgentRL(args,env, config, model_dir=""):
 
     if args.algo in ["mappo", "happo", "ippo"]:
         # on policy marl
-        from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.runner import Runner
+        from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.runner import \
+            Runner
         marl = Runner(vec_env=env,
                     config=config,
                     model_dir=model_dir
                     )
     if args.algo in ["macpo", "mappolag"]:
         # safe rl
-        from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.runner_macpo import Runner
+        from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.runner_macpo import \
+            Runner
         marl = Runner(vec_env=env,
                     config=config,
                     model_dir=model_dir

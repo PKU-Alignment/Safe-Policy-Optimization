@@ -5,17 +5,18 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import sys
-import os
 import operator
-from copy import deepcopy
+import os
 import random
-
-from isaacgym import gymapi
-from isaacgym.gymutil import get_property_setter_map, get_property_getter_map, get_default_setter_args, apply_random_samples, check_buckets, generate_random_samples
+import sys
+from copy import deepcopy
 
 import numpy as np
 import torch
+from isaacgym import gymapi
+from isaacgym.gymutil import (apply_random_samples, check_buckets,
+                              generate_random_samples, get_default_setter_args,
+                              get_property_getter_map, get_property_setter_map)
 
 
 # Base class for RL tasks

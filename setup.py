@@ -23,6 +23,7 @@ setup(
     install_requires=[
         "psutil",
         "joblib",
+        "scipy",
         "tensorboard >= 2.8.0",
         "pyyaml >= 6.0",
         "matplotlib >= 3.7.1",

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-import sys
 import os
+import sys
+
 curPath = os.path.abspath(__file__)
 
 if len(curPath.split('/'))==1:
@@ -9,15 +10,16 @@ else:
     rootPath = '/'.join(curPath.split('/')[:-3])
 sys.path.append(os.path.split(rootPath)[0])
 
-import wandb
 import socket
-import setproctitle
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import setproctitle
 import torch
+import wandb
 from macpo.config import get_config
+from macpo.envs.env_wrappers import ShareDummyVecEnv, ShareSubprocVecEnv
 from macpo.envs.safety_ma_mujoco.safety_multiagent_mujoco import MujocoMulti
-from macpo.envs.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 
 """Train script for SMAC."""
 
@@ -176,9 +178,11 @@ def main(args):
     else:
         #in origin code not implement this method
         if all_args.algorithm_name == "macpo":
-            from macpo.runner.separated.mujoco_runner_macpo import MujocoRunner as Runner
+            from macpo.runner.separated.mujoco_runner_macpo import \
+                MujocoRunner as Runner
         else:
-            from macpo.runner.separated.mujoco_runner import MujocoRunner as Runner
+            from macpo.runner.separated.mujoco_runner import \
+                MujocoRunner as Runner
 
     runner = Runner(config)
     runner.run()

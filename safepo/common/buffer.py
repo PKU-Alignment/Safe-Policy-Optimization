@@ -12,36 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-import torch
 import numpy as np
-from safepo.common.core import combined_shape,discount_cumsum
+import torch
+from safepo.common.core import combined_shape, discount_cumsum
 from safepo.common.vtrace import calculate_v_trace
-import safepo.common.mpi_tools as mpi_tools
+
 
 class Buffer:
-    def __init__(self,
-                 actor_critic: torch.nn.Module,
-                 obs_dim: tuple,
-                 act_dim: tuple,
-                 size: int,
-                 gamma: float,
-                 lam: float,
-                 adv_estimation_method: str,
-                 use_scaled_rewards: bool,
-                 standardize_env_obs: bool,
-                 use_standardized_reward: bool,
-                 use_standardized_cost: bool,
-                 lam_c: float = 0.95,
-                 use_reward_penalty: bool = False
-                 ):
+    def __init__(
+        self,
+        policy: torch.nn.Module,
+        obs_dim: tuple,
+        act_dim: tuple,
+        size: int,
+        gamma: float,
+        lam: float,
+        advantage_type: str,
+        use_scaled_rewards: bool,
+        standardize_env_obs: bool,
+        use_standardized_reward: bool,
+        use_standardized_cost: bool,
+        lam_c: float = 0.95,
+        use_reward_penalty: bool = False,
+    ):
         """
-            A buffer for storing trajectories experienced by an agent interacting
-            with the environment, and using Generalized Advantage Estimation (GAE)
-            for calculating the advantages of state-action pairs.
+        A buffer for storing trajectories experienced by an agent interacting
+        with the environment, and using Generalized Advantage Estimation (GAE)
+        for calculating the advantages of state-action pairs.
 
-            Important Note: Buffer collects only raw data received from environment.
+        Important Note: Buffer collects only raw data received from environment.
         """
-        self.actor_critic = actor_critic
+        self.policy = policy
         self.size = size
         self.obs_buf = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
         self.act_buf = np.zeros(combined_shape(size, act_dim), dtype=np.float32)
@@ -54,7 +55,7 @@ class Buffer:
         self.gamma = gamma
         self.lam = lam
         self.lam_c = lam_c
-        self.adv_estimation_method = adv_estimation_method
+        self.advantage_type = advantage_type
         self.use_scaled_rewards = use_scaled_rewards
         self.standardize_env_obs = standardize_env_obs
         self.use_standardized_reward = use_standardized_reward
@@ -70,27 +71,29 @@ class Buffer:
         self.target_cost_val_buf = np.zeros(size, dtype=np.float32)
         self.use_reward_penalty = use_reward_penalty
 
-        assert adv_estimation_method in ['gae', 'vtrace', 'plain']
+        assert advantage_type in ["gae", "vtrace", "plain"]
 
     def calculate_adv_and_value_targets(self, vals, rews, lam=None):
-        """ Compute the estimated advantage"""
+        """Compute the estimated advantage"""
 
-        if self.adv_estimation_method == 'gae':
+        if self.advantage_type == "gae":
             # GAE formula: A_t = \sum_{k=0}^{n-1} (lam*gamma)^k delta_{t+k}
             lam = self.lam if lam is None else lam
             deltas = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
             adv = discount_cumsum(deltas, self.gamma * lam)
             value_net_targets = adv + vals[:-1]
 
-        elif self.adv_estimation_method == 'vtrace':
+        elif self.advantage_type == "vtrace":
             #  v_s = V(x_s) + \sum^{T-1}_{t=s} \gamma^{t-s}
             #                * \prod_{i=s}^{t-1} c_i
             #                 * \rho_t (r_t + \gamma V(x_{t+1}) - V(x_t))
             path_slice = slice(self.path_start_idx, self.ptr)
 
-            obs = self.actor_critic.obs_oms(self.obs_buf[path_slice],
-                                            clip=False) \
-                if self.standardize_env_obs else self.obs_buf[path_slice]
+            obs = (
+                self.policy.obs_oms(self.obs_buf[path_slice], clip=False)
+                if self.standardize_env_obs
+                else self.obs_buf[path_slice]
+            )
 
             obs = torch.as_tensor(obs, dtype=torch.float32)
 
@@ -98,8 +101,8 @@ class Buffer:
             act = torch.as_tensor(act, dtype=torch.float32)
             with torch.no_grad():
                 # get current log_p of actions
-                dist = self.actor_critic.pi.dist(obs)
-                log_p = self.actor_critic.pi.log_prob_from_dist(dist, act)
+                dist = self.policy.pi.dist(obs)
+                log_p = self.policy.pi.log_prob_from_dist(dist, act)
             value_net_targets, adv, _ = calculate_v_trace(
                 policy_action_probs=np.exp(log_p.numpy()),
                 values=vals,
@@ -107,10 +110,10 @@ class Buffer:
                 behavior_action_probs=np.exp(self.logp_buf[path_slice]),
                 gamma=self.gamma,
                 rho_bar=1.0,  # default is 1.0
-                c_bar=1.0  # default is 1.0
+                c_bar=1.0,  # default is 1.0
             )
 
-        elif self.adv_estimation_method == 'plain':
+        elif self.advantage_type == "plain":
             # A(x, u) = Q(x, u) - V(x) = r(x, u) + gamma V(x+1) - V(x)
             adv = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
 
@@ -123,14 +126,14 @@ class Buffer:
 
         return adv, value_net_targets
 
-    def store(self, obs, act, rew, val, logp, cost=0., cost_val=0.):
+    def store(self, obs, act, rew, val, logp, cost=0.0, cost_val=0.0):
         """
         Append one timestep of agent-environment interaction to the buffer.
 
         Important Note: Store only raw data received from environment!!!
         Note: perform reward scaling if enabled
         """
-        assert self.ptr < self.max_size, f'No empty space in buffer'
+        assert self.ptr < self.max_size, f"No empty space in buffer"
 
         self.obs_buf[self.ptr] = obs
         self.act_buf[self.ptr] = act
@@ -176,16 +179,18 @@ class Buffer:
         #     # discounted_ret = discount_cumsum(rews, self.gamma)[:-1]
         #     # for i, ret in enumerate(discounted_ret):
         #     # update running return statistics
-        #     # self.actor_critic.ret_oms.update(discounted_ret)
+        #     # self.policy.ret_oms.update(discounted_ret)
         #     # # now scale...
-        #     rews = self.actor_critic.ret_oms(rews, subtract_mean=False, clip=True)
+        #     rews = self.policy.ret_oms(rews, subtract_mean=False, clip=True)
 
         adv, v_targets = self.calculate_adv_and_value_targets(vals, rews)
         self.adv_buf[path_slice] = adv
         self.target_val_buf[path_slice] = v_targets
 
         # calculate costs
-        c_adv, c_targets = self.calculate_adv_and_value_targets(cost_vs, costs,lam=self.lam_c)
+        c_adv, c_targets = self.calculate_adv_and_value_targets(
+            cost_vs, costs, lam=self.lam_c
+        )
         self.cost_adv_buf[path_slice] = c_adv
         self.target_cost_val_buf[path_slice] = c_targets
 
@@ -215,17 +220,20 @@ class Buffer:
             # print("ook")
             # also for cost advantages; only re-center but no rescale!
             cadv_mean, cadv_std = mpi_tools.mpi_statistics_scalar(self.cost_adv_buf)
-            self.cost_adv_buf = (self.cost_adv_buf - cadv_mean)/(cadv_std + 1.0e-8)
+            self.cost_adv_buf = (self.cost_adv_buf - cadv_mean) / (cadv_std + 1.0e-8)
         # TODO
-        # self.obs_buf = self.actor_critic.obs_oms(self.obs_buf, clip=False) \
+        # self.obs_buf = self.policy.obs_oms(self.obs_buf, clip=False) \
         #     if self.standardize_env_obs else self.obs_buf
 
         data = dict(
-            obs=self.obs_buf, act=self.act_buf, target_v=self.target_val_buf,
-            adv=self.adv_buf, log_p=self.logp_buf,
+            obs=self.obs_buf,
+            act=self.act_buf,
+            target_v=self.target_val_buf,
+            adv=self.adv_buf,
+            log_p=self.logp_buf,
             discounted_ret=self.discounted_ret_buf,
-            cost_adv=self.cost_adv_buf, target_c=self.target_cost_val_buf,
+            cost_adv=self.cost_adv_buf,
+            target_c=self.target_cost_val_buf,
         )
 
-        return {k: torch.as_tensor(v, dtype=torch.float32) for k, v in
-                data.items()}
+        return {k: torch.as_tensor(v, dtype=torch.float32) for k, v in data.items()}

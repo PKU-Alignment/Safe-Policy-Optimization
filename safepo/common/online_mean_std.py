@@ -14,8 +14,6 @@
 # ==============================================================================
 import numpy as np
 import torch
-import safepo.common.mpi_tools as mpi_tools
-
 
 class OnlineMeanStd(torch.nn.Module):
     """
@@ -49,8 +47,9 @@ class OnlineMeanStd(torch.nn.Module):
         """Make input average free and scale to standard deviation."""
         # sanity checks
         if len(x.shape) >= 2:
-            assert x.shape[-1] == self.mean.shape[-1], \
-                f'got shape={x.shape} but expected: {self.mean.shape}'
+            assert (
+                x.shape[-1] == self.mean.shape[-1]
+            ), f"got shape={x.shape} but expected: {self.mean.shape}"
 
         is_numpy = isinstance(x, np.ndarray)
         x = self._convert_to_torch(x)
@@ -64,22 +63,22 @@ class OnlineMeanStd(torch.nn.Module):
         return x_new
 
     def update(self, x) -> None:
-        """ Update internals incrementally.
-            Note: works for both vector and matrix inputs.
+        """Update internals incrementally.
+        Note: works for both vector and matrix inputs.
 
-            MPI implementation according to Chan et al.[10]; see:
-            https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
+        MPI implementation according to Chan et al.[10]; see:
+        https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
         """
         x = self._convert_to_torch(x)
 
         # ==== Input checks
-        msg = f'Expected dim in [1, 2], but got dim={len(x.shape)}.'
+        msg = f"Expected dim in [1, 2], but got dim={len(x.shape)}."
         assert len(x.shape) == 2 or len(x.shape) == 1, msg
         if self.shape[0] > 1:  # expect matrix inputs
-            msg = f'Expected obs_dim={self.shape[0]} but got: {x.shape[1]}'
+            msg = f"Expected obs_dim={self.shape[0]} but got: {x.shape[1]}"
             assert len(x.shape) == 2 and x.shape[1] == self.shape[0], msg
         if self.shape[0] == 1:
-            assert len(x.shape) == 1, f'Expected dim=1 but got: {x.shape}'
+            assert len(x.shape) == 1, f"Expected dim=1 but got: {x.shape}"
             # reshape is necessary since mean operator reduces vector dim by one
             x = x.view((-1, 1))
 

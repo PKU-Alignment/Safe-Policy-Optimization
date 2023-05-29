@@ -6,8 +6,10 @@
 """
 
 import torch
-from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.actor_critic import Actor, Critic
 from utils.util import update_linear_schedule
+
+from safepo.envs.safe_dexteroushands.marl_algorithms.algorithms.actor_critic import (
+    Actor, Critic)
 
 
 class MAPPO_Policy:
