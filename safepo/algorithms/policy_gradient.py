@@ -12,451 +12,494 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+
+
+from __future__ import annotations
+
+import argparse
+import random
 import time
-from copy import deepcopy
 
-from tqdm import tqdm
-
+from collections import deque
+from distutils.util import strtobool
+from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeNormalizeObservation, SafeUnsqueeze, SafeRescaleAction
 import numpy as np
 import safety_gymnasium
 import torch
 import torch.optim
+from rich.progress import track
 
-from safepo.algorithms.base import PolicyGradient
-from safepo.common.core import get_optimizer
-from safepo.common.buffer import Buffer
+import torch.nn as nn
+from torch.distributions import Normal
+from torch.nn.utils.clip_grad import clip_grad_norm_
 from safepo.common.logger import EpochLogger
-from safepo.common.utils import seed_everything
-from safepo.models.constraint_actor_critic import ConstraintActorCritic
+from torch.utils.data import DataLoader, TensorDataset
+from torch.optim.lr_scheduler import ConstantLR, LinearLR
 
 
-class PG(PolicyGradient):
-    def __init__(self, configs):
-        """Policy Gradient."""
-        # create Environment
-        self.env_id = configs["env_id"]
-        self.configs = configs
-        self.env = safety_gymnasium.make(self.env_id)
+def parse_args():
+    # training parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=0,
+        help="seed of the experiment")
+    parser.add_argument("--device", type=str, default="cpu",
+        help="if toggled, cuda will be enabled by default")
+    parser.add_argument("--torch-threads", type=int, default=1,
+        help="number of threads for torch")
+    parser.add_argument("--num-envs", type=int, default=1,
+        help="the number of parallel game environments")
+    parser.add_argument("--total-steps", type=int, default=1024000,
+        help="total timesteps of the experiments")
+    parser.add_argument("--env-id", type=str, default="SafetyPointGoal1-v0",
+        help="the id of the environment")
+    # General algorithm parameters
+    parser.add_argument("--steps_per_epoch", type=int, default=2048,
+        help="the number of steps to run in each environment per policy rollout")
+    parser.add_argument("--update-iters", type=int, default=40,
+        help="the max iteration to update the policy")
+    parser.add_argument("--batch-size", type=int, default=64,
+        help="the number of mini-batches")
+    parser.add_argument("--entropy_coef", type=float, default=0.0,
+        help="coefficient of the entropy")
+    parser.add_argument("--target-kl", type=float, default=0.02,
+        help="the target KL divergence threshold")
+    parser.add_argument("--max-grad-norm", type=float, default=40.0,
+        help="the maximum norm for the gradient clipping")
+    parser.add_argument("--critic-norm-coef", type=float, default=0.001,
+        help="the critic norm coefficient")
+    parser.add_argument("--gamma", type=float, default=0.99,
+        help="the discount factor gamma")
+    parser.add_argument("--lam", type=float, default=0.95,
+        help="the lambda for the reward general advantage estimation")
+    parser.add_argument("--lam-c", type=float, default=0.95,
+        help="the lambda for the cost general advantage estimation")
+    parser.add_argument("--standardized_adv_r", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="toggles reward advantages standardization")
+    parser.add_argument("--standardized_adv_c", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="toggles cost advantages standardization")
+    parser.add_argument("--actor_lr", type=float, default=3e-4,
+        help="the learning rate of the actor network")
+    parser.add_argument("--critic_lr", type=float, default=3e-4,
+        help="the learning rate of the critic network")
+    parser.add_argument("--linear-lr-decay", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="toggles learning rate annealing for policy and value networks")
+    # logger parameters
+    parser.add_argument("--log-dir", type=str, default="../runs",
+        help="directory to save agent logs (default: ../runs)")
+    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False,
+        help="toggles tensorboard logging")
 
-        # set up logger
-        self.logger = EpochLogger(**self.configs["logger_kwargs"])
-        self.logger.save_config(self.configs)
+    args = parser.parse_args()
+    return args
 
-        # set seed
-        seed_everything(self.configs["seed"])
+def build_mlp_network(sizes):
+    layers = list()
+    for j in range(len(sizes) - 1):
+        act = nn.Tanh if j < len(sizes) - 2 else nn.Identity
+        affine_layer = nn.Linear(sizes[j], sizes[j + 1])
+        nn.init.kaiming_uniform_(affine_layer.weight, a=np.sqrt(5))
+        layers += [affine_layer, act()]
+    return nn.Sequential(*layers)
 
-        # setup policy module
-        self.policy = ConstraintActorCritic(
-            policy_config=self.configs["policy"],
-            observation_space=self.env.observation_space,
-            action_space=self.env.action_space,
-            use_standardized_obs=configs["use_standardized_obs"],
-            use_scaled_rewards=configs["use_reward_scaling"],
-            use_shared_weights=configs["use_shared_weights"],
-            weight_initialization=configs["weight_initialization"],
-        )
+class Actor(nn.Module):
+    """Actor network."""
+    def __init__(self, obs_dim: int, act_dim: int):
+        super().__init__()
+        self.mean = build_mlp_network([obs_dim, 64, 64, act_dim])
+        self.log_std = nn.Parameter(torch.zeros(act_dim), requires_grad=True)
 
-        # set up buffer
-        self.buf = Buffer(
-            policy=self.policy,
-            obs_dim=self.env.observation_space.shape,
-            act_dim=self.env.action_space.shape,
-            size=configs["steps_per_epoch"],
-            gamma=configs["gamma"],
-            lam=configs["lam"],
-            advantage_type=configs["advantage_type"],
-            use_scaled_rewards=configs["use_reward_scaling"],
-            standardize_env_obs=configs["use_standardized_obs"],
-            use_standardized_reward=configs["use_standardized_reward"],
-            use_standardized_cost=configs["use_standardized_cost"],
-            lam_c=configs["lam_c"],
-            use_reward_penalty=configs["use_reward_penalty"],
-        )
+    def forward(self, obs: torch.Tensor):
+        mean = self.mean(obs)
+        std = torch.exp(self.log_std)
+        return Normal(mean, std)
 
-        # set up optimizers for policy module
-        self.pi_optimizer = get_optimizer(
-            configs["optimizer"], module=self.policy.actor, lr=configs["pi_lr"]
-        )
-        self.vf_optimizer = get_optimizer(
-            "Adam", module=self.policy.critic, lr=configs["vf_lr"]
-        )
-        if configs["use_cost_value_function"]:
-            self.cf_optimizer = get_optimizer(
-                "Adam", module=self.policy.cost_critic, lr=configs["vf_lr"]
-            )
+class Critic(nn.Module):
+    """Critic network."""
+    def __init__(self, obs_dim):
+        super().__init__()
+        self.critic = build_mlp_network([obs_dim, 64, 64, 1])
 
-        # set up scheduler for policy learning rate decay
-        self.scheduler = self._init_learning_rate_scheduler()
+    def forward(self, obs):
+        return torch.squeeze(self.critic(obs), -1)
 
-        # Set up model saving
-        self.logger.setup_torch_saver(self.policy.actor)
-        self.logger.torch_save()
+class Policy(nn.Module):
+    """Actor critic policy."""
+    def __init__(self, obs_dim, act_dim):
+        super().__init__()
+        self.reward_critic = Critic(obs_dim)
+        self.cost_critic = Critic(obs_dim)
+        self.actor = Actor(obs_dim, act_dim)
 
-        # Setup statistics
-        self.start_time = time.time()
-        self.epoch_time = time.time()
-        self.loss_pi_before = 0.0
-        self.loss_v_before = 0.0
-        self.loss_c_before = 0.0
-        self.logger.log("Start with training.")
+    def get_value(self, obs):
+        return self.critic(obs)
 
-    def _init_learning_rate_scheduler(self):
-        scheduler = None
-        if self.configs["use_linear_lr_decay"]:
-            # Linear anneal
-            def lm(epoch):
-                return 1 - epoch / self.epochs
-
-            scheduler = torch.optim.lr_scheduler.LambdaLR(
-                optimizer=self.pi_optimizer, lr_lambda=lm
-            )
-        return scheduler
-
-    def algorithm_specific_logs(self):
-        """Use this method to collect log information.
-        e.g. log lagrangian for lagrangian-base , log q, r, s, c for cpo, etc
-        """
-        pass
-
-    def compute_loss_pi(self, data: dict):
-        """Computing pi/actor loss.
-
-        Returns:
-            torch.Tensor
-        """
-        # Policy loss
-        dist, _log_p = self.policy.actor(data["obs"], data["act"])
-        ratio = torch.exp(_log_p - data["log_p"])
-
-        # Compute loss via ratio and advantage
-        loss_pi = -(ratio * data["adv"]).mean()
-        loss_pi -= self.configs["entropy_coef"] * dist.entropy().mean()
-
-        # Useful extra info
-        approx_kl = (
-            (0.5 * (dist.mean - data["act"]) ** 2 / dist.stddev**2).mean().item()
-        )
-
-        # Compute policy's entropy
-        ent = dist.entropy().mean().item()
-
-        pi_info = dict(kl=approx_kl, ent=ent, ratio=ratio.mean().item())
-
-        return loss_pi, pi_info
-
-    def compute_loss_v(self, obs, ret):
-        """Computing value loss.
-
-        Returns:
-            torch.Tensor
-        """
-        return ((self.policy.critic(obs) - ret) ** 2).mean()
-
-    def compute_loss_c(self, obs, ret):
-        """Computing cost loss.
-
-        Returns:
-            torch.Tensor
-        """
-        return ((self.policy.cost_critic(obs) - ret) ** 2).mean()
-
-    def learn(self):
-        """
-        This is main function for algorithm update, divided into the following steps:
-            (1). self.rollout: collect interactive data from environment
-            (2). self.udpate: perform actor/critic updates
-            (3). log epoch/update information for visualization and terminal log print.
-
-        Returns:
-            model and environment
-        """
-        # Main loop: collect experience in env and update/log each epoch
-        for epoch in range(1, self.configs["epochs"] + 1):
-            self.epoch_time = time.time()
-
-            # Update internals of AC
-            if self.configs["use_exploration_noise_anneal"]:
-                self.policy.update(frac=epoch / self.configs["epochs"])
-            # collect data and store
-            self.roll_out()
-            # if self.algo == "focops":
-            #     ep_costs = self.logger.get_stats('EpCosts')[0]
-            #     self.update_lagrange_multiplier(ep_costs)
-
-            # Update: actor, critic, running statistics
-            self.update()
-
-            # Log and store information
-            self.log(epoch)
-
-            # save model
-            if epoch % 100 == 0:
-                self.logger.torch_save(itr=epoch)
-
-        # close opened files to avoid number of open files overflow
-        self.logger.close()
-        return self.policy, self.env
-
-    def log(self, epoch: int):
-        # Log info about epoch
-        total_env_steps = epoch * self.configs["steps_per_epoch"]
-        fps = self.configs["steps_per_epoch"] / (time.time() - self.epoch_time)
-
-        # Step the actor learning rate scheduler if provided
-        if self.scheduler and self.configs["use_linear_lr_decay"]:
-            current_lr = self.scheduler.get_last_lr()[0]
-            self.scheduler.step()
+    def step(self, obs, deterministic=False):
+        dist = self.actor(obs)
+        if deterministic:
+            action = dist.mean
         else:
-            current_lr = self.configs["pi_lr"]
+            action = dist.rsample()
+        log_prob = dist.log_prob(action).sum(axis=-1)
+        value_r = self.reward_critic(obs)
+        value_c = self.cost_critic(obs)
+        return action, log_prob, value_r, value_c
 
-        self.logger.log_tabular("Epoch", epoch + 1)
-        self.logger.log_tabular("EpRet", min_and_max=True, std=True)
-        self.logger.log_tabular("EpCosts", min_and_max=True, std=True)
-        self.logger.log_tabular("EpLen", min_and_max=True)
-        self.logger.log_tabular("Values/V", min_and_max=True)
-        self.logger.log_tabular("Values/Adv", min_and_max=True)
-        if self.configs["use_cost_value_function"]:
-            self.logger.log_tabular("Values/C", min_and_max=True)
-        self.logger.log_tabular("Loss/Pi", std=False)
-        self.logger.log_tabular("Loss/Value")
-        self.logger.log_tabular("Loss/DeltaPi")
-        self.logger.log_tabular("Loss/DeltaValue")
-        if self.configs["use_cost_value_function"]:
-            self.logger.log_tabular("Loss/Cost")
-            self.logger.log_tabular("Loss/DeltaCost")
-        self.logger.log_tabular("Entropy")
-        self.logger.log_tabular("KL")
-        self.logger.log_tabular("Misc/StopIter")
-        self.logger.log_tabular("Misc/Seed", self.configs["seed"])
-        self.logger.log_tabular("PolicyRatio")
-        self.logger.log_tabular("LR", current_lr)
-        if self.configs["use_reward_scaling"]:
-            reward_scale_mean = self.policy.ret_oms.mean.item()
-            reward_scale_stddev = self.policy.ret_oms.std.item()
-            self.logger.log_tabular("Misc/RewScaleMean", reward_scale_mean)
-            self.logger.log_tabular("Misc/RewScaleStddev", reward_scale_stddev)
-        if self.configs["use_exploration_noise_anneal"]:
-            noise_std = np.exp(self.policy.actor.log_std[0].item())
-            self.logger.log_tabular("Misc/ExplorationNoiseStd", noise_std)
-        # Some child classes may add information to logs
-        self.algorithm_specific_logs()
-        self.logger.log_tabular("TotalEnvSteps", total_env_steps)
-        self.logger.log_tabular("Time", int(time.time() - self.start_time))
-        self.logger.log_tabular("FPS", int(fps))
+def discount_cumsum(vector_x: torch.Tensor, discount: float) -> torch.Tensor:
+    length = vector_x.shape[0]
+    vector_x = vector_x.type(torch.float64)
+    cumsum = vector_x[-1]
+    for idx in reversed(range(length - 1)):
+        cumsum = vector_x[idx] + discount * cumsum
+        vector_x[idx] = cumsum
+    return vector_x
 
-        self.logger.dump_tabular()
+def calculate_adv_and_value_targets(
+    values: torch.Tensor,
+    rewards: torch.Tensor,
+    lam: float,
+    gamma: float,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    # GAE formula: A_t = \sum_{k=0}^{n-1} (lam*gamma)^k delta_{t+k}
+    deltas = rewards[:-1] + gamma * values[1:] - values[:-1]
+    adv = discount_cumsum(deltas, gamma * lam)
+    target_value = adv + values[:-1]
+    return adv, target_value
 
-    def pre_process_data(self, raw_data: dict):
-        """
-        Pre-process data, e.g. standardize observations, rescale rewards if
-            enabled by arguments.
+class VectorizedBuffer:
 
-        Parameters
-        ----------
-        raw_data
-            dictionary holding information obtain from environment interactions
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        obs_space,
+        act_space,
+        size: int,
+        gamma: float,
+        lam: float,
+        lam_c: float,
+        standardized_adv_r: bool = True,
+        standardized_adv_c: bool = True,
+        device: torch.device = 'cpu',
+        num_envs: int = 1,
+    ) -> None:
+        self.buffers: list[dict[str, torch.tensor]] = [
+            {
+                'obs': torch.zeros((size, *obs_space.shape), dtype=torch.float32, device=device),
+                'act': torch.zeros((size, *act_space.shape), dtype=torch.float32, device=device),
+                'reward': torch.zeros(size, dtype=torch.float32, device=device),
+                'cost': torch.zeros(size, dtype=torch.float32, device=device),
+                'done': torch.zeros(size, dtype=torch.float32, device=device),
+                'value_r': torch.zeros(size, dtype=torch.float32, device=device),
+                'value_c': torch.zeros(size, dtype=torch.float32, device=device),
+                'adv_r': torch.zeros(size, dtype=torch.float32, device=device),
+                'adv_c': torch.zeros(size, dtype=torch.float32, device=device),
+                'target_value_r': torch.zeros(size, dtype=torch.float32, device=device),
+                'target_value_c': torch.zeros(size, dtype=torch.float32, device=device),
+                'log_prob': torch.zeros(size, dtype=torch.float32, device=device),
+            }
+            for _ in range(num_envs)
+        ]
+        self._gamma = gamma
+        self._lam = lam
+        self._lam_c = lam_c
+        self._standardized_adv_r = standardized_adv_r
+        self._standardized_adv_c = standardized_adv_c
+        self.ptr_list = [0] * num_envs
+        self.path_start_idx_list = [0] * num_envs
+        self._device = device
+        self.num_envs = num_envs
+        
+    def store(self, **data: torch.Tensor) -> None:
+        """Store vectorized data into vectorized buffer."""
+        for i, buffer in enumerate(self.buffers):
+            assert self.ptr_list[i] < buffer['obs'].shape[0], 'Buffer overflow'
+            for key, value in data.items():
+                buffer[key][self.ptr_list[i]] = value[i]
+            self.ptr_list[i] += 1
 
-        Returns
-        -------
-        dict
-            holding pre-processed data, i.e. observations and rewards
-        """
-        data = deepcopy(raw_data)
-        # Note: use_reward_scaling is currently applied in Buffer...
-        # If self.use_reward_scaling:
-        #     rew = self.ac.ret_oms(data['rew'], subtract_mean=False, clip=True)
-        #     data['rew'] = rew
+    def finish_path(
+        self,
+        last_value_r: torch.Tensor | None = None,
+        last_value_c: torch.Tensor | None = None,
+        idx: int = 0,
+    ) -> None:
+        if last_value_r is None:
+            last_value_r = torch.zeros(1, device=self._device)
+        if last_value_c is None:
+            last_value_c = torch.zeros(1, device=self._device)
+        path_slice = slice(self.path_start_idx_list[idx], self.ptr_list[idx])
+        last_value_r = last_value_r.to(self._device)
+        last_value_c = last_value_c.to(self._device)
+        rewards = torch.cat([self.buffers[idx]['reward'][path_slice], last_value_r])
+        costs = torch.cat([self.buffers[idx]['cost'][path_slice], last_value_c])
+        values_r = torch.cat([self.buffers[idx]['value_r'][path_slice], last_value_r])
+        values_c = torch.cat([self.buffers[idx]['value_c'][path_slice], last_value_c])
 
-        if self.configs["use_standardized_obs"]:
-            obs = data["obs"]
-            data["obs"] = self.policy.obs_oms(obs, clip=False)
+        adv_r, target_value_r = calculate_adv_and_value_targets(
+            values_r,
+            rewards,
+            lam=self._lam,
+            gamma=self._gamma,
+        )
+        adv_c, target_value_c = calculate_adv_and_value_targets(
+            values_c,
+            costs,
+            lam=self._lam_c,
+            gamma=self._gamma,
+        )
+        self.buffers[idx]['adv_r'][path_slice] = adv_r
+        self.buffers[idx]['adv_c'][path_slice] = adv_c
+        self.buffers[idx]['target_value_r'][path_slice] = target_value_r
+        self.buffers[idx]['target_value_c'][path_slice] = target_value_c
+        
+        self.path_start_idx_list[idx] = self.ptr_list[idx]
+
+    def get(self) -> dict[str, torch.Tensor]:
+        data_pre = {k: [v] for k, v in self.buffers[0].items()}
+        for buffer in self.buffers[1:]:
+            for k, v in buffer.items():
+                data_pre[k].append(v)
+        data = {k: torch.cat(v, dim=0) for k, v in data_pre.items()}
+        adv_mean = data['adv_r'].mean()
+        adv_std = data['adv_r'].std()
+        cadv_mean = data['adv_c'].mean()
+        if self._standardized_adv_r:
+            data['adv_r'] = (data['adv_r'] - adv_mean) / (adv_std + 1e-8)
+        if self._standardized_adv_c:
+            data['adv_c'] = data['adv_c'] - cadv_mean
+        self.ptr_list = [0] * self.num_envs
+        self.path_start_idx_list = [0] * self.num_envs
+
         return data
+    
 
-    def roll_out(self):
-        """collect data and store to experience buffer."""
-        print(self.configs["seed"])
+if __name__ == "__main__":
+    args = parse_args()
 
-        obs, _ = self.env.reset(seed=self.configs["seed"])
-        ep_ret, ep_costs, ep_len = 0.0, 0.0, 0
-        if self.configs["use_reward_penalty"]:
-            # consider reward penalty parameter in reward calculation: r' = r - c
-            assert hasattr(self, "lagrangian_multiplier")
-            assert hasattr(self, "lambda_range_projection")
-            penalty_param = self.lambda_range_projection(self.lagrangian_multiplier)
-        else:
-            penalty_param = 0
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.set_num_threads(2)
 
-        # c_gamma_step = 0
-        for t in tqdm(range(self.configs["steps_per_epoch"])):
-            # print("current_steps: ", t)
+    device = torch.device("cuda" if torch.cuda.is_available() and args.device == "cuda" else "cpu")
 
-            action, value, cost_value, logp = self.policy.step(
-                torch.as_tensor(obs, dtype=torch.float32)
-            )
-            next_obs, reward, cost, terminated, truncated, info = self.env.step(action)
+    local_steps_per_epoch = args.steps_per_epoch//args.num_envs
+    epochs = args.total_steps // args.steps_per_epoch
 
+    if args.num_envs > 1:
+        env = safety_gymnasium.vector.make(env_id=args.env_id, num_envs=args.num_envs, wrappers=SafeNormalizeObservation)
+        env.reset(seed=args.seed)
+        obs_space = env.single_observation_space
+        act_space = env.single_action_space
+        env = SafeNormalizeObservation(env)
+    else:
+        env = safety_gymnasium.make(args.env_id)
+        env.reset(seed=args.seed)
+        obs_space = env.observation_space
+        act_space = env.action_space
+        env = SafeAutoResetWrapper(env)
+        env = SafeRescaleAction(env, -1.0, 1.0)
+        env = SafeNormalizeObservation(env)
+        env = SafeUnsqueeze(env)
+    policy = Policy(
+        obs_dim=obs_space.shape[0],
+        act_dim=act_space.shape[0],
+    ).to(device)
+    actor_optimizer = torch.optim.Adam(policy.actor.parameters(), lr=args.actor_lr)
+    if args.linear_lr_decay:
+        actor_scheduler = LinearLR(
+            actor_optimizer,
+            start_factor=1.0,
+            end_factor=0.0,
+            total_iters=epochs,
+            verbose=True,
+        )
+    else:
+        actor_scheduler = ConstantLR(actor_optimizer)
+    reward_critic_optimizer = torch.optim.Adam(policy.reward_critic.parameters(), lr=args.critic_lr)
+    cost_critic_optimizer = torch.optim.Adam(policy.cost_critic.parameters(), lr=args.critic_lr)
+    buffer = VectorizedBuffer(
+        obs_space=obs_space,
+        act_space=act_space,
+        size = args.steps_per_epoch,
+        gamma = args.gamma,
+        lam = args.lam,
+        lam_c = args.lam_c,
+        standardized_adv_r=args.standardized_adv_r,
+        standardized_adv_c=args.standardized_adv_c,
+        device=device,
+        num_envs = args.num_envs,
+    )
+
+    dict_args = vars(args)
+    exp_name = "-".join([args.env_id, "policy_gradient", "seed-" + str(args.seed)])
+    logger = EpochLogger(
+        base_dir=args.log_dir,
+        seed=str(args.seed),
+        exp_name=exp_name,
+        use_tensorboard=args.use_tensorboard,
+    )
+    rew_deque = deque(maxlen=50)
+    cost_deque = deque(maxlen=50)
+    len_deque = deque(maxlen=50)
+    logger.save_config(dict_args)
+    logger.setup_torch_saver(policy.actor)
+    logger.log("Start with training.")
+
+    start_time = time.time()
+
+    for epoch in range(epochs):
+        rollout__start_time = time.time()    
+        obs, _ = env.reset()
+        obs = torch.as_tensor(obs, dtype=torch.float32, device=device)
+        ep_ret, ep_cost, ep_len = np.zeros(args.num_envs), np.zeros(args.num_envs), np.zeros(args.num_envs)
+        for steps in range(local_steps_per_epoch):
+            with torch.no_grad():
+                act, log_prob, value_r, value_c = policy.step(obs, deterministic=False)
+            next_obs, reward, cost, terminated, truncated, info = env.step(act.detach().squeeze().cpu().numpy())
             ep_ret += reward
-            if self.configs["use_discount_cost_update_lag"]:
-                ep_costs += (self.gamma**ep_len) * cost
-            else:
-                ep_costs += cost
+            ep_cost += cost
             ep_len += 1
-
-            # save to buffer
-            self.buf.store(obs=obs, act=action, rew=reward, val=value, logp=logp, cost=cost, cost_val=cost_value)
-
-            # store values for statistic purpose
-            if self.configs["use_cost_value_function"]:
-                self.logger.store(**{"Values/V": value, "Values/C": cost_value})
-            else:
-                self.logger.store(**{"Values/V": value})
+            next_obs, reward, cost, terminated, truncated = (
+                torch.as_tensor(x, dtype=torch.float32, device=device) for x in (next_obs, reward, cost, terminated, truncated)
+            )
+            if 'final_observation' in info:
+                info['final_observation'] = np.array(
+                    [
+                        array if array is not None else np.zeros(obs.shape[-1])
+                        for array in info['final_observation']
+                    ],
+                )
+                info['final_observation'] = torch.as_tensor(
+                    info['final_observation'],
+                    dtype=torch.float32,
+                    device=device,
+                )
+            buffer.store(
+                obs=obs,
+                act=act,
+                reward=reward,
+                cost=cost,
+                value_r=value_r,
+                value_c=value_c,
+                log_prob=log_prob,
+            )
 
             obs = next_obs
+            epoch_end = steps >= local_steps_per_epoch - 1
+            for idx, (done, time_out) in enumerate(zip(terminated, truncated)):
+                if epoch_end or done or time_out:
+                    last_value_r = torch.zeros(1, device=device)
+                    last_value_c = torch.zeros(1, device=device)
+                    if not done:
+                        if epoch_end:
+                            with torch.no_grad():
+                                _, _, last_value_r, last_value_c = policy.step(obs[idx], deterministic=False)
+                        if time_out:
+                            with torch.no_grad():
+                                _, _, last_value_r, last_value_c = policy.step(
+                                    info['final_observation'][idx],
+                                    deterministic=False
+                                )
+                        last_value_r = last_value_r.unsqueeze(0)
+                        last_value_c = last_value_c.unsqueeze(0)
+                    if done or time_out:
+                        rew_deque.append(ep_ret[idx])
+                        cost_deque.append(ep_cost[idx])
+                        len_deque.append(ep_len[idx])
+                        logger.store(
+                        **{
+                            "Metrics/EpRet": np.mean(rew_deque), 
+                            "Metrics/EpCosts": np.mean(cost_deque),
+                            "Metrics/EpLen": np.mean(len_deque), 
+                          }
+                        )
+                        ep_ret[idx] = 0.0
+                        ep_cost[idx] = 0.0
+                        ep_len[idx] = 0.0
 
-            timeout = ep_len == self.configs["max_ep_len"]
-            terminal = terminated or timeout
-            epoch_ended = t == self.configs["steps_per_epoch"]
+                    buffer.finish_path(last_value_r = last_value_r, last_value_c=last_value_c, idx = idx)
+        rollout_end_time = time.time()
+        # update
+        data = buffer.get()
+        old_distribution = policy.actor(data['obs'])
+        dataloader = DataLoader(
+            dataset=TensorDataset(
+                data['obs'],
+                data['act'],
+                data['log_prob'],
+                data['target_value_r'],
+                data['target_value_c'],
+                data['adv_r'],
+                data['adv_c'],
+                ),
+            batch_size=args.batch_size,
+            shuffle=True,
+        )
+        update_counts = 0
+        final_kl = torch.ones_like(old_distribution.loc)
+        for i in track(range(args.update_iters), description='Updating...'):
+            for (
+                obs_b,
+                act_b,
+                log_prob_b,
+                target_value_r_b,
+                target_value_c_b,
+                adv_r_b,
+                adv_c_b,
+            ) in dataloader:
+                reward_critic_optimizer.zero_grad()
+                loss_r = nn.functional.mse_loss(policy.reward_critic(obs_b), target_value_r_b)
+                for param in policy.reward_critic.parameters():
+                    loss_r += param.pow(2).sum() * args.critic_norm_coef
+                loss_r.backward()
+                reward_critic_optimizer.step()
 
-            if terminal or epoch_ended:
-                if timeout or epoch_ended:
-                    _, value, cost_value, _ = self.policy(
-                        torch.as_tensor(obs, dtype=torch.float32)
+                distribution = policy.actor(obs_b)
+                log_prob = distribution.log_prob(act_b).sum(dim=-1)
+                ratio = torch.exp(log_prob - log_prob_b)
+                loss_pi = -(ratio * adv_r_b).mean()
+                actor_optimizer.zero_grad()
+                loss_pi.backward()
+                clip_grad_norm_(policy.parameters(), args.max_grad_norm)
+                actor_optimizer.step()
+
+                logger.store(
+                    **{
+                        "Loss/Loss_reward_critic": loss_r.mean().item(),
+                        "Loss/Loss_actor": loss_pi.mean().item(),
+                        }
                     )
-                else:
-                    value, cost_value = 0.0, 0.0
-
-                # compute GAE in buffer
-                self.buf.finish_path(
-                    value, cost_value, penalty_param=float(penalty_param)
-                )
-
-                # Only save EpRet / EpLen if trajectory finished
-                if terminal:
-                    self.logger.store(EpRet=ep_ret, EpLen=ep_len, EpCosts=ep_costs)
-                obs, info = self.env.reset()
-                ep_ret, ep_costs, ep_len = 0.0, 0.0, 0
-
-    def update(self):
-        """
-        Update actor, critic, running statistics
-        """
-        raw_data = self.buf.get()
-        # Pre-process data: standardize observations, advantage estimation, etc.
-        data = self.pre_process_data(raw_data)
-        self.update_value_net(data=data)
-        if self.configs["use_cost_value_function"]:
-            self.update_cost_net(data=data)
-        self.update_policy_net(data=data)
-
-    def update_policy_net(self, data) -> None:
-        # Get prob. distribution before updates: used to measure KL distance
-        with torch.no_grad():
-            self.p_dist = self.policy.actor.detach_dist(data["obs"])
-
-        # Get loss and info values before update
-        pi_l_old, pi_info_old = self.compute_loss_pi(data)
-        self.loss_pi_before = pi_l_old.item()
-
-        # Train policy with multiple steps of gradient descent
-        for i in range(self.configs["train_pi_iterations"]):
-            self.pi_optimizer.zero_grad()
-            loss_pi, pi_info = self.compute_loss_pi(data=data)
-            loss_pi.backward()
-            # Apply L2 norm
-            if self.configs["use_max_grad_norm"]:
-                torch.nn.utils.clip_grad_norm_(
-                    self.policy.actor.parameters(), self.configs["max_grad_norm"]
-                )
-            self.pi_optimizer.step()
-
-            q_dist = self.policy.actor.dist(data["obs"])
-            torch_kl = (
-                torch.distributions.kl.kl_divergence(self.p_dist, q_dist).mean().item()
+            new_distribution = policy.actor(data['obs'])
+            kl = (
+                torch.distributions.kl.kl_divergence(old_distribution, new_distribution)
+                .sum(-1, keepdim=True)
+                .mean()
+                .item()
             )
-
-            if self.configs["use_kl_early_stopping"]:
-                # Average KL for consistent early stopping across processes
-                if torch_kl > 2.0:
-                    self.logger.log(f"Reached ES criterion after {i+1} steps.")
-                    break
-
-        # Track when policy iteration is stopped; Log changes from update
-        self.logger.store(
-            **{
-                "Loss/Pi": self.loss_pi_before,
-                "Loss/DeltaPi": loss_pi.item() - self.loss_pi_before,
-                "Misc/StopIter": i + 1,
-                "Values/Adv": data["adv"].numpy(),
-                "Entropy": pi_info["ent"],
-                "KL": torch_kl,
-                "PolicyRatio": pi_info["ratio"],
-            }
-        )
-
-    def update_value_net(self, data: dict) -> None:
-        # Divide whole local epoch data into mini_batches which is mbs size
-        mbs = self.configs["steps_per_epoch"] // self.configs["num_mini_batches"]
-        assert mbs >= 16, f"Batch size {mbs}<16"
-
-        loss_v = self.compute_loss_v(data["obs"], data["target_v"])
-        self.loss_v_before = loss_v.item()
-
-        indices = np.arange(self.configs["steps_per_epoch"])
-        val_losses = []
-        for _ in range(self.configs["train_v_iterations"]):
-            # Shuffle for mini-batch updates
-            np.random.shuffle(indices)
-            # 0 to mini_batch_size with batch_train_size step
-            for start in range(0, self.configs["steps_per_epoch"], mbs):
-                end = start + mbs  # iterate mini batch times
-                mb_indices = indices[start:end]
-                self.vf_optimizer.zero_grad()
-                loss_v = self.compute_loss_v(
-                    obs=data["obs"][mb_indices], ret=data["target_v"][mb_indices]
-                )
-                loss_v.backward()
-                val_losses.append(loss_v.item())
-                self.vf_optimizer.step()
-
-        self.logger.store(
-            **{
-                "Loss/DeltaValue": np.mean(val_losses) - self.loss_v_before,
-                "Loss/Value": self.loss_v_before,
-            }
-        )
-
-    def update_cost_net(self, data: dict) -> None:
-        """Update cost value function"""
-        self.loss_c_before = self.compute_loss_c(data["obs"], data["target_c"]).item()
-
-        # Divide whole local epoch data into mini_batches which is mbs size
-        mbs = self.configs["steps_per_epoch"] // self.configs["num_mini_batches"]
-        assert mbs >= 16, f"Batch size {mbs}<16"
-
-        indices = np.arange(self.configs["local_steps_per_epoch"])
-        losses = []
-
-        # Train cost value network
-        for _ in range(self.configs["train_v_iterations"]):
-            # Shuffle for mini-batch updates
-            np.random.shuffle(indices)
-            # 0 to mini_batch_size with batch_train_size step
-            for start in range(0, self.configs["local_steps_per_epoch"], mbs):
-                # Iterate mini batch times
-                end = start + mbs
-                mb_indices = indices[start:end]
-
-                self.cf_optimizer.zero_grad()
-                loss_c = self.compute_loss_c(
-                    obs=data["obs"][mb_indices], ret=data["target_c"][mb_indices]
-                )
-                loss_c.backward()
-                losses.append(loss_c.item())
-                self.cf_optimizer.step()
-
-        self.logger.store(
-            **{
-                "Loss/DeltaCost": np.mean(losses) - self.loss_c_before,
-                "Loss/Cost": self.loss_c_before,
-            }
-        )
+            final_kl = kl
+            update_counts += 1
+            if kl > args.target_kl:
+                logger.log(f'Early stopping at iter {i + 1} due to reaching max kl')
+                break
+        update_end_time = time.time()
+        # step lr scheduler
+        actor_scheduler.step()
+        # log data
+        logger.log_tabular("Metrics/EpRet", min_and_max=True, std=True)
+        logger.log_tabular("Metrics/EpCosts", min_and_max=True, std=True)
+        logger.log_tabular("Metrics/EpLen", min_and_max=True)
+        logger.log_tabular('Train/Epoch', epoch+1)
+        logger.log_tabular('Train/TotalSteps', (epoch+1)*args.steps_per_epoch)
+        logger.log_tabular('Train/StopIter', update_counts)
+        logger.log_tabular('Train/kl', final_kl)
+        logger.log_tabular('Train/LR', actor_scheduler.get_last_lr()[0])
+        logger.log_tabular("Loss/Loss_reward_critic")
+        logger.log_tabular("Loss/Loss_actor")
+        logger.log_tabular('Time/Rollout', rollout_end_time - rollout__start_time)
+        logger.log_tabular('Time/Update', update_end_time - rollout_end_time)
+        logger.log_tabular('Value/RewardAdv', data['adv_r'].mean().item())
+        logger.log_tabular('Value/CostAdv', data['adv_c'].mean().item())
+        logger.dump_tabular()
+        if epoch % 100 == 0:
+            logger.torch_save(itr=epoch)
+    logger.close()
