@@ -12,228 +12,133 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-import numpy as np
+
+
+from __future__ import annotations
 import torch
-from safepo.common.core import combined_shape, discount_cumsum
-from safepo.common.vtrace import calculate_v_trace
 
+class VectorizedOnPolicyBuffer:
 
-class Buffer:
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
-        policy: torch.nn.Module,
-        obs_dim: tuple,
-        act_dim: tuple,
+        obs_space,
+        act_space,
         size: int,
         gamma: float,
         lam: float,
-        advantage_type: str,
-        use_scaled_rewards: bool,
-        standardize_env_obs: bool,
-        use_standardized_reward: bool,
-        use_standardized_cost: bool,
-        lam_c: float = 0.95,
-        use_reward_penalty: bool = False,
-    ):
-        """
-        A buffer for storing trajectories experienced by an agent interacting
-        with the environment, and using Generalized Advantage Estimation (GAE)
-        for calculating the advantages of state-action pairs.
+        lam_c: float,
+        standardized_adv_r: bool = True,
+        standardized_adv_c: bool = True,
+        device: torch.device = 'cpu',
+        num_envs: int = 1,
+    ) -> None:
+        self.buffers: list[dict[str, torch.tensor]] = [
+            {
+                'obs': torch.zeros((size, *obs_space.shape), dtype=torch.float32, device=device),
+                'act': torch.zeros((size, *act_space.shape), dtype=torch.float32, device=device),
+                'reward': torch.zeros(size, dtype=torch.float32, device=device),
+                'cost': torch.zeros(size, dtype=torch.float32, device=device),
+                'done': torch.zeros(size, dtype=torch.float32, device=device),
+                'value_r': torch.zeros(size, dtype=torch.float32, device=device),
+                'value_c': torch.zeros(size, dtype=torch.float32, device=device),
+                'adv_r': torch.zeros(size, dtype=torch.float32, device=device),
+                'adv_c': torch.zeros(size, dtype=torch.float32, device=device),
+                'target_value_r': torch.zeros(size, dtype=torch.float32, device=device),
+                'target_value_c': torch.zeros(size, dtype=torch.float32, device=device),
+                'log_prob': torch.zeros(size, dtype=torch.float32, device=device),
+            }
+            for _ in range(num_envs)
+        ]
+        self._gamma = gamma
+        self._lam = lam
+        self._lam_c = lam_c
+        self._standardized_adv_r = standardized_adv_r
+        self._standardized_adv_c = standardized_adv_c
+        self.ptr_list = [0] * num_envs
+        self.path_start_idx_list = [0] * num_envs
+        self._device = device
+        self.num_envs = num_envs
+        
+    def store(self, **data: torch.Tensor) -> None:
+        """Store vectorized data into vectorized buffer."""
+        for i, buffer in enumerate(self.buffers):
+            assert self.ptr_list[i] < buffer['obs'].shape[0], 'Buffer overflow'
+            for key, value in data.items():
+                buffer[key][self.ptr_list[i]] = value[i]
+            self.ptr_list[i] += 1
 
-        Important Note: Buffer collects only raw data received from environment.
-        """
-        self.policy = policy
-        self.size = size
-        self.obs_buf = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
-        self.act_buf = np.zeros(combined_shape(size, act_dim), dtype=np.float32)
-        self.adv_buf = np.zeros(size, dtype=np.float32)
-        self.discounted_ret_buf = np.zeros(size, dtype=np.float32)
-        self.rew_buf = np.zeros(size, dtype=np.float32)
-        self.target_val_buf = np.zeros(size, dtype=np.float32)
-        self.val_buf = np.zeros(size, dtype=np.float32)
-        self.logp_buf = np.zeros(size, dtype=np.float32)
-        self.gamma = gamma
-        self.lam = lam
-        self.lam_c = lam_c
-        self.advantage_type = advantage_type
-        self.use_scaled_rewards = use_scaled_rewards
-        self.standardize_env_obs = standardize_env_obs
-        self.use_standardized_reward = use_standardized_reward
-        self.use_standardized_cost = use_standardized_cost
-        self.ptr = 0
-        self.path_start_idx = 0
-        self.max_size = size
+    def finish_path(
+        self,
+        last_value_r: torch.Tensor | None = None,
+        last_value_c: torch.Tensor | None = None,
+        idx: int = 0,
+    ) -> None:
+        if last_value_r is None:
+            last_value_r = torch.zeros(1, device=self._device)
+        if last_value_c is None:
+            last_value_c = torch.zeros(1, device=self._device)
+        path_slice = slice(self.path_start_idx_list[idx], self.ptr_list[idx])
+        last_value_r = last_value_r.to(self._device)
+        last_value_c = last_value_c.to(self._device)
+        rewards = torch.cat([self.buffers[idx]['reward'][path_slice], last_value_r])
+        costs = torch.cat([self.buffers[idx]['cost'][path_slice], last_value_c])
+        values_r = torch.cat([self.buffers[idx]['value_r'][path_slice], last_value_r])
+        values_c = torch.cat([self.buffers[idx]['value_c'][path_slice], last_value_c])
 
-        # variables for cost-based RL
-        self.cost_buf = np.zeros(size, dtype=np.float32)
-        self.cost_val_buf = np.zeros(size, dtype=np.float32)
-        self.cost_adv_buf = np.zeros(size, dtype=np.float32)
-        self.target_cost_val_buf = np.zeros(size, dtype=np.float32)
-        self.use_reward_penalty = use_reward_penalty
-
-        assert advantage_type in ["gae", "vtrace", "plain"]
-
-    def calculate_adv_and_value_targets(self, vals, rews, lam=None):
-        """Compute the estimated advantage"""
-
-        if self.advantage_type == "gae":
-            # GAE formula: A_t = \sum_{k=0}^{n-1} (lam*gamma)^k delta_{t+k}
-            lam = self.lam if lam is None else lam
-            deltas = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
-            adv = discount_cumsum(deltas, self.gamma * lam)
-            value_net_targets = adv + vals[:-1]
-
-        elif self.advantage_type == "vtrace":
-            #  v_s = V(x_s) + \sum^{T-1}_{t=s} \gamma^{t-s}
-            #                * \prod_{i=s}^{t-1} c_i
-            #                 * \rho_t (r_t + \gamma V(x_{t+1}) - V(x_t))
-            path_slice = slice(self.path_start_idx, self.ptr)
-
-            obs = (
-                self.policy.obs_oms(self.obs_buf[path_slice], clip=False)
-                if self.standardize_env_obs
-                else self.obs_buf[path_slice]
-            )
-
-            obs = torch.as_tensor(obs, dtype=torch.float32)
-
-            act = self.act_buf[path_slice]
-            act = torch.as_tensor(act, dtype=torch.float32)
-            with torch.no_grad():
-                # get current log_p of actions
-                dist = self.policy.pi.dist(obs)
-                log_p = self.policy.pi.log_prob_from_dist(dist, act)
-            value_net_targets, adv, _ = calculate_v_trace(
-                policy_action_probs=np.exp(log_p.numpy()),
-                values=vals,
-                rewards=rews,
-                behavior_action_probs=np.exp(self.logp_buf[path_slice]),
-                gamma=self.gamma,
-                rho_bar=1.0,  # default is 1.0
-                c_bar=1.0,  # default is 1.0
-            )
-
-        elif self.advantage_type == "plain":
-            # A(x, u) = Q(x, u) - V(x) = r(x, u) + gamma V(x+1) - V(x)
-            adv = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
-
-            # compute rewards-to-go, to be targets for the value function update
-            # value_net_targets are just the discounted returns
-            value_net_targets = discount_cumsum(rews, self.gamma)[:-1]
-
-        else:
-            raise NotImplementedError
-
-        return adv, value_net_targets
-
-    def store(self, obs, act, rew, val, logp, cost=0.0, cost_val=0.0):
-        """
-        Append one timestep of agent-environment interaction to the buffer.
-
-        Important Note: Store only raw data received from environment!!!
-        Note: perform reward scaling if enabled
-        """
-        assert self.ptr < self.max_size, f"No empty space in buffer"
-
-        self.obs_buf[self.ptr] = obs
-        self.act_buf[self.ptr] = act
-        self.rew_buf[self.ptr] = rew
-        self.val_buf[self.ptr] = val
-        self.logp_buf[self.ptr] = logp
-        self.cost_buf[self.ptr] = cost
-        self.cost_val_buf[self.ptr] = cost_val
-        self.ptr += 1
-
-    def finish_path(self, last_val=0, last_cost_val=0, penalty_param=0):
-        """
-        Call this at the end of a trajectory, or when one gets cut off
-        by an epoch ending. This looks back in the buffer to where the
-        trajectory started, and uses rewards and value estimates from
-        the whole trajectory to compute advantage estimates with GAE-Lambda,
-        as well as compute the rewards-to-go for each state, to use as
-        the targets for the value function.
-
-        The "last_val" argument should be 0 if the trajectory ended
-        because the agent reached a terminal state (died), and otherwise
-        should be V(s_T), the value function estimated for the last state.
-        This allows us to bootstrap the reward-to-go calculation to account
-        for timesteps beyond the arbitrary episode horizon (or epoch cutoff).
-        """
-
-        path_slice = slice(self.path_start_idx, self.ptr)
-        rews = np.append(self.rew_buf[path_slice], last_val)
-        vals = np.append(self.val_buf[path_slice], last_val)
-        costs = np.append(self.cost_buf[path_slice], last_cost_val)
-        cost_vs = np.append(self.cost_val_buf[path_slice], last_cost_val)
-
-        # new: add discounted returns to buffer
-        discounted_ret = discount_cumsum(rews, self.gamma)[:-1]
-        self.discounted_ret_buf[path_slice] = discounted_ret
-
-        # if self.use_reward_penalty:
-        #     assert penalty_param >= 0, 'reward_penalty assumes positive value.'
-        #     rews -= penalty_param * costs
-
-        # if self.use_scaled_rewards:
-        #     # divide rewards by running return stddev.
-        #     # discounted_ret = discount_cumsum(rews, self.gamma)[:-1]
-        #     # for i, ret in enumerate(discounted_ret):
-        #     # update running return statistics
-        #     # self.policy.ret_oms.update(discounted_ret)
-        #     # # now scale...
-        #     rews = self.policy.ret_oms(rews, subtract_mean=False, clip=True)
-
-        adv, v_targets = self.calculate_adv_and_value_targets(vals, rews)
-        self.adv_buf[path_slice] = adv
-        self.target_val_buf[path_slice] = v_targets
-
-        # calculate costs
-        c_adv, c_targets = self.calculate_adv_and_value_targets(
-            cost_vs, costs, lam=self.lam_c
+        adv_r, target_value_r = calculate_adv_and_value_targets(
+            values_r,
+            rewards,
+            lam=self._lam,
+            gamma=self._gamma,
         )
-        self.cost_adv_buf[path_slice] = c_adv
-        self.target_cost_val_buf[path_slice] = c_targets
-
-        self.path_start_idx = self.ptr
-
-    def get(self):
-        """
-        Call this at the end of an epoch to get all of the data from
-        the buffer, with advantages appropriately normalized (shifted to have
-        mean zero and std one). Also, resets some pointers in the buffer.
-        """
-        assert self.ptr == self.max_size  # buffer has to be full before you can get
-        self.ptr, self.path_start_idx = 0, 0
-
-        # TODO: pre-processing like standardization and scaling is done in
-        #  Algorithm.  pre_process_data() method
-        if self.use_standardized_reward:
-            # the next two lines implement the advantage normalization trick
-            # adv_mean, adv_std = np.mean(self.adv_buf), np.std(self.adv_buf)
-            adv_mean, adv_std = mpi_tools.mpi_statistics_scalar(self.adv_buf)
-            self.adv_buf = (self.adv_buf - adv_mean) / (adv_std + 1.0e-8)
-            # also for cost advantages; only re-center but no rescale!
-            # cadv_mean, cadv_std = mpi_tools.mpi_statistics_scalar(self.cost_adv_buf)
-            # self.cost_adv_buf = (self.cost_adv_buf - cadv_mean)#/(cadv_std + 1.0e-8)
-
-        if self.use_standardized_cost:
-            # print("ook")
-            # also for cost advantages; only re-center but no rescale!
-            cadv_mean, cadv_std = mpi_tools.mpi_statistics_scalar(self.cost_adv_buf)
-            self.cost_adv_buf = (self.cost_adv_buf - cadv_mean) / (cadv_std + 1.0e-8)
-        # TODO
-        # self.obs_buf = self.policy.obs_oms(self.obs_buf, clip=False) \
-        #     if self.standardize_env_obs else self.obs_buf
-
-        data = dict(
-            obs=self.obs_buf,
-            act=self.act_buf,
-            target_v=self.target_val_buf,
-            adv=self.adv_buf,
-            log_p=self.logp_buf,
-            discounted_ret=self.discounted_ret_buf,
-            cost_adv=self.cost_adv_buf,
-            target_c=self.target_cost_val_buf,
+        adv_c, target_value_c = calculate_adv_and_value_targets(
+            values_c,
+            costs,
+            lam=self._lam_c,
+            gamma=self._gamma,
         )
+        self.buffers[idx]['adv_r'][path_slice] = adv_r
+        self.buffers[idx]['adv_c'][path_slice] = adv_c
+        self.buffers[idx]['target_value_r'][path_slice] = target_value_r
+        self.buffers[idx]['target_value_c'][path_slice] = target_value_c
+        
+        self.path_start_idx_list[idx] = self.ptr_list[idx]
 
-        return {k: torch.as_tensor(v, dtype=torch.float32) for k, v in data.items()}
+    def get(self) -> dict[str, torch.Tensor]:
+        data_pre = {k: [v] for k, v in self.buffers[0].items()}
+        for buffer in self.buffers[1:]:
+            for k, v in buffer.items():
+                data_pre[k].append(v)
+        data = {k: torch.cat(v, dim=0) for k, v in data_pre.items()}
+        adv_mean = data['adv_r'].mean()
+        adv_std = data['adv_r'].std()
+        cadv_mean = data['adv_c'].mean()
+        if self._standardized_adv_r:
+            data['adv_r'] = (data['adv_r'] - adv_mean) / (adv_std + 1e-8)
+        if self._standardized_adv_c:
+            data['adv_c'] = data['adv_c'] - cadv_mean
+        self.ptr_list = [0] * self.num_envs
+        self.path_start_idx_list = [0] * self.num_envs
+
+        return data
+    
+def discount_cumsum(vector_x: torch.Tensor, discount: float) -> torch.Tensor:
+    length = vector_x.shape[0]
+    vector_x = vector_x.type(torch.float64)
+    cumsum = vector_x[-1]
+    for idx in reversed(range(length - 1)):
+        cumsum = vector_x[idx] + discount * cumsum
+        vector_x[idx] = cumsum
+    return vector_x
+
+def calculate_adv_and_value_targets(
+    values: torch.Tensor,
+    rewards: torch.Tensor,
+    lam: float,
+    gamma: float,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    # GAE formula: A_t = \sum_{k=0}^{n-1} (lam*gamma)^k delta_{t+k}
+    deltas = rewards[:-1] + gamma * values[1:] - values[:-1]
+    adv = discount_cumsum(deltas, gamma * lam)
+    target_value = adv + values[:-1]
+    return adv, target_value

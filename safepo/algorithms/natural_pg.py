@@ -19,21 +19,22 @@ from __future__ import annotations
 import argparse
 import random
 import time
-
-from collections import deque
-from distutils.util import strtobool
-from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeNormalizeObservation, SafeUnsqueeze, SafeRescaleAction
 import numpy as np
 import safety_gymnasium
 import torch
 import torch.optim
-from rich.progress import track
-from typing import Callable
-
 import torch.nn as nn
-from torch.distributions import Normal
-from safepo.common.logger import EpochLogger
+
+from collections import deque
+from distutils.util import strtobool
+from typing import Callable
+from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeNormalizeObservation, SafeUnsqueeze, SafeRescaleAction
+from rich.progress import track
+from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.utils.data import DataLoader, TensorDataset
+from safepo.common.buffer import VectorizedOnPolicyBuffer
+from safepo.common.model import ActorVCritic
+from safepo.common.logger import EpochLogger
 
 
 def parse_args():
@@ -96,184 +97,6 @@ def parse_args():
         help="the number of conjugate gradient iterations")
     args = parser.parse_args()
     return args
-
-def build_mlp_network(sizes):
-    layers = list()
-    for j in range(len(sizes) - 1):
-        act = nn.Tanh if j < len(sizes) - 2 else nn.Identity
-        affine_layer = nn.Linear(sizes[j], sizes[j + 1])
-        nn.init.kaiming_uniform_(affine_layer.weight, a=np.sqrt(5))
-        layers += [affine_layer, act()]
-    return nn.Sequential(*layers)
-
-class Actor(nn.Module):
-    """Actor network."""
-    def __init__(self, obs_dim: int, act_dim: int):
-        super().__init__()
-        self.mean = build_mlp_network([obs_dim, 64, 64, act_dim])
-        self.log_std = nn.Parameter(torch.zeros(act_dim), requires_grad=True)
-
-    def forward(self, obs: torch.Tensor):
-        mean = self.mean(obs)
-        std = torch.exp(self.log_std)
-        return Normal(mean, std)
-
-class Critic(nn.Module):
-    """Critic network."""
-    def __init__(self, obs_dim):
-        super().__init__()
-        self.critic = build_mlp_network([obs_dim, 64, 64, 1])
-
-    def forward(self, obs):
-        return torch.squeeze(self.critic(obs), -1)
-
-class Policy(nn.Module):
-    """Actor critic policy."""
-    def __init__(self, obs_dim, act_dim):
-        super().__init__()
-        self.reward_critic = Critic(obs_dim)
-        self.cost_critic = Critic(obs_dim)
-        self.actor = Actor(obs_dim, act_dim)
-
-    def get_value(self, obs):
-        return self.critic(obs)
-
-    def step(self, obs, deterministic=False):
-        dist = self.actor(obs)
-        if deterministic:
-            action = dist.mean
-        else:
-            action = dist.rsample()
-        log_prob = dist.log_prob(action).sum(axis=-1)
-        value_r = self.reward_critic(obs)
-        value_c = self.cost_critic(obs)
-        return action, log_prob, value_r, value_c
-
-def discount_cumsum(vector_x: torch.Tensor, discount: float) -> torch.Tensor:
-    length = vector_x.shape[0]
-    vector_x = vector_x.type(torch.float64)
-    cumsum = vector_x[-1]
-    for idx in reversed(range(length - 1)):
-        cumsum = vector_x[idx] + discount * cumsum
-        vector_x[idx] = cumsum
-    return vector_x
-
-def calculate_adv_and_value_targets(
-    values: torch.Tensor,
-    rewards: torch.Tensor,
-    lam: float,
-    gamma: float,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    # GAE formula: A_t = \sum_{k=0}^{n-1} (lam*gamma)^k delta_{t+k}
-    deltas = rewards[:-1] + gamma * values[1:] - values[:-1]
-    adv = discount_cumsum(deltas, gamma * lam)
-    target_value = adv + values[:-1]
-    return adv, target_value
-
-class VectorizedBuffer:
-
-    def __init__(  # pylint: disable=too-many-arguments
-        self,
-        obs_space,
-        act_space,
-        size: int,
-        gamma: float,
-        lam: float,
-        lam_c: float,
-        standardized_adv_r: bool = True,
-        standardized_adv_c: bool = True,
-        device: torch.device = 'cpu',
-        num_envs: int = 1,
-    ) -> None:
-        self.buffers: list[dict[str, torch.tensor]] = [
-            {
-                'obs': torch.zeros((size, *obs_space.shape), dtype=torch.float32, device=device),
-                'act': torch.zeros((size, *act_space.shape), dtype=torch.float32, device=device),
-                'reward': torch.zeros(size, dtype=torch.float32, device=device),
-                'cost': torch.zeros(size, dtype=torch.float32, device=device),
-                'done': torch.zeros(size, dtype=torch.float32, device=device),
-                'value_r': torch.zeros(size, dtype=torch.float32, device=device),
-                'value_c': torch.zeros(size, dtype=torch.float32, device=device),
-                'adv_r': torch.zeros(size, dtype=torch.float32, device=device),
-                'adv_c': torch.zeros(size, dtype=torch.float32, device=device),
-                'target_value_r': torch.zeros(size, dtype=torch.float32, device=device),
-                'target_value_c': torch.zeros(size, dtype=torch.float32, device=device),
-                'log_prob': torch.zeros(size, dtype=torch.float32, device=device),
-            }
-            for _ in range(num_envs)
-        ]
-        self._gamma = gamma
-        self._lam = lam
-        self._lam_c = lam_c
-        self._standardized_adv_r = standardized_adv_r
-        self._standardized_adv_c = standardized_adv_c
-        self.ptr_list = [0] * num_envs
-        self.path_start_idx_list = [0] * num_envs
-        self._device = device
-        self.num_envs = num_envs
-        
-    def store(self, **data: torch.Tensor) -> None:
-        """Store vectorized data into vectorized buffer."""
-        for i, buffer in enumerate(self.buffers):
-            assert self.ptr_list[i] < buffer['obs'].shape[0], 'Buffer overflow'
-            for key, value in data.items():
-                buffer[key][self.ptr_list[i]] = value[i]
-            self.ptr_list[i] += 1
-
-    def finish_path(
-        self,
-        last_value_r: torch.Tensor | None = None,
-        last_value_c: torch.Tensor | None = None,
-        idx: int = 0,
-    ) -> None:
-        if last_value_r is None:
-            last_value_r = torch.zeros(1, device=self._device)
-        if last_value_c is None:
-            last_value_c = torch.zeros(1, device=self._device)
-        path_slice = slice(self.path_start_idx_list[idx], self.ptr_list[idx])
-        last_value_r = last_value_r.to(self._device)
-        last_value_c = last_value_c.to(self._device)
-        rewards = torch.cat([self.buffers[idx]['reward'][path_slice], last_value_r])
-        costs = torch.cat([self.buffers[idx]['cost'][path_slice], last_value_c])
-        values_r = torch.cat([self.buffers[idx]['value_r'][path_slice], last_value_r])
-        values_c = torch.cat([self.buffers[idx]['value_c'][path_slice], last_value_c])
-
-        adv_r, target_value_r = calculate_adv_and_value_targets(
-            values_r,
-            rewards,
-            lam=self._lam,
-            gamma=self._gamma,
-        )
-        adv_c, target_value_c = calculate_adv_and_value_targets(
-            values_c,
-            costs,
-            lam=self._lam_c,
-            gamma=self._gamma,
-        )
-        self.buffers[idx]['adv_r'][path_slice] = adv_r
-        self.buffers[idx]['adv_c'][path_slice] = adv_c
-        self.buffers[idx]['target_value_r'][path_slice] = target_value_r
-        self.buffers[idx]['target_value_c'][path_slice] = target_value_c
-        
-        self.path_start_idx_list[idx] = self.ptr_list[idx]
-
-    def get(self) -> dict[str, torch.Tensor]:
-        data_pre = {k: [v] for k, v in self.buffers[0].items()}
-        for buffer in self.buffers[1:]:
-            for k, v in buffer.items():
-                data_pre[k].append(v)
-        data = {k: torch.cat(v, dim=0) for k, v in data_pre.items()}
-        adv_mean = data['adv_r'].mean()
-        adv_std = data['adv_r'].std()
-        cadv_mean = data['adv_c'].mean()
-        if self._standardized_adv_r:
-            data['adv_r'] = (data['adv_r'] - adv_mean) / (adv_std + 1e-8)
-        if self._standardized_adv_c:
-            data['adv_c'] = data['adv_c'] - cadv_mean
-        self.ptr_list = [0] * self.num_envs
-        self.path_start_idx_list = [0] * self.num_envs
-
-        return data
     
 def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
     flat_params = []
@@ -287,7 +110,7 @@ def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
 
 def conjugate_gradients(
     fisher_product: Callable[[torch.Tensor], torch.Tensor],
-    policy: Policy,
+    policy: ActorVCritic,
     fvp_obs: torch.Tensor,
     vector_b: torch.Tensor,
     num_steps: int = 10,
@@ -337,7 +160,7 @@ def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
 
 def fvp(
     params: torch.Tensor,
-    policy: Policy,
+    policy: ActorVCritic,
     fvp_obs: torch.Tensor,
     ) -> torch.Tensor:
     policy.actor.zero_grad()
@@ -373,37 +196,45 @@ def fvp(
 if __name__ == "__main__":
     args = parse_args()
 
+    # set the random seed, device and number of threads
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
-    torch.set_num_threads(2)
-
+    torch.set_num_threads(args.torch_threads)
     device = torch.device("cuda" if torch.cuda.is_available() and args.device == "cuda" else "cpu")
 
+    # set training steps
     local_steps_per_epoch = args.steps_per_epoch//args.num_envs
     epochs = args.total_steps // args.steps_per_epoch
 
+    # create and wrap the environment
     if args.num_envs > 1:
         env = safety_gymnasium.vector.make(env_id=args.env_id, num_envs=args.num_envs, wrappers=SafeNormalizeObservation)
+        env.reset(seed=args.seed)
         obs_space = env.single_observation_space
         act_space = env.single_action_space
         env = SafeNormalizeObservation(env)
     else:
         env = safety_gymnasium.make(args.env_id)
+        env.reset(seed=args.seed)
         obs_space = env.observation_space
         act_space = env.action_space
         env = SafeAutoResetWrapper(env)
         env = SafeRescaleAction(env, -1.0, 1.0)
         env = SafeNormalizeObservation(env)
         env = SafeUnsqueeze(env)
-    policy = Policy(
+
+    # create the actor-critic module
+    policy = ActorVCritic(
         obs_dim=obs_space.shape[0],
         act_dim=act_space.shape[0],
     ).to(device)
     reward_critic_optimizer = torch.optim.Adam(policy.reward_critic.parameters(), lr=args.critic_lr)
+    cost_critic_optimizer = torch.optim.Adam(policy.cost_critic.parameters(), lr=args.critic_lr)
 
-    buffer = VectorizedBuffer(
+    # create the vectorized on-policy buffer
+    buffer = VectorizedOnPolicyBuffer(
         obs_space=obs_space,
         act_space=act_space,
         size = args.steps_per_epoch,
@@ -416,8 +247,9 @@ if __name__ == "__main__":
         num_envs = args.num_envs,
     )
 
+    # set up the logger
     dict_args = vars(args)
-    exp_name = "-".join([args.env_id, "ppo", "seed-" + str(args.seed)])
+    exp_name = "-".join([args.env_id, "natural-pg", "seed-" + str(args.seed)])
     logger = EpochLogger(
         base_dir=args.log_dir,
         seed=str(args.seed),
@@ -433,11 +265,14 @@ if __name__ == "__main__":
 
     start_time = time.time()
 
+    # training loop
     for epoch in range(epochs):
         rollout__start_time = time.time()    
         obs, _ = env.reset()
         obs = torch.as_tensor(obs, dtype=torch.float32, device=device)
         ep_ret, ep_cost, ep_len = np.zeros(args.num_envs), np.zeros(args.num_envs), np.zeros(args.num_envs)
+
+        # collect samples until we have enough to update
         for steps in range(local_steps_per_epoch):
             with torch.no_grad():
                 act, log_prob, value_r, value_c = policy.step(obs, deterministic=False)
@@ -505,7 +340,8 @@ if __name__ == "__main__":
 
                     buffer.finish_path(last_value_r = last_value_r, last_value_c=last_value_c, idx = idx)
         rollout_end_time = time.time()
-        # update
+    
+        # update policy
         data = buffer.get()
         fvp_obs = data['obs'][:: args.fvp_sample_freq]
         theta_old = get_flat_params_from(policy.actor)
@@ -560,10 +396,15 @@ if __name__ == "__main__":
                 for param in policy.reward_critic.parameters():
                     loss_r += param.pow(2).sum() * args.critic_norm_coef
                 loss_r.backward()
+                clip_grad_norm_(
+                    policy.reward_critic.parameters(),
+                    args.max_grad_norm,
+                )
                 reward_critic_optimizer.step()
 
                 logger.store(**{"Loss/Loss_reward_critic": loss_r.mean().item(),})
         update_end_time = time.time()
+
         # log data
         logger.log_tabular("Metrics/EpRet", min_and_max=True, std=True)
         logger.log_tabular("Metrics/EpCosts", min_and_max=True, std=True)
