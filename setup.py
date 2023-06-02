@@ -12,36 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-import os
 
 from setuptools import find_packages, setup
 
 setup(
-    name="safepo",
-    packages=[package for package in find_packages() if package.startswith("safepo")],
-    package_data={"safepo": ["py.typed", "version.txt"]},
+    name='safepo',
+    packages=[package for package in find_packages() if package.startswith('safepo')],
+    package_data={'safepo': ['py.typed', 'version.txt']},
     install_requires=[
-        "psutil",
-        "joblib",
-        "scipy",
-        "tensorboard >= 2.8.0",
-        "pyyaml >= 6.0",
-        "matplotlib >= 3.7.1",
-        "safety-gymnasium >= 0.1.0"
+        'psutil',
+        'joblib',
+        'scipy',
+        'tensorboard >= 2.8.0',
+        'pyyaml >= 6.0',
+        'matplotlib >= 3.7.1',
+        'safety-gymnasium >= 0.1.0',
     ],
-    description="Pytorch version of Safe Reinforcement Learning Algorithm",
-    author="OmniSafeAI Team",
-    url="https://github.com/OmniSafeAI/Safe-Policy-Optimization",
-    author_email="jiamg.ji@gmail.com",
-    keywords="Safe Single Agent Reinforcement Learning"
-    "Safe Mult Agent Rinforcement Learning",
-    license="Apache License 2.0",
-    version="1.0.1",
-    python_requires=">=3.8",
+    description='Pytorch version of Safe Reinforcement Learning Algorithm',
+    author='OmniSafeAI Team',
+    url='https://github.com/OmniSafeAI/Safe-Policy-Optimization',
+    author_email='jiamg.ji@gmail.com',
+    keywords='Safe Single Agent Reinforcement Learning'
+    'Safe Mult Agent Rinforcement Learning',
+    license='Apache License 2.0',
+    version='1.0.1',
+    python_requires='>=3.8',
     classifiers=[
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
 )

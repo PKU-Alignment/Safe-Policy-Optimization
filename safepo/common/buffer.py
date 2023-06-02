@@ -15,10 +15,11 @@
 
 
 from __future__ import annotations
+
 import torch
 
-class VectorizedOnPolicyBuffer:
 
+class VectorizedOnPolicyBuffer:
     def __init__(  # pylint: disable=too-many-arguments
         self,
         obs_space,
@@ -29,23 +30,27 @@ class VectorizedOnPolicyBuffer:
         lam_c: float,
         standardized_adv_r: bool = True,
         standardized_adv_c: bool = True,
-        device: torch.device = 'cpu',
+        device: torch.device = "cpu",
         num_envs: int = 1,
     ) -> None:
         self.buffers: list[dict[str, torch.tensor]] = [
             {
-                'obs': torch.zeros((size, *obs_space.shape), dtype=torch.float32, device=device),
-                'act': torch.zeros((size, *act_space.shape), dtype=torch.float32, device=device),
-                'reward': torch.zeros(size, dtype=torch.float32, device=device),
-                'cost': torch.zeros(size, dtype=torch.float32, device=device),
-                'done': torch.zeros(size, dtype=torch.float32, device=device),
-                'value_r': torch.zeros(size, dtype=torch.float32, device=device),
-                'value_c': torch.zeros(size, dtype=torch.float32, device=device),
-                'adv_r': torch.zeros(size, dtype=torch.float32, device=device),
-                'adv_c': torch.zeros(size, dtype=torch.float32, device=device),
-                'target_value_r': torch.zeros(size, dtype=torch.float32, device=device),
-                'target_value_c': torch.zeros(size, dtype=torch.float32, device=device),
-                'log_prob': torch.zeros(size, dtype=torch.float32, device=device),
+                "obs": torch.zeros(
+                    (size, *obs_space.shape), dtype=torch.float32, device=device
+                ),
+                "act": torch.zeros(
+                    (size, *act_space.shape), dtype=torch.float32, device=device
+                ),
+                "reward": torch.zeros(size, dtype=torch.float32, device=device),
+                "cost": torch.zeros(size, dtype=torch.float32, device=device),
+                "done": torch.zeros(size, dtype=torch.float32, device=device),
+                "value_r": torch.zeros(size, dtype=torch.float32, device=device),
+                "value_c": torch.zeros(size, dtype=torch.float32, device=device),
+                "adv_r": torch.zeros(size, dtype=torch.float32, device=device),
+                "adv_c": torch.zeros(size, dtype=torch.float32, device=device),
+                "target_value_r": torch.zeros(size, dtype=torch.float32, device=device),
+                "target_value_c": torch.zeros(size, dtype=torch.float32, device=device),
+                "log_prob": torch.zeros(size, dtype=torch.float32, device=device),
             }
             for _ in range(num_envs)
         ]
@@ -58,11 +63,11 @@ class VectorizedOnPolicyBuffer:
         self.path_start_idx_list = [0] * num_envs
         self._device = device
         self.num_envs = num_envs
-        
+
     def store(self, **data: torch.Tensor) -> None:
         """Store vectorized data into vectorized buffer."""
         for i, buffer in enumerate(self.buffers):
-            assert self.ptr_list[i] < buffer['obs'].shape[0], 'Buffer overflow'
+            assert self.ptr_list[i] < buffer["obs"].shape[0], "Buffer overflow"
             for key, value in data.items():
                 buffer[key][self.ptr_list[i]] = value[i]
             self.ptr_list[i] += 1
@@ -80,10 +85,10 @@ class VectorizedOnPolicyBuffer:
         path_slice = slice(self.path_start_idx_list[idx], self.ptr_list[idx])
         last_value_r = last_value_r.to(self._device)
         last_value_c = last_value_c.to(self._device)
-        rewards = torch.cat([self.buffers[idx]['reward'][path_slice], last_value_r])
-        costs = torch.cat([self.buffers[idx]['cost'][path_slice], last_value_c])
-        values_r = torch.cat([self.buffers[idx]['value_r'][path_slice], last_value_r])
-        values_c = torch.cat([self.buffers[idx]['value_c'][path_slice], last_value_c])
+        rewards = torch.cat([self.buffers[idx]["reward"][path_slice], last_value_r])
+        costs = torch.cat([self.buffers[idx]["cost"][path_slice], last_value_c])
+        values_r = torch.cat([self.buffers[idx]["value_r"][path_slice], last_value_r])
+        values_c = torch.cat([self.buffers[idx]["value_c"][path_slice], last_value_c])
 
         adv_r, target_value_r = calculate_adv_and_value_targets(
             values_r,
@@ -97,11 +102,11 @@ class VectorizedOnPolicyBuffer:
             lam=self._lam_c,
             gamma=self._gamma,
         )
-        self.buffers[idx]['adv_r'][path_slice] = adv_r
-        self.buffers[idx]['adv_c'][path_slice] = adv_c
-        self.buffers[idx]['target_value_r'][path_slice] = target_value_r
-        self.buffers[idx]['target_value_c'][path_slice] = target_value_c
-        
+        self.buffers[idx]["adv_r"][path_slice] = adv_r
+        self.buffers[idx]["adv_c"][path_slice] = adv_c
+        self.buffers[idx]["target_value_r"][path_slice] = target_value_r
+        self.buffers[idx]["target_value_c"][path_slice] = target_value_c
+
         self.path_start_idx_list[idx] = self.ptr_list[idx]
 
     def get(self) -> dict[str, torch.Tensor]:
@@ -110,18 +115,19 @@ class VectorizedOnPolicyBuffer:
             for k, v in buffer.items():
                 data_pre[k].append(v)
         data = {k: torch.cat(v, dim=0) for k, v in data_pre.items()}
-        adv_mean = data['adv_r'].mean()
-        adv_std = data['adv_r'].std()
-        cadv_mean = data['adv_c'].mean()
+        adv_mean = data["adv_r"].mean()
+        adv_std = data["adv_r"].std()
+        cadv_mean = data["adv_c"].mean()
         if self._standardized_adv_r:
-            data['adv_r'] = (data['adv_r'] - adv_mean) / (adv_std + 1e-8)
+            data["adv_r"] = (data["adv_r"] - adv_mean) / (adv_std + 1e-8)
         if self._standardized_adv_c:
-            data['adv_c'] = data['adv_c'] - cadv_mean
+            data["adv_c"] = data["adv_c"] - cadv_mean
         self.ptr_list = [0] * self.num_envs
         self.path_start_idx_list = [0] * self.num_envs
 
         return data
-    
+
+
 def discount_cumsum(vector_x: torch.Tensor, discount: float) -> torch.Tensor:
     length = vector_x.shape[0]
     vector_x = vector_x.type(torch.float64)
@@ -130,6 +136,7 @@ def discount_cumsum(vector_x: torch.Tensor, discount: float) -> torch.Tensor:
         cumsum = vector_x[idx] + discount * cumsum
         vector_x[idx] = cumsum
     return vector_x
+
 
 def calculate_adv_and_value_targets(
     values: torch.Tensor,

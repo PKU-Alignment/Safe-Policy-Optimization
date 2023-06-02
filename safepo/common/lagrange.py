@@ -16,8 +16,9 @@
 
 from __future__ import annotations
 
-import torch
 from collections import deque
+
+import torch
 
 
 class Lagrange:
@@ -139,7 +140,8 @@ class Lagrange:
             self.lagrangian_upper_bound,
         )  # enforce: lambda in [0, inf]
 
-class PIDLagrangian:  
+
+class PIDLagrangian:
     """PID version of Lagrangian.
 
     Similar to the :class:`Lagrange` module, this module implements the PID version of the

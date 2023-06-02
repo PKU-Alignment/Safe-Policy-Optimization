@@ -18,10 +18,10 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-import torch.optim
-
 import torch.nn as nn
+import torch.optim
 from torch.distributions import Normal
+
 
 def build_mlp_network(sizes):
     layers = list()
@@ -32,8 +32,10 @@ def build_mlp_network(sizes):
         layers += [affine_layer, act()]
     return nn.Sequential(*layers)
 
+
 class Actor(nn.Module):
     """Actor network."""
+
     def __init__(self, obs_dim: int, act_dim: int):
         super().__init__()
         self.mean = build_mlp_network([obs_dim, 64, 64, act_dim])
@@ -44,8 +46,10 @@ class Actor(nn.Module):
         std = torch.exp(self.log_std)
         return Normal(mean, std)
 
+
 class VCritic(nn.Module):
     """Critic network."""
+
     def __init__(self, obs_dim):
         super().__init__()
         self.critic = build_mlp_network([obs_dim, 64, 64, 1])
@@ -53,8 +57,10 @@ class VCritic(nn.Module):
     def forward(self, obs):
         return torch.squeeze(self.critic(obs), -1)
 
+
 class ActorVCritic(nn.Module):
     """Actor critic policy."""
+
     def __init__(self, obs_dim, act_dim):
         super().__init__()
         self.reward_critic = VCritic(obs_dim)

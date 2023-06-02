@@ -17,7 +17,6 @@ import csv
 import json
 import os
 import os.path as osp
-import time
 import warnings
 
 import joblib
@@ -70,7 +69,7 @@ def convert_json(obj):
         elif isinstance(obj, list):
             return [convert_json(x) for x in obj]
 
-        elif hasattr(obj, "__name__") and not ("lambda" in obj.__name__):
+        elif hasattr(obj, "__name__") and "lambda" not in obj.__name__:
             return convert_json(obj.__name__)
 
         elif hasattr(obj, "__dict__") and obj.__dict__:
@@ -94,7 +93,7 @@ def filter_values_in_dict(dic):
         ):
             cleared_dict[k] = v
         if isinstance(v, dict):
-            filtered = filter_values_in_dict(v)
+            filter_values_in_dict(v)
             # cleared_dict.update(**filtered)
     print(cleared_dict)
     # raise NotImplementedError
@@ -114,7 +113,7 @@ def colorize(string, color, bold=False, highlight=False):
     attr.append(str(num))
     if bold:
         attr.append("1")
-    return "\x1b[%sm%s\x1b[0m" % (";".join(attr), string)
+    return "\x1b[{}m{}\x1b[0m".format(";".join(attr), string)
 
 
 class Logger:
@@ -127,10 +126,8 @@ class Logger:
 
     def __init__(
         self,
-        base_dir,
+        log_dir,
         seed=None,
-        algo = None,
-        env_id = None,
         output_fname="progress.csv",
         debug: bool = False,
         level: int = 1,
@@ -155,22 +152,18 @@ class Logger:
                 hyperparameter configuration with multiple random seeds, you
                 should give them all the same ``exp_name``.)
         """
-        relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
-        if seed is not None:
-            subfolder = "-".join(["seed", str(seed).zfill(3)])
-            relpath = "-".join([subfolder, relpath])
 
-        self.log_dir = base_dir
+        self.log_dir = log_dir
         self.debug = debug
         self.level = level
         self.verbose = verbose
 
         os.makedirs(self.log_dir, exist_ok=True)
         self.output_file = open(  # noqa: SIM115 # pylint: disable=consider-using-with
-                os.path.join(self.log_dir, output_fname),
-                encoding='utf-8',
-                mode='w',
-            )
+            os.path.join(self.log_dir, output_fname),
+            encoding="utf-8",
+            mode="w",
+        )
         atexit.register(self.output_file.close)
         print(colorize(f"Logging data to {self.output_file.name}", "cyan", bold=True))
         self._csv_writer = csv.writer(self.output_file)
@@ -179,7 +172,9 @@ class Logger:
         self.first_row = True
         self.log_headers = []
         self.log_current_row = {}
-        self.exp_name = "-".join([env_id, algo, seed])
+        self.exp_name = "-".join(
+            [log_dir.split("/")[-3], log_dir.split("/")[-2], "seed", seed]
+        )
         self.torch_saver_elements = None
         self.use_tensorboard = use_tensorboard
 
@@ -394,10 +389,8 @@ class EpochLogger(Logger):
 
     def __init__(
         self,
-        base_dir,
+        log_dir,
         seed=None,
-        algo = None,
-        env_id = None,
         output_fname="progress.csv",
         debug: bool = False,
         level: int = 1,
@@ -405,10 +398,8 @@ class EpochLogger(Logger):
         verbose=True,
     ):
         super().__init__(
-            base_dir=base_dir,
+            log_dir=log_dir,
             seed=seed,
-            algo=algo,
-            env_id=env_id,
             output_fname=output_fname,
             debug=debug,
             level=level,
@@ -431,7 +422,7 @@ class EpochLogger(Logger):
         values.
         """
         for k, v in kwargs.items():
-            if not (k in self.epoch_dict.keys()):
+            if k not in self.epoch_dict.keys():
                 self.epoch_dict[k] = []
             self.epoch_dict[k].append(v)
 
@@ -457,7 +448,7 @@ class EpochLogger(Logger):
             super().log_tabular(key, val)
         else:
             v = np.mean(self.epoch_dict[key])
-            super().log_tabular(key, v)            
+            super().log_tabular(key, v)
             if min_and_max:
                 super().log_tabular(key + "/Min", np.min(self.epoch_dict[key]))
                 super().log_tabular(key + "/Max", np.max(self.epoch_dict[key]))
