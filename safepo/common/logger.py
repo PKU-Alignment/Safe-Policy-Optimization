@@ -23,7 +23,7 @@ import warnings
 import joblib
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 
 # from safepo.common.mpi_tools import proc_id, mpi_statistics_scalar
 
@@ -129,8 +129,9 @@ class Logger:
         self,
         base_dir,
         seed=None,
-        exp_name=None,
-        output_fname="progress.txt",
+        algo = None,
+        env_id = None,
+        output_fname="progress.csv",
         debug: bool = False,
         level: int = 1,
         use_tensorboard=True,
@@ -159,7 +160,7 @@ class Logger:
             subfolder = "-".join(["seed", str(seed).zfill(3)])
             relpath = "-".join([subfolder, relpath])
 
-        self.log_dir = os.path.join(base_dir, exp_name, relpath)
+        self.log_dir = base_dir
         self.debug = debug
         self.level = level
         self.verbose = verbose
@@ -178,8 +179,9 @@ class Logger:
         self.first_row = True
         self.log_headers = []
         self.log_current_row = {}
-        self.exp_name = exp_name
+        self.exp_name = "-".join([env_id, algo, seed])
         self.torch_saver_elements = None
+        self.use_tensorboard = use_tensorboard
 
         # Setup tensor board logging if enabled and MPI root process
         if use_tensorboard:
@@ -337,6 +339,7 @@ class Logger:
         keystr = "%" + "%d" % max_key_len
         fmt = "| " + keystr + "s | %15s |"
         n_slashes = 22 + max_key_len
+
         print("-" * n_slashes) if self.verbose and self.level > 0 else None
         for key in self.log_headers:
             val = self.log_current_row.get(key, "")
@@ -351,20 +354,13 @@ class Logger:
         if self.output_file is not None:
             if self.first_row:
                 self._csv_writer.writerow(self.log_current_row.keys())
-                #self.output_file.write(" ".join(self.log_headers) + "\n")
-            #self.output_file.write(" ".join(map(str, vals)) + "\n")
+
             self._csv_writer.writerow(self.log_current_row.values())
             self.output_file.flush()
 
-        # if self.summary_writer is not None:
-        #     # for (k, v) in zip(self.log_headers, vals):
-        #     #     print(k, v)
-        #     # exit(0)
-        #     [self.summary_writer.add_scalar(k, v, global_step=self.epoch)
-        #         for (k, v) in zip(self.log_headers, vals)]
-        #     # Flushes the event file to disk. Call this method to make sure
-        #     # that all pending events have been written to disk.
-        #     self.summary_writer.flush()
+        if self.use_tensorboard:
+            for key, val in self.log_current_row.items():
+                self.summary_writer.add_scalar(key, val, global_step=self.epoch)
 
         # free logged information in all processes...
         self.log_current_row.clear()
@@ -400,7 +396,8 @@ class EpochLogger(Logger):
         self,
         base_dir,
         seed=None,
-        exp_name=None,
+        algo = None,
+        env_id = None,
         output_fname="progress.csv",
         debug: bool = False,
         level: int = 1,
@@ -410,7 +407,8 @@ class EpochLogger(Logger):
         super().__init__(
             base_dir=base_dir,
             seed=seed,
-            exp_name=exp_name,
+            algo=algo,
+            env_id=env_id,
             output_fname=output_fname,
             debug=debug,
             level=level,
@@ -466,3 +464,7 @@ class EpochLogger(Logger):
             if std:
                 super().log_tabular(key + "/Std", np.std(self.epoch_dict[key]))
         self.epoch_dict[key] = []
+
+    def get_stats(self, key):
+        """Get the values of a diagnostic."""
+        return np.mean(self.epoch_dict[key])

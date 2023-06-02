@@ -24,7 +24,6 @@ import numpy as np
 import pandas
 import torch
 
-import safepo.common.mpi_tools as mpi_tools
 
 
 def find_nested_item(obj, key):

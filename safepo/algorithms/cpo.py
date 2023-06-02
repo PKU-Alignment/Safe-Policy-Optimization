@@ -12,343 +12,610 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+
+
+from __future__ import annotations
+
+import argparse
+import random
+import time
 import numpy as np
+import safety_gymnasium
 import torch
+import torch.optim
+import torch.nn as nn
 
-from safepo.algorithms.trpo import TRPO
-from safepo.common.utils import (
-    conjugate_gradients,
-    get_flat_gradients_from,
-    get_flat_params_from,
-    set_param_values_to_model,
-)
+from collections import deque
+from distutils.util import strtobool
+from typing import Callable
+from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeNormalizeObservation, SafeUnsqueeze, SafeRescaleAction
+from rich.progress import track
+from torch.nn.utils.clip_grad import clip_grad_norm_
+from torch.utils.data import DataLoader, TensorDataset
+from safepo.common.buffer import VectorizedOnPolicyBuffer
+from safepo.common.model import ActorVCritic
+from safepo.common.logger import EpochLogger
 
 
-class CPO(TRPO):
-    """
-    Paper Name: Constrained Policy Optimization Algorithm.
-    Paper author: Joshua Achiam, David Held, Aviv Tamar, Pieter Abbeel
-    Paper URL: https://arxiv.org/abs/1705.10528
+def parse_args():
+    # training parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=0,
+        help="seed of the experiment")
+    parser.add_argument("--device", type=str, default="cpu",
+        help="if toggled, cuda will be enabled by default")
+    parser.add_argument("--torch-threads", type=int, default=1,
+        help="number of threads for torch")
+    parser.add_argument("--num-envs", type=int, default=1,
+        help="the number of parallel game environments")
+    parser.add_argument("--total-steps", type=int, default=1024000,
+        help="total timesteps of the experiments")
+    parser.add_argument("--env-id", type=str, default="SafetyPointGoal1-v0",
+        help="the id of the environment")
+    # general algorithm parameters
+    parser.add_argument("--steps_per_epoch", type=int, default=2048,
+        help="the number of steps to run in each environment per policy rollout")
+    parser.add_argument("--update-iters", type=int, default=10,
+        help="the max iteration to update the policy")
+    parser.add_argument("--batch-size", type=int, default=128,
+        help="the number of mini-batches")
+    parser.add_argument("--entropy_coef", type=float, default=0.0,
+        help="coefficient of the entropy")
+    parser.add_argument("--target-kl", type=float, default=0.01,
+        help="the target KL divergence threshold")
+    parser.add_argument("--max-grad-norm", type=float, default=40.0,
+        help="the maximum norm for the gradient clipping")
+    parser.add_argument("--critic-norm-coef", type=float, default=0.001,
+        help="the critic norm coefficient")
+    parser.add_argument("--gamma", type=float, default=0.99,
+        help="the discount factor gamma")
+    parser.add_argument("--lam", type=float, default=0.95,
+        help="the lambda for the reward general advantage estimation")
+    parser.add_argument("--lam-c", type=float, default=0.95,
+        help="the lambda for the cost general advantage estimation")
+    parser.add_argument("--standardized_adv_r", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="toggles reward advantages standardization")
+    parser.add_argument("--standardized_adv_c", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="toggles cost advantages standardization")
+    parser.add_argument("--critic_lr", type=float, default=1e-3,
+        help="the learning rate of the critic network")
+    # logger parameters
+    parser.add_argument("--log-dir", type=str, default="../runs",
+        help="directory to save agent logs (default: ../runs)")
+    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True,
+        help="toggles terminal logging")
+    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False,
+        help="toggles tensorboard logging")
+    # algorithm specific parameters
+    parser.add_argument("--fvp-sample-freq", type=int, default=1,
+        help="the sub-sampling rate of the observation")
+    parser.add_argument("--cg-damping", type=float, default=0.1,
+        help="the damping value for conjugate gradient")
+    parser.add_argument("--cg-iters", type=int, default=15,
+        help="the number of conjugate gradient iterations")
+    parser.add_argument("--backtrack-iters", type=int, default=15,
+        help="the number of backtracking line search iterations")
+    parser.add_argument("--backtrack-coef", type=float, default=0.8,
+        help="the coefficient for backtracking line search")
+    parser.add_argument("--cost-limit", type=float, default=25.0,
+        help="the cost limit for the safety constraint")
+    
+    args = parser.parse_args()
+    return args
+    
+def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
+    flat_params = []
+    for _, param in model.named_parameters():
+        if param.requires_grad:
+            data = param.data
+            data = data.view(-1)  # flatten tensor
+            flat_params.append(data)
+    assert flat_params, 'No gradients were found in model parameters.'
+    return torch.cat(flat_params)
 
-    This implementation does not use cost shaping, but relies on exploration noise annealing.
+def conjugate_gradients(
+    fisher_product: Callable[[torch.Tensor], torch.Tensor],
+    policy: ActorVCritic,
+    fvp_obs: torch.Tensor,
+    vector_b: torch.Tensor,
+    num_steps: int = 10,
+    residual_tol: float = 1e-10,
+    eps: float = 1e-6,
+) -> torch.Tensor:
+    vector_x = torch.zeros_like(vector_b)
+    vector_r = vector_b - fisher_product(vector_x, policy, fvp_obs)
+    vector_p = vector_r.clone()
+    rdotr = torch.dot(vector_r, vector_r)
 
-    :param algo: Name of the algorithm
-    :param cost_limit: Upper bound of max-cost, set as restriction
-    :param use_cost_value_function: Whether to use two critics value and cost net and update them
-    :param use_kl_early_stopping: Whether stop searching when kl-distance between target-policy and policy becomes too far
-    :param loss_pi_cost_before: Pi and cost loss last iter
-    """
+    for _ in range(num_steps):
+        vector_z = fisher_product(vector_p, policy, fvp_obs)
+        alpha = rdotr / (torch.dot(vector_p, vector_z) + eps)
+        vector_x += alpha * vector_p
+        vector_r -= alpha * vector_z
+        new_rdotr = torch.dot(vector_r, vector_r)
+        if torch.sqrt(new_rdotr) < residual_tol:
+            break
+        vector_mu = new_rdotr / (rdotr + eps)
+        vector_p = vector_r + vector_mu * vector_p
+        rdotr = new_rdotr
+    return vector_x
 
-    def __init__(self, algo="cpo", cost_limit: float = 25.0, **kwargs):
-        TRPO.__init__(
-            self,
-            algo=algo,
-            use_standardized_reward=True,
-            use_standardized_cost=True,
-            use_standardized_obs=False,
-            use_cost_value_function=True,
-            use_kl_early_stopping=True,
-            **kwargs,
-        )
-        self.cost_limit = cost_limit
-        self.loss_pi_cost_before = 0.0
+def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> None:
+    assert isinstance(vals, torch.Tensor)
+    i: int = 0
+    for _, param in model.named_parameters():
+        if param.requires_grad:  # param has grad and, hence, must be set
+            orig_size = param.size()
+            size = np.prod(list(param.size()))
+            new_values = vals[i : int(i + size)]
+            # set new param values
+            new_values = new_values.view(orig_size)
+            param.data = new_values
+            i += int(size)  # increment array position
+    assert i == len(vals), f'Lengths do not match: {i} vs. {len(vals)}'
 
-    def search_step_size(
-        self, step_dir, g_flat, c, optim_case, p_dist, data, total_steps=25, decay=0.8
-    ):
-        """
-        CPO algorithm performs line-search to ensure constraint satisfaction for rewards and costs.
-        :param step_dir:direction theta changes towards
-        :param g_flat:  gradient tensor of reward ,informs about how rewards improve with change of step direction
-        :param c:how much epcost goes above limit
-        :param p_dist: inform about old policy, how the old policy p performs on observation this moment
-        :param optim_case: the way to optimize
-        :param data: data buffer,mainly with adv, costs, values, actions, and observations
-        :param decay: how search-step reduces in line-search
-        """
-        # Get distance each time theta goes towards certain direction
-        step_frac = 1.0
-        # Get and flatten parameters from pi-net
-        _theta_old = get_flat_params_from(self.ac.pi.net)
-        _, old_log_p = self.ac.pi(data["obs"], data["act"])
-        # Reward improve expection,g-flat as gradient of reward
-        expected_rew_improve = g_flat.dot(step_dir)
+def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
+    grads = []
+    for _, param in model.named_parameters():
+        if param.requires_grad and param.grad is not None:
+            grad = param.grad
+            grads.append(grad.view(-1))  # flatten tensor and append
+    assert grads, 'No gradients were found in model parameters.'
+    return torch.cat(grads)
 
-        # While not within_trust_region and not finish all steps:
-        for j in range(total_steps):
-            # New θ=θ_0+Δ Δ=Δdistance * direction
-            new_theta = _theta_old + step_frac * step_dir
-            # Set new θ as new pi-net's parameters
-            set_param_values_to_model(self.ac.pi.net, new_theta)
-            # The last acceptance steps to next step
-            acceptance_step = j + 1
+def fvp(
+    params: torch.Tensor,
+    policy: ActorVCritic,
+    fvp_obs: torch.Tensor,
+    ) -> torch.Tensor:
+    policy.actor.zero_grad()
+    current_distribution = policy.actor(fvp_obs)
+    with torch.no_grad():
+        old_distribution = policy.actor(fvp_obs)
+    kl = torch.distributions.kl.kl_divergence(old_distribution, current_distribution).mean()
 
+    grads = torch.autograd.grad(kl,tuple(policy.actor.parameters()),create_graph=True)
+    flat_grad_kl = torch.cat([grad.view(-1) for grad in grads])
+
+    kl_p = (flat_grad_kl * params).sum()
+    grads = torch.autograd.grad(
+        kl_p,
+        tuple(policy.actor.parameters()),
+        retain_graph=False,
+    )
+
+    flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads])
+
+    logger.store(
+        **{
+            'Train/KL': kl.item(),
+        },
+    )
+    return flat_grad_grad_kl + params * args.cg_damping
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    # set the random seed, device and number of threads
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.set_num_threads(args.torch_threads)
+    device = torch.device("cuda" if torch.cuda.is_available() and args.device == "cuda" else "cpu")
+
+    # set training steps
+    local_steps_per_epoch = args.steps_per_epoch//args.num_envs
+    epochs = args.total_steps // args.steps_per_epoch
+
+    # create and wrap the environment
+    if args.num_envs > 1:
+        env = safety_gymnasium.vector.make(env_id=args.env_id, num_envs=args.num_envs, wrappers=SafeNormalizeObservation)
+        env.reset(seed=args.seed)
+        obs_space = env.single_observation_space
+        act_space = env.single_action_space
+        env = SafeNormalizeObservation(env)
+    else:
+        env = safety_gymnasium.make(args.env_id)
+        env.reset(seed=args.seed)
+        obs_space = env.observation_space
+        act_space = env.action_space
+        env = SafeAutoResetWrapper(env)
+        env = SafeRescaleAction(env, -1.0, 1.0)
+        env = SafeNormalizeObservation(env)
+        env = SafeUnsqueeze(env)
+
+    # create the actor-critic module
+    policy = ActorVCritic(
+        obs_dim=obs_space.shape[0],
+        act_dim=act_space.shape[0],
+    ).to(device)
+    reward_critic_optimizer = torch.optim.Adam(policy.reward_critic.parameters(), lr=args.critic_lr)
+    cost_critic_optimizer = torch.optim.Adam(policy.cost_critic.parameters(), lr=args.critic_lr)
+
+    # create the vectorized on-policy buffer
+    buffer = VectorizedOnPolicyBuffer(
+        obs_space=obs_space,
+        act_space=act_space,
+        size = args.steps_per_epoch,
+        gamma = args.gamma,
+        lam = args.lam,
+        lam_c = args.lam_c,
+        standardized_adv_r=args.standardized_adv_r,
+        standardized_adv_c=args.standardized_adv_c,
+        device=device,
+        num_envs = args.num_envs,
+    )
+
+    # set up the logger
+    dict_args = vars(args)
+    exp_name = "-".join([args.env_id, "cpo"])
+    logger = EpochLogger(
+        base_dir=args.log_dir,
+        seed=str(args.seed),
+        algo="cpo",
+        env_id=args.env_id,
+        use_tensorboard=args.use_tensorboard,
+    )
+    rew_deque = deque(maxlen=50)
+    cost_deque = deque(maxlen=50)
+    len_deque = deque(maxlen=50)
+    logger.save_config(dict_args)
+    logger.setup_torch_saver(policy.actor)
+    logger.log("Start with training.")
+
+    start_time = time.time()
+
+    # training loop
+    for epoch in range(epochs):
+        rollout_start_time = time.time()    
+        obs, _ = env.reset()
+        obs = torch.as_tensor(obs, dtype=torch.float32, device=device)
+        ep_ret, ep_cost, ep_len = np.zeros(args.num_envs), np.zeros(args.num_envs), np.zeros(args.num_envs)
+
+        # collect samples until we have enough to update
+        for steps in range(local_steps_per_epoch):
             with torch.no_grad():
-                # Loss of policy reward from target/expected reward
-                loss_pi_rew, _ = self.compute_loss_pi(data=data)
-                # Loss of cost of policy cost from real/expected reward
-                loss_pi_cost, _ = self.compute_loss_cost_performance(data=data)
-                # Compute KL distance between new and old policy
-                q_dist = self.ac.pi.dist(data["obs"])
-                # Kl_divergence with a form of pi*log(pi/qi)
-                torch_kl = (
-                    torch.distributions.kl.kl_divergence(p_dist, q_dist).mean().item()
-                )
-            # Δloss(rew)(p-q)
-            loss_rew_improve = self.loss_pi_before - loss_pi_rew.item()
-            # Δcost(p-q)
-            cost_diff = loss_pi_cost.item() - self.loss_pi_cost_before
-
-            # Average across MPI processes...
-            torch_kl = mpi_tools.mpi_avg(torch_kl)
-            # Pi_average of torch_kl above
-            loss_rew_improve = mpi_tools.mpi_avg(loss_rew_improve)
-            cost_diff = mpi_tools.mpi_avg(cost_diff)
-
-            self.logger.log(
-                "Expected Improvement: %.3f Actual: %.3f"
-                % (expected_rew_improve, loss_rew_improve)
+                act, log_prob, value_r, value_c = policy.step(obs, deterministic=False)
+            next_obs, reward, cost, terminated, truncated, info = env.step(act.detach().squeeze().cpu().numpy())
+            ep_ret += reward
+            ep_cost += cost
+            ep_len += 1
+            next_obs, reward, cost, terminated, truncated = (
+                torch.as_tensor(x, dtype=torch.float32, device=device) for x in (next_obs, reward, cost, terminated, truncated)
             )
-            # Check whether there are nans
-            if not torch.isfinite(loss_pi_rew) and not torch.isfinite(loss_pi_cost):
-                self.logger.log("WARNING: loss_pi not finite")
-            elif loss_rew_improve < 0 if optim_case > 1 else False:
-                self.logger.log("INFO: did not improve improve <0")
-            # Change of cost's range
-            elif cost_diff > max(-c, 0):
-                self.logger.log(f"INFO: no improve {cost_diff} > {max(-c, 0)}")
-            # Check KL-distance to avoid too far gap
-            elif torch_kl > self.target_kl * 1.5:
-                self.logger.log(
-                    f"INFO: violated KL constraint {torch_kl} at step {j + 1}."
+            if 'final_observation' in info:
+                info['final_observation'] = np.array(
+                    [
+                        array if array is not None else np.zeros(obs.shape[-1])
+                        for array in info['final_observation']
+                    ],
                 )
-            else:
-                # step only if surrogate is improved and we are
-                # within the trust region
-                self.logger.log(f"Accept step at i={j + 1}")
-                break
-            step_frac *= decay
-        else:
-            # If didnt find a step satisfys those conditions
-            self.logger.log("INFO: no suitable step found...")
-            step_dir = torch.zeros_like(step_dir)
-            acceptance_step = 0
+                info['final_observation'] = torch.as_tensor(
+                    info['final_observation'],
+                    dtype=torch.float32,
+                    device=device,
+                )
+            buffer.store(
+                obs=obs,
+                act=act,
+                reward=reward,
+                cost=cost,
+                value_r=value_r,
+                value_c=value_c,
+                log_prob=log_prob,
+            )
 
-        set_param_values_to_model(self.ac.pi.net, _theta_old)
-        return step_frac * step_dir, acceptance_step
+            obs = next_obs
+            epoch_end = steps >= local_steps_per_epoch - 1
+            for idx, (done, time_out) in enumerate(zip(terminated, truncated)):
+                if epoch_end or done or time_out:
+                    last_value_r = torch.zeros(1, device=device)
+                    last_value_c = torch.zeros(1, device=device)
+                    if not done:
+                        if epoch_end:
+                            with torch.no_grad():
+                                _, _, last_value_r, last_value_c = policy.step(obs[idx], deterministic=False)
+                        if time_out:
+                            with torch.no_grad():
+                                _, _, last_value_r, last_value_c = policy.step(
+                                    info['final_observation'][idx],
+                                    deterministic=False
+                                )
+                        last_value_r = last_value_r.unsqueeze(0)
+                        last_value_c = last_value_c.unsqueeze(0)
+                    if done or time_out:
+                        rew_deque.append(ep_ret[idx])
+                        cost_deque.append(ep_cost[idx])
+                        len_deque.append(ep_len[idx])
+                        logger.store(
+                        **{
+                            "Metrics/EpRet": np.mean(rew_deque), 
+                            "Metrics/EpCost": np.mean(cost_deque),
+                            "Metrics/EpLen": np.mean(len_deque), 
+                          }
+                        )
+                        ep_ret[idx] = 0.0
+                        ep_cost[idx] = 0.0
+                        ep_len[idx] = 0.0
 
-    def algorithm_specific_logs(self):
-        # Sign up for chosen log items
-        TRPO.algorithm_specific_logs(self)
-        self.logger.log_tabular("Misc/cost_gradient_norm")
-        self.logger.log_tabular("Misc/A")
-        self.logger.log_tabular("Misc/B")
-        self.logger.log_tabular("Misc/q")
-        self.logger.log_tabular("Misc/r")
-        self.logger.log_tabular("Misc/s")
-        self.logger.log_tabular("Misc/Lambda_star")
-        self.logger.log_tabular("Misc/Nu_star")
-        self.logger.log_tabular("Misc/OptimCase")
+                    buffer.finish_path(last_value_r = last_value_r, last_value_c=last_value_c, idx = idx)
+        rollout_end_time = time.time()
+    
+        # update policy
+        data = buffer.get()
+        fvp_obs = data['obs'][:: args.fvp_sample_freq]
+        theta_old = get_flat_params_from(policy.actor)
+        policy.actor.zero_grad()
+        # compute loss_pi
+        temp_distribution = policy.actor(data['obs'])
+        log_prob = temp_distribution.log_prob(data['act']).sum(dim=-1)
+        ratio = torch.exp(log_prob - data['log_prob'])
+        loss_pi_r = -(ratio * data['adv_r']).mean()
+        loss_reward_before = loss_pi_r.item()
+        old_distribution = policy.actor(data['obs'])
 
-    def compute_loss_cost_performance(self, data):
-        """
-        Performance of cost on this moment
-        """
-        dist, _log_p = self.ac.pi(data["obs"], data["act"])
-        ratio = torch.exp(_log_p - data["log_p"])
-        cost_loss = (ratio * data["cost_adv"]).mean()
-        # ent = dist.entropy().mean().item()
-        info = {}
-        return cost_loss, info
+        loss_pi_r.backward()
 
-    def update_policy_net(self, data):
-        # Get loss and info values before update (one-dimensional parameters of net=pi, as θ-old)
-        theta_old = get_flat_params_from(self.ac.pi.net)
-        self.pi_optimizer.zero_grad()
-        loss_pi, pi_info = self.compute_loss_pi(data=data)
-        self.loss_pi_before = loss_pi.item()
-        # Get previous loss of value
-        self.loss_v_before = self.compute_loss_v(data["obs"], data["target_v"]).item()
-        # Get previous loss of cost
-        self.loss_c_before = self.compute_loss_c(data["obs"], data["target_c"]).item()
-        # Get prob. distribution before updates, previous dist of possibilities
-        p_dist = self.ac.pi.dist(data["obs"])
-        # Train policy with multiple steps of gradient descent
-        loss_pi.backward()
-        # Average grads across MPI processes
-        mpi_tools.mpi_avg_grads(self.ac.pi.net)
-        g_flat = get_flat_gradients_from(self.ac.pi.net)
+        grads = -get_flat_gradients_from(policy.actor)
+        x = conjugate_gradients(fvp, policy, fvp_obs, grads, args.cg_iters)
+        assert torch.isfinite(x).all(), 'x is not finite'
+        xHx = torch.dot(x, fvp(x, policy, fvp_obs))
+        assert xHx.item() >= 0, 'xHx is negative'
+        alpha = torch.sqrt(2 * args.target_kl / (xHx + 1e-8))
 
-        # Flip sign since policy_loss = -(ration * adv)
-        g_flat *= -1
-        # x: g or g_T in original paper, stands for gradient of cost funtion
-        x = conjugate_gradients(self.Fvp, g_flat, self.cg_iters)
-        assert torch.isfinite(x).all()
-        eps = 1.0e-8
-        # Note that xHx = g^T x, but calculating xHx is faster than g^T x
-        xHx = torch.dot(x, self.Fvp(x))  # equivalent to : g^T x
-        alpha = torch.sqrt(2 * self.target_kl / (xHx + eps))
-        assert xHx.item() >= 0, "No negative values"
+        policy.actor.zero_grad()
+        temp_distribution = policy.actor(data['obs'])
+        log_prob = temp_distribution.log_prob(data['act']).sum(dim=-1)
+        ratio = torch.exp(log_prob - data['log_prob'])
+        loss_pi_c = (ratio * data['adv_c']).mean()
+        loss_cost_before = loss_pi_c.item()
 
-        # get the policy cost performance gradient b (flat as vector)
-        self.pi_optimizer.zero_grad()
-        loss_cost, _ = self.compute_loss_cost_performance(data=data)
-        loss_cost.backward()
-        # average grads across MPI processes
-        mpi_tools.mpi_avg_grads(self.ac.pi.net)
-        self.loss_pi_cost_before = loss_cost.item()
-        b_flat = get_flat_gradients_from(self.ac.pi.net)
-        # :param ep_costs: do samplings to get approximate costs as ep_costs
-        ep_costs = self.logger.get_stats("EpCosts")[0]
-        # :params c: how much sampled result of cost goes beyond limit
-        c = ep_costs - self.cost_limit
-        # Rescale, and add eps(small float) to avoid nan
-        c /= self.logger.get_stats("EpLen")[0] + eps  # rescale
-        self.logger.log(f"c = {c}")
-        self.logger.log(f"b^T b = {b_flat.dot(b_flat).item()}")
+        loss_pi_c.backward()
 
-        # Set variable names as used in the paper with conjugate_gradient method,
-        # used to solve equation(compute Hassen Matrix) instead of Natural Gradient
-        p = conjugate_gradients(self.Fvp, b_flat, self.cg_iters)
-        q = xHx  # conjugate of matrix H
-        r = g_flat.dot(p)  # g^T H^{-1} b
-        s = b_flat.dot(p)  # b^T H^{-1} b
+        b_grads = get_flat_gradients_from(policy.actor)
+        ep_costs = logger.get_stats('Metrics/EpCost') - args.cost_limit
 
-        # optim_case: divided into 5 kinds to compute
-        if b_flat.dot(b_flat) <= 1e-6 and c < 0:
+        p = conjugate_gradients(fvp, policy, fvp_obs, b_grads, args.cg_iters)
+        q = xHx
+        r = grads.dot(p)
+        s = b_grads.dot(p)
+
+        if b_grads.dot(b_grads) <= 1e-6 and ep_costs < 0:
             # feasible step and cost grad is zero: use plain TRPO update...
             A = torch.zeros(1)
             B = torch.zeros(1)
             optim_case = 4
         else:
-            self.logger.log(f"q={q.item()}")
-            self.logger.log(f"r={r.item()}")
-            self.logger.log(f"s={s.item()}")
-            self.logger.log(f"r/c={(r / c).item()}")
-            assert torch.isfinite(r).all()
-            assert torch.isfinite(s).all()
+            assert torch.isfinite(r).all(), 'r is not finite'
+            assert torch.isfinite(s).all(), 's is not finite'
 
-            # A,b: mathematical value, not too much true meaning
-            A = q - r**2 / s  # must be always >= 0 (Cauchy-Schwarz inequality)
-            B = (
-                2 * self.target_kl - c**2 / s
-            )  # safety line intersects trust-region if B > 0
+            A = q - r**2 / (s + 1e-8)
+            B = 2 * args.target_kl - ep_costs**2 / (s + 1e-8)
 
-            if c < 0 and B < 0:
+            if ep_costs < 0 and B < 0:
                 # point in trust region is feasible and safety boundary doesn't intersect
                 # ==> entire trust region is feasible
                 optim_case = 3
-            elif c < 0 and B >= 0:
-                # x = 0 is feasible and safety boundary intersects
-                # ==> most of trust region is feasible
+            elif ep_costs < 0 <= B:
+                # point in trust region is feasible but safety boundary intersects
+                # ==> only part of trust region is feasible
                 optim_case = 2
-            elif c >= 0 and B >= 0:
-                # x = 0 is infeasible and safety boundary intersects
-                # ==> part of trust region is feasible, recovery possible
+            elif ep_costs >= 0 and B >= 0:
+                # point in trust region is infeasible and cost boundary doesn't intersect
+                # ==> entire trust region is infeasible
                 optim_case = 1
-                self.logger.log("Alert! Attempting feasible recovery!", "yellow")
+                logger.log('Alert! Attempting feasible recovery!', 'yellow')
             else:
-                # x = 0 infeasible, and safety halfspace is outside trust region
+                # x = 0 infeasible, and safety half space is outside trust region
                 # ==> whole trust region is infeasible, try to fail gracefully
                 optim_case = 0
-                self.logger.log("Alert! Attempting infeasible recovery!", "red")
+                logger.log('Alert! Attempting infeasible recovery!', 'red')
 
-        # the following computes required nu_star and lambda_star
-        if optim_case in [3, 4]:
-            # under 3 and 4 cases directly use trpo method
-            alpha = torch.sqrt(
-                2 * self.target_kl / (xHx + 1e-8)
-            )  # step gap fixed by KKT condition in conjugate algorithm
+        if optim_case in (3, 4):
+            # under 3 and 4 cases directly use TRPO method
+            alpha = torch.sqrt(2 * args.target_kl / (xHx + 1e-8))
             nu_star = torch.zeros(1)
-            lambda_star = 1 / alpha
-            step_dir = alpha * x  # change step direction to gap * gradient
+            lambda_star = 1 / (alpha + 1e-8)
+            step_direction = alpha * x
 
-        elif optim_case in [1, 2]:
-            # in 1 and 2,
-            def project_on_set(
-                t: torch.Tensor, low: float, high: float
-            ) -> torch.Tensor:
-                return torch.Tensor([max(low, min(t, high))])
+        elif optim_case in (1, 2):
 
-            #  Analytical Solution to LQCLP, employ lambda,nu to compute final solution of argmax-OLOLQC
+            def project(data: torch.Tensor, low: torch.Tensor, high: torch.Tensor) -> torch.Tensor:
+                """Project data to [low, high] interval."""
+                return torch.clamp(data, low, high)
+
+            #  analytical Solution to LQCLP, employ lambda,nu to compute final solution of OLOLQC
             #  λ=argmax(f_a(λ),f_b(λ)) = λa_star or λb_star
-            #  (computing formula shown in appendix) λa and λb
+            #  computing formula shown in appendix, lambda_a and lambda_b
             lambda_a = torch.sqrt(A / B)
-            lambda_b = torch.sqrt(q / (2 * self.target_kl))
+            lambda_b = torch.sqrt(q / (2 * args.target_kl))
             # λa_star = Proj(lambda_a ,0 ~ r/c)  λb_star=Proj(lambda_b,r/c~ +inf)
-            # where Proj(str,b,c)=max(b,min(str,c)) , may be regarded as a projection from effective region towards safety region
-            if c < 0:
-                lambda_a_star = project_on_set(lambda_a, 0.0, r / c)
-                lambda_b_star = project_on_set(lambda_b, r / c, np.inf)
+            # where projection(str,b,c)=max(b,min(str,c))
+            # may be regarded as a projection from effective region towards safety region
+            r_num = r.item()
+            eps_cost = ep_costs + 1e-8
+            if ep_costs < 0:
+                lambda_a_star = project(lambda_a, torch.as_tensor(0.0), r_num / eps_cost)
+                lambda_b_star = project(lambda_b, r_num / eps_cost, torch.as_tensor(torch.inf))
             else:
-                lambda_a_star = project_on_set(lambda_a, r / c, np.inf)
-                lambda_b_star = project_on_set(lambda_b, 0.0, r / c)
+                lambda_a_star = project(lambda_a, r_num / eps_cost, torch.as_tensor(torch.inf))
+                lambda_b_star = project(lambda_b, torch.as_tensor(0.0), r_num / eps_cost)
 
-            def f_a(lam):
-                return -0.5 * (A / (lam + eps) + B * lam) - r * c / (s + eps)
+            def f_a(lam: torch.Tensor) -> torch.Tensor:
+                return -0.5 * (A / (lam + 1e-8) + B * lam) - r * ep_costs / (s + 1e-8)
 
-            def f_b(lam):
-                return -0.5 * (q / (lam + eps) + 2 * self.target_kl * lam)
+            def f_b(lam: torch.Tensor) -> torch.Tensor:
+                return -0.5 * (q / (lam + 1e-8) + 2 * args.target_kl * lam)
 
             lambda_star = (
-                lambda_a_star
-                if f_a(lambda_a_star) >= f_b(lambda_b_star)
-                else lambda_b_star
+                lambda_a_star if f_a(lambda_a_star) >= f_b(lambda_b_star) else lambda_b_star
             )
 
-            # Discard all negative values with torch.clamp(x, min=0)
+            # discard all negative values with torch.clamp(x, min=0)
             # Nu_star = (lambda_star * - r)/s
-            nu_star = torch.clamp(lambda_star * c - r, min=0) / (s + eps)
+            nu_star = torch.clamp(lambda_star * ep_costs - r, min=0) / (s + 1e-8)
             # final x_star as final direction played as policy's loss to backward and update
-            step_dir = 1.0 / (lambda_star + eps) * (x - nu_star * p)
+            step_direction = 1.0 / (lambda_star + 1e-8) * (x - nu_star * p)
 
         else:  # case == 0
             # purely decrease costs
             # without further check
             lambda_star = torch.zeros(1)
-            nu_star = np.sqrt(2 * self.target_kl / (s + eps))
-            step_dir = -nu_star * p
+            nu_star = torch.sqrt(2 * args.target_kl / (s + 1e-8))
+            step_direction = -nu_star * p
 
-        final_step_dir, accept_step = self.search_step_size(
-            step_dir,
-            g_flat,
-            c=c,
-            optim_case=optim_case,
-            p_dist=p_dist,
-            data=data,
-            total_steps=20,
-        )
-        # Update actor network parameters
-        # just like trpo update method
-        new_theta = theta_old + final_step_dir
-        set_param_values_to_model(self.ac.pi.net, new_theta)
-        # Output the performance of pi policy on observation
-        q_dist = self.ac.pi.dist(data["obs"])
-        torch_kl = torch.distributions.kl.kl_divergence(p_dist, q_dist).mean().item()
+        # get distance each time theta goes towards certain direction
+        step_frac = 1.0
+        # get and flatten parameters from pi-net
+        theta_old = get_flat_params_from(policy.actor)
+        # reward improvement, g-flat as gradient of reward
+        expected_reward_improve = grads.dot(step_direction)
 
-        self.logger.store(
+        kl = torch.zeros(1)
+        # while not within_trust_region and not finish all steps:
+        for step in range(args.backtrack_iters):
+            # get new theta
+            new_theta = theta_old + step_frac * step_direction
+            # set new theta as new actor parameters
+            set_param_values_to_model(policy.actor, new_theta)
+            # the last acceptance steps to next step
+            acceptance_step = step + 1
+
+            with torch.no_grad():
+                try:
+                    temp_distribution = policy.actor(data['obs'])
+                    log_prob = temp_distribution.log_prob(data['act']).sum(dim=-1)
+                    ratio = torch.exp(log_prob - data['log_prob'])
+                    loss_reward = -(ratio * data['adv_r']).mean()
+                except ValueError:
+                    step_frac *= args.backtrack_coef
+                    continue
+                # loss of cost of policy cost from real/expected reward
+                temp_distribution = policy.actor(data['obs'])
+                log_prob = temp_distribution.log_prob(data['act']).sum(dim=-1)
+                ratio = torch.exp(log_prob - data['log_prob'])
+                loss_cost = (ratio * data['adv_c']).mean()
+                # compute KL distance between new and old policy
+                current_distribution = policy.actor(data['obs'])
+                kl = torch.distributions.kl.kl_divergence(old_distribution, current_distribution).mean()
+            # compute improvement of reward
+            loss_reward_improve = loss_reward_before - loss_reward.item()
+            # compute difference of cost
+            loss_cost_diff = loss_cost.item() - loss_cost_before
+
+            logger.log(
+                f'Expected Improvement: {expected_reward_improve} Actual: {loss_reward_improve}',
+            )
+            # check whether there are nan.
+            if not torch.isfinite(loss_reward) and not torch.isfinite(loss_cost):
+                logger.log('WARNING: loss_pi not finite')
+            if not torch.isfinite(kl):
+                logger.log('WARNING: KL not finite')
+                continue
+            if loss_reward_improve < 0 if optim_case > 1 else False:
+                logger.log('INFO: did not improve improve <0')
+            # change of cost's range
+            elif loss_cost_diff > max(-ep_costs, 0):
+                logger.log(f'INFO: no improve {loss_cost_diff} > {max(-ep_costs, 0)}')
+            # check KL-distance to avoid too far gap
+            elif kl > args.target_kl:
+                logger.log(f'INFO: violated KL constraint {kl} at step {step + 1}.')
+            else:
+                # step only if surrogate is improved and we are
+                # within the trust region
+                logger.log(f'Accept step at i={step + 1}')
+                break
+            step_frac *= args.backtrack_coef
+        else:
+            # if didn't find a step satisfy those conditions
+            logger.log('INFO: no suitable step found...')
+            step_direction = torch.zeros_like(step_direction)
+            acceptance_step = 0
+
+        theta_new = theta_old + step_frac*step_direction
+        set_param_values_to_model(policy.actor, theta_new)
+
+        logger.store(
             **{
-                "Values/Adv": data["act"].numpy(),
-                "Entropy": pi_info["ent"],
-                "KL": torch_kl,
-                "PolicyRatio": pi_info["ratio"],
-                "Loss/Pi": self.loss_pi_before,
-                "Loss/DeltaPi": loss_pi.item() - self.loss_pi_before,
-                "Misc/StopIter": 1,
-                "Misc/AcceptanceStep": accept_step,
-                "Misc/Alpha": alpha.item(),
-                "Misc/FinalStepNorm": final_step_dir.norm().numpy(),
-                "Misc/xHx": xHx.numpy(),
-                "Misc/H_inv_g": x.norm().item(),  # H^-1 g
-                "Misc/gradient_norm": torch.norm(g_flat).numpy(),
-                "Misc/cost_gradient_norm": torch.norm(b_flat).numpy(),
-                "Misc/Lambda_star": lambda_star.item(),
-                "Misc/Nu_star": nu_star.item(),
-                "Misc/OptimCase": int(optim_case),
-                "Misc/A": A.item(),
-                "Misc/B": B.item(),
-                "Misc/q": q.item(),
-                "Misc/r": r.item(),
-                "Misc/s": s.item(),
-            }
+                'Misc/Alpha': alpha.item(),
+                'Misc/FinalStepNorm': torch.norm(step_direction).mean().item(),
+                'Misc/xHx': xHx.item(),
+                'Misc/gradient_norm': torch.norm(grads).mean().item(),
+                'Misc/H_inv_g': x.norm().item(),
+                'Misc/AcceptanceStep': acceptance_step,
+                "Loss/Loss_actor": (loss_pi_r+loss_pi_c).mean().item(),
+                'Train/KL': kl,
+            },
         )
+
+        dataloader = DataLoader(
+            dataset=TensorDataset(
+                data['obs'], 
+                data['target_value_r'], 
+                data['target_value_c'],
+                ),
+            batch_size=args.batch_size,
+            shuffle=True,
+        )
+        for _ in track(range(args.update_iters), description='Updating...'):
+            for (
+                obs_b,
+                target_value_r_b,
+                target_value_c_b,
+            ) in dataloader:
+                reward_critic_optimizer.zero_grad()
+                loss_r = nn.functional.mse_loss(policy.reward_critic(obs_b), target_value_r_b)
+                for param in policy.reward_critic.parameters():
+                    loss_r += param.pow(2).sum() * args.critic_norm_coef
+                loss_r.backward()
+                clip_grad_norm_(
+                    policy.reward_critic.parameters(),
+                    args.max_grad_norm,
+                )
+                reward_critic_optimizer.step()
+
+                cost_critic_optimizer.zero_grad()
+                loss_c = nn.functional.mse_loss(policy.cost_critic(obs_b), target_value_c_b)
+                for param in policy.cost_critic.parameters():
+                    loss_c += param.pow(2).sum() * args.critic_norm_coef
+                loss_c.backward()
+                clip_grad_norm_(
+                    policy.cost_critic.parameters(),
+                    args.max_grad_norm,
+                )
+                cost_critic_optimizer.step()
+
+                logger.store(
+                    **{
+                        "Loss/Loss_reward_critic": loss_r.mean().item(),
+                        "Loss/Loss_cost_critic": loss_c.mean().item(),
+                        }
+                    )
+        update_end_time = time.time()
+
+        # log data
+        logger.log_tabular("Metrics/EpRet", min_and_max=True, std=True)
+        logger.log_tabular("Metrics/EpCost", min_and_max=True, std=True)
+        logger.log_tabular("Metrics/EpLen", min_and_max=True)
+        logger.log_tabular('Train/Epoch', epoch+1)
+        logger.log_tabular('Train/TotalSteps', (epoch+1)*args.steps_per_epoch)
+        logger.log_tabular('Train/KL')
+        logger.log_tabular("Loss/Loss_reward_critic")
+        logger.log_tabular("Loss/Loss_cost_critic")
+        logger.log_tabular("Loss/Loss_actor")
+        logger.log_tabular('Time/Rollout', rollout_end_time - rollout_start_time)
+        logger.log_tabular('Time/Update', update_end_time - rollout_end_time)
+        logger.log_tabular('Value/RewardAdv', data['adv_r'].mean().item())
+        logger.log_tabular('Value/CostAdv', data['adv_c'].mean().item())
+        logger.log_tabular('Misc/Alpha')
+        logger.log_tabular('Misc/FinalStepNorm')
+        logger.log_tabular('Misc/xHx')
+        logger.log_tabular('Misc/gradient_norm')
+        logger.log_tabular('Misc/H_inv_g')
+        logger.log_tabular('Misc/AcceptanceStep')
+
+        logger.dump_tabular()
+        if epoch % 100 == 0:
+            logger.torch_save(itr=epoch)
+    logger.close()

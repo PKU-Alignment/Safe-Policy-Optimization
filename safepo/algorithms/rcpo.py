@@ -35,6 +35,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.model import ActorVCritic
 from safepo.common.logger import EpochLogger
+from safepo.common.lagrange import Lagrange
 
 
 def parse_args():
@@ -57,11 +58,11 @@ def parse_args():
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--update-iters", type=int, default=40,
         help="the max iteration to update the policy")
-    parser.add_argument("--batch-size", type=int, default=64,
+    parser.add_argument("--batch-size", type=int, default=128,
         help="the number of mini-batches")
     parser.add_argument("--entropy_coef", type=float, default=0.0,
         help="coefficient of the entropy")
-    parser.add_argument("--target-kl", type=float, default=0.02,
+    parser.add_argument("--target-kl", type=float, default=0.01,
         help="the target KL divergence threshold")
     parser.add_argument("--max-grad-norm", type=float, default=40.0,
         help="the maximum norm for the gradient clipping")
@@ -77,15 +78,15 @@ def parse_args():
         help="toggles reward advantages standardization")
     parser.add_argument("--standardized_adv_c", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="toggles cost advantages standardization")
-    parser.add_argument("--actor_lr", type=float, default=3e-4,
-        help="the learning rate of the actor network")
-    parser.add_argument("--critic_lr", type=float, default=3e-4,
+    parser.add_argument("--critic_lr", type=float, default=1e-3,
         help="the learning rate of the critic network")
     parser.add_argument("--linear-lr-decay", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="toggles learning rate annealing for policy and value networks")
     # logger parameters
     parser.add_argument("--log-dir", type=str, default="../runs",
         help="directory to save agent logs (default: ../runs)")
+    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True,
+        help="toggles terminal logging")
     parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False,
         help="toggles tensorboard logging")
     # algorithm specific parameters
@@ -95,6 +96,13 @@ def parse_args():
         help="the damping value for conjugate gradient")
     parser.add_argument("--cg-iters", type=int, default=15,
         help="the number of conjugate gradient iterations")
+    parser.add_argument("--cost-limit", type=float, default=25.0,
+        help="the cost limit for the safety constraint")
+    parser.add_argument("--lagrangian-multiplier-init", type=float, default=0.001,
+        help="the initial value of the lagrangian multiplier")
+    parser.add_argument("--lagrangian-multiplier-lr", type=float, default=0.035,
+        help="the learning rate of the lagrangian multiplier")
+    
     args = parser.parse_args()
     return args
     
@@ -164,16 +172,12 @@ def fvp(
     fvp_obs: torch.Tensor,
     ) -> torch.Tensor:
     policy.actor.zero_grad()
-    q_dist = policy.actor(fvp_obs)
+    current_distribution = policy.actor(fvp_obs)
     with torch.no_grad():
-        p_dist = policy.actor(fvp_obs)
-    kl = torch.distributions.kl.kl_divergence(p_dist, q_dist).mean()
+        old_distribution = policy.actor(fvp_obs)
+    kl = torch.distributions.kl.kl_divergence(old_distribution, current_distribution).mean()
 
-    grads = torch.autograd.grad(
-        kl,
-        tuple(policy.actor.parameters()),
-        create_graph=True,
-    )
+    grads = torch.autograd.grad(kl,tuple(policy.actor.parameters()),create_graph=True)
     flat_grad_kl = torch.cat([grad.view(-1) for grad in grads])
 
     kl_p = (flat_grad_kl * params).sum()
@@ -191,7 +195,6 @@ def fvp(
         },
     )
     return flat_grad_grad_kl + params * args.cg_damping
-
 
 if __name__ == "__main__":
     args = parse_args()
@@ -247,13 +250,21 @@ if __name__ == "__main__":
         num_envs = args.num_envs,
     )
 
+    # setup lagrangian multiplier
+    lagrange = Lagrange(
+        cost_limit=args.cost_limit,
+        lagrangian_multiplier_init=args.lagrangian_multiplier_init,
+        lagrangian_multiplier_lr=args.lagrangian_multiplier_lr,
+    )
+
     # set up the logger
     dict_args = vars(args)
-    exp_name = "-".join([args.env_id, "natural-pg", "seed-" + str(args.seed)])
+    exp_name = "-".join([args.env_id, "rcpo"])
     logger = EpochLogger(
         base_dir=args.log_dir,
         seed=str(args.seed),
-        exp_name=exp_name,
+        algo="rcpo",
+        env_id=args.env_id,
         use_tensorboard=args.use_tensorboard,
     )
     rew_deque = deque(maxlen=50)
@@ -267,7 +278,7 @@ if __name__ == "__main__":
 
     # training loop
     for epoch in range(epochs):
-        rollout__start_time = time.time()    
+        rollout_start_time = time.time()    
         obs, _ = env.reset()
         obs = torch.as_tensor(obs, dtype=torch.float32, device=device)
         ep_ret, ep_cost, ep_len = np.zeros(args.num_envs), np.zeros(args.num_envs), np.zeros(args.num_envs)
@@ -330,7 +341,7 @@ if __name__ == "__main__":
                         logger.store(
                         **{
                             "Metrics/EpRet": np.mean(rew_deque), 
-                            "Metrics/EpCosts": np.mean(cost_deque),
+                            "Metrics/EpCost": np.mean(cost_deque),
                             "Metrics/EpLen": np.mean(len_deque), 
                           }
                         )
@@ -341,6 +352,14 @@ if __name__ == "__main__":
                     buffer.finish_path(last_value_r = last_value_r, last_value_c=last_value_c, idx = idx)
         rollout_end_time = time.time()
     
+        # update lagrange multiplier
+        ep_costs = logger.get_stats("Metrics/EpCost")
+        lagrange.update_lagrange_multiplier(ep_costs)
+    
+        # comnpute advantage
+        advantage = data['adv_r'] - lagrange.lagrangian_multiplier * data['adv_c']
+        advantage /= (lagrange.lagrangian_multiplier + 1)
+
         # update policy
         data = buffer.get()
         fvp_obs = data['obs'][:: args.fvp_sample_freq]
@@ -351,7 +370,7 @@ if __name__ == "__main__":
         distribution = policy.actor(data['obs'])
         log_prob = distribution.log_prob(data['act']).sum(dim=-1)
         ratio = torch.exp(log_prob - data['log_prob'])
-        loss_pi = -(ratio * data['adv_r']).mean()
+        loss_pi = -(ratio * advantage).mean()
 
         loss_pi.backward()
 
@@ -390,6 +409,7 @@ if __name__ == "__main__":
             for (
                 obs_b,
                 target_value_r_b,
+                target_value_c_b,
             ) in dataloader:
                 reward_critic_optimizer.zero_grad()
                 loss_r = nn.functional.mse_loss(policy.reward_critic(obs_b), target_value_r_b)
@@ -402,19 +422,36 @@ if __name__ == "__main__":
                 )
                 reward_critic_optimizer.step()
 
-                logger.store(**{"Loss/Loss_reward_critic": loss_r.mean().item(),})
+                cost_critic_optimizer.zero_grad()
+                loss_c = nn.functional.mse_loss(policy.cost_critic(obs_b), target_value_c_b)
+                for param in policy.cost_critic.parameters():
+                    loss_c += param.pow(2).sum() * args.critic_norm_coef
+                loss_c.backward()
+                clip_grad_norm_(
+                    policy.cost_critic.parameters(),
+                    args.max_grad_norm,
+                )
+                cost_critic_optimizer.step()
+
+                logger.store(
+                    **{
+                        "Loss/Loss_reward_critic": loss_r.mean().item(),
+                        "Loss/Loss_cost_critic": loss_c.mean().item(),
+                        }
+                    )
         update_end_time = time.time()
 
         # log data
         logger.log_tabular("Metrics/EpRet", min_and_max=True, std=True)
-        logger.log_tabular("Metrics/EpCosts", min_and_max=True, std=True)
+        logger.log_tabular("Metrics/EpCost", min_and_max=True, std=True)
         logger.log_tabular("Metrics/EpLen", min_and_max=True)
         logger.log_tabular('Train/Epoch', epoch+1)
         logger.log_tabular('Train/TotalSteps', (epoch+1)*args.steps_per_epoch)
         logger.log_tabular('Train/KL')
         logger.log_tabular("Loss/Loss_reward_critic")
+        logger.log_tabular("Loss/Loss_cost_critic")
         logger.log_tabular("Loss/Loss_actor")
-        logger.log_tabular('Time/Rollout', rollout_end_time - rollout__start_time)
+        logger.log_tabular('Time/Rollout', rollout_end_time - rollout_start_time)
         logger.log_tabular('Time/Update', update_end_time - rollout_end_time)
         logger.log_tabular('Value/RewardAdv', data['adv_r'].mean().item())
         logger.log_tabular('Value/CostAdv', data['adv_c'].mean().item())
