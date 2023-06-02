@@ -195,7 +195,7 @@ class Plotter:
                     with open(os.path.join(root, 'config.json'), encoding='utf-8') as f:
                         config = json.load(f)
                         if 'exp_name' in config:
-                            exp_name = config['exp_name'].split('-')[-2]
+                            exp_name = config['exp_name'].split('-')[-3]
                             steps_per_epoch = config['steps_per_epoch']
                 except FileNotFoundError as error:
                     config_path = os.path.join(root, 'config.json')
