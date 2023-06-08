@@ -13,16 +13,16 @@
 # limitations under the License.
 # ==============================================================================
 import atexit
+import csv
 import json
 import os
 import os.path as osp
-import time
 import warnings
 
 import joblib
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 
 # from safepo.common.mpi_tools import proc_id, mpi_statistics_scalar
 
@@ -69,7 +69,7 @@ def convert_json(obj):
         elif isinstance(obj, list):
             return [convert_json(x) for x in obj]
 
-        elif hasattr(obj, "__name__") and not ("lambda" in obj.__name__):
+        elif hasattr(obj, "__name__") and "lambda" not in obj.__name__:
             return convert_json(obj.__name__)
 
         elif hasattr(obj, "__dict__") and obj.__dict__:
@@ -93,7 +93,7 @@ def filter_values_in_dict(dic):
         ):
             cleared_dict[k] = v
         if isinstance(v, dict):
-            filtered = filter_values_in_dict(v)
+            filter_values_in_dict(v)
             # cleared_dict.update(**filtered)
     print(cleared_dict)
     # raise NotImplementedError
@@ -113,55 +113,7 @@ def colorize(string, color, bold=False, highlight=False):
     attr.append(str(num))
     if bold:
         attr.append("1")
-    return "\x1b[%sm%s\x1b[0m" % (";".join(attr), string)
-
-
-def setup_logger_kwargs(
-    exp_name=None,
-    seed=None,
-    base_dir=None,
-    hms_time=time.strftime("%Y-%m-%d__%H-%M-%S"),
-    datestamp=True,
-    level=1,
-    use_tensorboard=True,
-    verbose=True,
-):
-    """
-    Sets up the output_dir for a logger and returns a dict for logger kwargs.
-    If no seed is given and datestamp is false,
-    ::
-        output_dir = data_dir/exp_name
-    If a seed is given and datestamp is false,
-    ::
-        output_dir = data_dir/exp_name/exp_name_s[seed]
-    If datestamp is true, amend to
-    ::
-        output_dir = data_dir/YY-MM-DD_exp_name/YY-MM-DD_HH-MM-SS_exp_name_s[seed]
-    You can force datestamp=True by setting ``FORCE_DATESTAMP=True`` in
-    ``spinup/user_config.py``.
-    Args:
-        exp_name (string): Name for experiment.
-        seed (int): Seed for random number generators used by experiment.
-        base_dir (string): Path to folder where results should be saved.
-        datestamp (bool): Whether to include a date and timestamp in the
-            name of the save directory.
-    Returns:
-        logger_kwargs, a dict containing output_dir and exp_name.
-    """
-    # Make base path
-    relpath = hms_time if datestamp else ""
-    if seed is not None:
-        subfolder = "-".join(["seed", str(seed).zfill(3)])
-        relpath = "-".join([subfolder, relpath])
-
-    logger_kwargs = dict(
-        log_dir=os.path.join(base_dir, exp_name, relpath),
-        exp_name=exp_name,
-        level=level,  # dont use
-        use_tensorboard=use_tensorboard,
-        verbose=verbose,
-    )
-    return logger_kwargs
+    return "\x1b[{}m{}\x1b[0m".format(";".join(attr), string)
 
 
 class Logger:
@@ -175,9 +127,9 @@ class Logger:
     def __init__(
         self,
         log_dir,
-        output_fname="progress.txt",
+        seed=None,
+        output_fname="progress.csv",
         debug: bool = False,
-        exp_name=None,
         level: int = 1,
         use_tensorboard=True,
         verbose=True,
@@ -200,25 +152,35 @@ class Logger:
                 hyperparameter configuration with multiple random seeds, you
                 should give them all the same ``exp_name``.)
         """
+
         self.log_dir = log_dir
         self.debug = debug
         self.level = level
         self.verbose = verbose
 
         os.makedirs(self.log_dir, exist_ok=True)
-        self.output_file = open(osp.join(self.log_dir, output_fname), "w")
+        self.output_file = open(  # noqa: SIM115 # pylint: disable=consider-using-with
+            os.path.join(self.log_dir, output_fname),
+            encoding="utf-8",
+            mode="w",
+        )
         atexit.register(self.output_file.close)
         print(colorize(f"Logging data to {self.output_file.name}", "cyan", bold=True))
+        self._csv_writer = csv.writer(self.output_file)
 
         self.epoch = 0
         self.first_row = True
         self.log_headers = []
         self.log_current_row = {}
-        self.exp_name = exp_name
+        self.exp_name = "-".join(
+            [log_dir.split("/")[-3], log_dir.split("/")[-2], "seed", seed]
+        )
         self.torch_saver_elements = None
+        self.use_tensorboard = use_tensorboard
 
         # Setup tensor board logging if enabled and MPI root process
-        self.summary_writer = SummaryWriter(os.path.join(self.log_dir, "tb"))
+        if use_tensorboard:
+            self.summary_writer = SummaryWriter(os.path.join(self.log_dir, "tb"))
 
     def close(self):
         """Close opened output files immediately after training in order to
@@ -372,6 +334,7 @@ class Logger:
         keystr = "%" + "%d" % max_key_len
         fmt = "| " + keystr + "s | %15s |"
         n_slashes = 22 + max_key_len
+
         print("-" * n_slashes) if self.verbose and self.level > 0 else None
         for key in self.log_headers:
             val = self.log_current_row.get(key, "")
@@ -385,19 +348,14 @@ class Logger:
         # Write into the output file (can be any text file format, e.g. CSV)
         if self.output_file is not None:
             if self.first_row:
-                self.output_file.write(" ".join(self.log_headers) + "\n")
-            self.output_file.write(" ".join(map(str, vals)) + "\n")
+                self._csv_writer.writerow(self.log_current_row.keys())
+
+            self._csv_writer.writerow(self.log_current_row.values())
             self.output_file.flush()
 
-        # if self.summary_writer is not None:
-        #     # for (k, v) in zip(self.log_headers, vals):
-        #     #     print(k, v)
-        #     # exit(0)
-        #     [self.summary_writer.add_scalar(k, v, global_step=self.epoch)
-        #         for (k, v) in zip(self.log_headers, vals)]
-        #     # Flushes the event file to disk. Call this method to make sure
-        #     # that all pending events have been written to disk.
-        #     self.summary_writer.flush()
+        if self.use_tensorboard:
+            for key, val in self.log_current_row.items():
+                self.summary_writer.add_scalar(key, val, global_step=self.epoch)
 
         # free logged information in all processes...
         self.log_current_row.clear()
@@ -429,10 +387,21 @@ class EpochLogger(Logger):
     to record the desired values.
     """
 
-    def __init__(self, log_dir, exp_name, level=1, use_tensorboard=True, verbose=True):
+    def __init__(
+        self,
+        log_dir,
+        seed=None,
+        output_fname="progress.csv",
+        debug: bool = False,
+        level: int = 1,
+        use_tensorboard=True,
+        verbose=True,
+    ):
         super().__init__(
             log_dir=log_dir,
-            exp_name=exp_name,
+            seed=seed,
+            output_fname=output_fname,
+            debug=debug,
             level=level,
             use_tensorboard=use_tensorboard,
             verbose=verbose,
@@ -446,17 +415,6 @@ class EpochLogger(Logger):
             if len(v) > 0:
                 print(f"epoch_dict: key={k} was not logged.")
 
-    def get_stats(self, key, with_min_and_max=False):
-        """Get mean/std and optional min/max of a key in the epoch_dict."""
-        assert key in self.epoch_dict, f"key={key} not in dict"
-        v = self.epoch_dict[key]
-        vals = (
-            np.concatenate(v)
-            if isinstance(v[0], np.ndarray) and len(v[0].shape) > 0
-            else v
-        )
-        return mpi_statistics_scalar(vals, with_min_and_max=with_min_and_max)
-
     def store(self, **kwargs):
         """Save something into the epoch_logger's current state.
 
@@ -464,7 +422,7 @@ class EpochLogger(Logger):
         values.
         """
         for k, v in kwargs.items():
-            if not (k in self.epoch_dict.keys()):
+            if k not in self.epoch_dict.keys():
                 self.epoch_dict[k] = []
             self.epoch_dict[k].append(v)
 
@@ -489,6 +447,15 @@ class EpochLogger(Logger):
         if val is not None:
             super().log_tabular(key, val)
         else:
-            v = self.epoch_dict[key]
+            v = np.mean(self.epoch_dict[key])
             super().log_tabular(key, v)
+            if min_and_max:
+                super().log_tabular(key + "/Min", np.min(self.epoch_dict[key]))
+                super().log_tabular(key + "/Max", np.max(self.epoch_dict[key]))
+            if std:
+                super().log_tabular(key + "/Std", np.std(self.epoch_dict[key]))
         self.epoch_dict[key] = []
+
+    def get_stats(self, key):
+        """Get the values of a diagnostic."""
+        return np.mean(self.epoch_dict[key])
