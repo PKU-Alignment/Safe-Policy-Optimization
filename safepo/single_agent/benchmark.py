@@ -10,7 +10,6 @@ def parse_args():
         nargs="+",
         default=[
             "SafetyAntVelocity-v1",
-            "SafetyHalfCheetahVelocity-v1",
         ],
         help="the ids of the environment to benchmark",
     )
@@ -24,6 +23,8 @@ def parse_args():
             "cppo_pid",
             "rcpo",
             "ppo_lag",
+            "trpo_lag",
+            "pcpo",
         ],
         help="the ids of the algorithm to benchmark",
     )
@@ -36,7 +37,7 @@ def parse_args():
     parser.add_argument(
         "--workers",
         type=int,
-        default=10,
+        default=1,
         help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
