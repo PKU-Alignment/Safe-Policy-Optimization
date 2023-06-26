@@ -47,7 +47,7 @@ def parse_args():
         "--device",
         type=str,
         default="cpu",
-        help="if toggled, cuda will be enabled by default",
+        help="the device (cpu or cuda) to run the code",
     )
     parser.add_argument(
         "--torch-threads", type=int, default=4, help="number of threads for torch"
@@ -86,7 +86,7 @@ def parse_args():
     )
     # general algorithm parameters
     parser.add_argument(
-        "--steps_per_epoch",
+        "--steps-per-epoch",
         type=int,
         default=20000,
         help="the number of steps to run in each environment per policy rollout",
@@ -163,7 +163,7 @@ def parse_args():
         "--log-dir",
         type=str,
         default="../runs",
-        help="directory to save agent logs (default: ../runs)",
+        help="directory to save agent logs",
     )
     parser.add_argument(
         "--write-terminal",
