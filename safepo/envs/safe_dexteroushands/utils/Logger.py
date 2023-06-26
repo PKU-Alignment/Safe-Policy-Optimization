@@ -1,8 +1,10 @@
-import numpy as np
-import os
-import json
 import atexit
 import datetime
+import json
+import os
+
+import numpy as np
+
 color2num = dict(
     gray=30,
     red=31,

@@ -6,15 +6,13 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import os
+import random
 import sys
-import yaml
-
-from isaacgym import gymapi
-from isaacgym import gymutil
 
 import numpy as np
-import random
 import torch
+import yaml
+from isaacgym import gymapi, gymutil
 
 
 def set_np_formatting():

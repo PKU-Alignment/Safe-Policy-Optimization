@@ -1,21 +1,22 @@
-from datetime import datetime
 import os
+import statistics
 import time
-
-from gym.spaces import Space
+from collections import deque
+from datetime import datetime
 
 import numpy as np
-import statistics
-from collections import deque
-from torch.nn.functional import softplus
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
+from gym.spaces import Space
 from torch.autograd import grad
+from torch.distributions import Normal
+from torch.nn.functional import softplus
+from torch.utils.tensorboard import SummaryWriter
+
 # from storage import RolloutStorage
 from .storage import RolloutStorage
-from torch.distributions import Normal
+
 EPS = 1e-8
 
 def gaussian_kl(mean1, std1, mean2, std2):

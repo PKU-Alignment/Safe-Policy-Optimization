@@ -26,21 +26,20 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from matplotlib.pyplot import axis
-import matplotlib.pyplot as plt
-from PIL import Image as Im
-
-import numpy as np
 import os
 import random
-import torch
 
-from utils.torch_jit_utils import *
-from tasks.hand_base.base_task import BaseTask
-from isaacgym import gymtorch
-from isaacgym import gymapi
+import matplotlib.pyplot as plt
+import numpy as np
 import pcl
 import pcl.pcl_visualization
+import torch
+from isaacgym import gymapi, gymtorch
+from matplotlib.pyplot import axis
+from PIL import Image as Im
+from tasks.hand_base.base_task import BaseTask
+from utils.torch_jit_utils import *
+
 
 class ShadowHandPointCloud(BaseTask):
 

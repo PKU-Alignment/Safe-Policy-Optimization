@@ -1,6 +1,8 @@
-from .distributions import Bernoulli, Categorical, DiagGaussian
 import torch
 import torch.nn as nn
+
+from .distributions import Bernoulli, Categorical, DiagGaussian
+
 
 class ACTLayer(nn.Module):
     """
