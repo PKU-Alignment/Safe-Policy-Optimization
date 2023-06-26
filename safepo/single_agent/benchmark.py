@@ -10,23 +10,21 @@ def parse_args():
         nargs="+",
         default=[
             "SafetyAntVelocity-v1",
-            "SafetyHopperVelocity-v1",
-            "SafetyWalker2dVelocity-v1",
         ],
         help="the ids of the environment to benchmark",
     )
     parser.add_argument(
-        "--algorithms",
+        "--algo",
         nargs="+",
         default=[
-            "ppo_lag",
-            "trpo_lag",
             "cup",
             "focops",
             "cpo",
-            "pcpo",
             "cppo_pid",
             "rcpo",
+            "ppo_lag",
+            "trpo_lag",
+            "pcpo",
         ],
         help="the ids of the algorithm to benchmark",
     )
@@ -34,16 +32,16 @@ def parse_args():
         "--num-seeds", type=int, default=1, help="the number of random seeds"
     )
     parser.add_argument(
-        "--start-seed", type=int, default=1, help="the number of the starting seed"
+        "--start-seed", type=int, default=5, help="the number of the starting seed"
     )
     parser.add_argument(
         "--workers",
         type=int,
-        default=8,
+        default=1,
         help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--exp-name", type=str, default="benchmark", help="name of the experiment"
+        "--exp-name", type=str, default="benchmark_single_env", help="name of the experiment"
     )
     args = parser.parse_args()
 
@@ -66,11 +64,11 @@ if __name__ == "__main__":
     log_dir = f"./runs/{args.exp_name}"
     for seed in range(0, args.num_seeds):
         for env_id in args.env_ids:
-            for algo in args.algorithms:
+            for algo in args.algo:
                 commands += [
                     " ".join(
                         [
-                            f"python algorithms/{algo}.py",
+                            f"python {algo}.py",
                             "--env-id",
                             env_id,
                             "--seed",

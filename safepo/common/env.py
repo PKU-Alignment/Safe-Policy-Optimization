@@ -15,18 +15,26 @@
 
 from __future__ import annotations
 
+from typing import Callable
 import safety_gymnasium
 from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeNormalizeObservation, SafeRescaleAction, SafeUnsqueeze
+from safety_gymnasium.vector.async_vector_env import SafetyAsyncVectorEnv
 
 
 def make_env(num_envs: int, env_id: str, seed: int|None = None):
     # create and wrap the environment
     if num_envs > 1:
-        env = safety_gymnasium.vector.make(env_id=env_id, num_envs=num_envs, wrappers=SafeNormalizeObservation)
+        def create_env() -> Callable:
+            """Creates an environment that can enable or disable the environment checker."""
+            env = safety_gymnasium.make(env_id)
+            env = SafeRescaleAction(env, -1.0, 1.0)
+            env = SafeNormalizeObservation(env)
+            return env
+        env_fns = [create_env for _ in range(num_envs)]
+        env = SafetyAsyncVectorEnv(env_fns)
         env.reset(seed=seed)
         obs_space = env.single_observation_space
         act_space = env.single_action_space
-        env = SafeNormalizeObservation(env)
     else:
         env = safety_gymnasium.make(env_id)
         env.reset(seed=seed)
