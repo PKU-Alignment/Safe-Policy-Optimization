@@ -7,6 +7,7 @@ import torch
 def check(input):
     if type(input) == np.ndarray:
         return torch.from_numpy(input)
+    return input
         
 def get_gard_norm(it):
     sum_grad = 0

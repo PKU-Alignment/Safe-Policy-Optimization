@@ -8,8 +8,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from algorithms.utils.util import check
-from utils.util import get_gard_norm, huber_loss, mse_loss
+from safepo.multi_agent.marl_algorithms.algorithms.utils.util import check, get_gard_norm, huber_loss, mse_loss
 
 from safepo.multi_agent.marl_algorithms.algorithms.utils.valuenorm import \
     ValueNorm

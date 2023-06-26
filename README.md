@@ -218,7 +218,7 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 
 ### Safety-Gymnasium Multi-agent Velocity
 
-```safepo/multi_agnet/train_malr.py``` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command to run MACPO in Safety2x4AntVelocity-v0, with default arguments:
+```safepo/multi_agnet/train_marl.py``` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command to run MACPO in Safety2x4AntVelocity-v0, with default arguments:
 
 ```python
 # algo: macpo, mappolag, mappo, ippo, happo
@@ -226,7 +226,7 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 python train_marl.py --algo=macpo --scenario=Ant-v4 --agent_conf=2x4 
 ```
 
-The SafePO multi-agent algorithm shares almost all hyperparameters for Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. However, there are some differences in certain hyperparameters, which are listed below:
+The SafePO multi-agent algorithms share almost all hyperparameters for Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. However, there are some differences in certain hyperparameters, which are listed below:
 
 | Argument                  	| Info                                        	| Default (for Safety DexterousHands) 	| Default (for Safety-Gymnasium multi-agent velocity) 	|
 |---------------------------	|---------------------------------------------	|-------------------------------------	|-----------------------------------------------------	|
