@@ -4,8 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from marl_algorithms.utils.util import check
-from torch.nn.utils import clip_grad_norm
-from utils.util import get_gard_norm, huber_loss, mse_loss
+from safepo.multi_agent.marl_algorithms.algorithms.utils.util import get_gard_norm, huber_loss, mse_loss
 
 from safepo.multi_agent.marl_algorithms.algorithms.actor_critic import \
     Actor

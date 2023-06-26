@@ -1,17 +1,9 @@
 import os
-import statistics
 import time
-from collections import deque
-from curses import KEY_SUSPEND
-from datetime import datetime
-from itertools import chain
 
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
-from utils.util import update_linear_schedule
 
 from safepo.multi_agent.marl_algorithms.algorithms.utils.separated_buffer import \
     SeparatedReplayBuffer

@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import numpy as np
 import torch
-from utils.util import (check, get_shape_from_act_space,
+from .util import (check, get_shape_from_act_space,
                         get_shape_from_obs_space)
 
 

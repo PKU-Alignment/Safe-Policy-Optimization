@@ -7,7 +7,7 @@ refer to .....
 """
 
 import torch
-from utils.util import update_linear_schedule
+from safepo.multi_agent.marl_algorithms.algorithms.utils.util import update_linear_schedule
 
 from safepo.multi_agent.marl_algorithms.algorithms.actor_critic import (
     Actor, Critic)
@@ -37,8 +37,7 @@ class IPPO_Policy:
 
         self.actor = Actor(config, self.obs_space, self.act_space, self.device)
         self.critic = Critic(config, self.share_obs_space, self.device)
-        print(self.actor)
-        print(self.critic)
+
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
                                                 lr=self.lr, eps=self.opti_eps,
                                                 weight_decay=self.weight_decay)
