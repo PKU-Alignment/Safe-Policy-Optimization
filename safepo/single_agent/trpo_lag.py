@@ -35,6 +35,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_env
+from safepo.common.lagrange import Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 
@@ -50,18 +51,18 @@ def parse_args():
         help="if toggled, cuda will be enabled by default",
     )
     parser.add_argument(
-        "--torch-threads", type=int, default=1, help="number of threads for torch"
+        "--torch-threads", type=int, default=4, help="number of threads for torch"
     )
     parser.add_argument(
         "--num-envs",
         type=int,
-        default=1,
+        default=10,
         help="the number of parallel game environments",
     )
     parser.add_argument(
         "--total-steps",
         type=int,
-        default=1024000,
+        default=10000000,
         help="total timesteps of the experiments",
     )
     parser.add_argument(
@@ -88,7 +89,7 @@ def parse_args():
     parser.add_argument(
         "--steps_per_epoch",
         type=int,
-        default=2048,
+        default=20000,
         help="the number of steps to run in each environment per policy rollout",
     )
     parser.add_argument(
@@ -199,7 +200,7 @@ def parse_args():
     parser.add_argument(
         "--backtrack-iters",
         type=int,
-        default=200,
+        default=15,
         help="the number of backtracking line search iterations",
     )
     parser.add_argument(
@@ -213,6 +214,18 @@ def parse_args():
         type=float,
         default=25.0,
         help="the cost limit for the safety constraint",
+    )
+    parser.add_argument(
+        "--lagrangian-multiplier-init",
+        type=float,
+        default=0.001,
+        help="the initial value of the lagrangian multiplier",
+    )
+    parser.add_argument(
+        "--lagrangian-multiplier-lr",
+        type=float,
+        default=0.035,
+        help="the learning rate of the lagrangian multiplier",
     )
 
     args = parser.parse_args()
@@ -357,6 +370,13 @@ def main(args):
         num_envs=args.num_envs,
     )
 
+    # setup lagrangian multiplier
+    lagrange = Lagrange(
+        cost_limit=args.cost_limit,
+        lagrangian_multiplier_init=args.lagrangian_multiplier_init,
+        lagrangian_multiplier_lr=args.lagrangian_multiplier_lr,
+    )
+
     # set up the logger
     dict_args = vars(args)
     logger = EpochLogger(
@@ -498,121 +518,85 @@ def main(args):
 
         eval_end_time = time.time()
 
+        # update lagrange multiplier
+        ep_costs = logger.get_stats("Metrics/EpCost")
+        lagrange.update_lagrange_multiplier(ep_costs)
+
         # update policy
         data = buffer.get()
         fvp_obs = data["obs"][:: args.fvp_sample_freq]
         theta_old = get_flat_params_from(policy.actor)
         policy.actor.zero_grad()
+
+        # comnpute advantage
+        advantage = data["adv_r"] - lagrange.lagrangian_multiplier * data["adv_c"]
+        advantage /= lagrange.lagrangian_multiplier + 1
+
         # compute loss_pi
         temp_distribution = policy.actor(data["obs"])
         log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
         ratio = torch.exp(log_prob - data["log_prob"])
-        loss_pi_r = -(ratio * data["adv_r"]).mean()
-        loss_reward_before = loss_pi_r.item()
+        loss_pi = -(ratio * advantage).mean()
+        loss_before = loss_pi.item()
         old_distribution = policy.actor(data["obs"])
 
-        loss_pi_r.backward()
+        loss_pi.backward()
 
         grads = -get_flat_gradients_from(policy.actor)
         x = conjugate_gradients(fvp, policy, fvp_obs, grads, args.cg_iters)
         assert torch.isfinite(x).all(), "x is not finite"
         xHx = torch.dot(x, fvp(x, policy, fvp_obs))
-        H_inv_g = fvp(x, policy, fvp_obs)
         assert xHx.item() >= 0, "xHx is negative"
         alpha = torch.sqrt(2 * args.target_kl / (xHx + 1e-8))
+        step_direction = x * alpha
+        assert torch.isfinite(step_direction).all(), "step_direction is not finite"
 
-        policy.actor.zero_grad()
-        temp_distribution = policy.actor(data["obs"])
-        log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
-        ratio = torch.exp(log_prob - data["log_prob"])
-        loss_pi_c = (ratio * data["adv_c"]).mean()
-        loss_cost_before = loss_pi_c.item()
-
-        loss_pi_c.backward()
-
-        b_grads = get_flat_gradients_from(policy.actor)
-        ep_costs = logger.get_stats("Metrics/EpCost") - args.cost_limit
-
-        p = conjugate_gradients(fvp, policy, fvp_obs, b_grads, args.cg_iters)
-        q = xHx
-        r = grads.dot(p)
-        s = b_grads.dot(p)
-
-        step_direction = (
-            torch.sqrt(2 * args.target_kl / (q + 1e-8)) * H_inv_g
-            - torch.clamp_min(
-                (torch.sqrt(2 * args.target_kl / q) * r + ep_costs) / s,
-                torch.tensor(0.0, device=args.device),
-            )
-            * p
-        )
-        optim_case = 0
-        # get distance each time theta goes towards certain direction
         step_frac = 1.0
-        # get and flatten parameters from pi-net
-        theta_old = get_flat_params_from(policy.actor)
-        # reward improvement, g-flat as gradient of reward
-        expected_reward_improve = grads.dot(step_direction)
+        # Change expected objective function gradient = expected_imrpove best this moment
+        expected_improve = grads.dot(step_direction)
 
-        kl = torch.zeros(1)
-        # while not within_trust_region and not finish all steps:
+        final_kl = 0.0
+
+        # While not within_trust_region and not out of total_steps:
         for step in range(args.backtrack_iters):
-            # get new theta
+            # update theta params
             new_theta = theta_old + step_frac * step_direction
-            # set new theta as new actor parameters
+            # set new params as params of net
             set_param_values_to_model(policy.actor, new_theta)
-            # the last acceptance steps to next step
-            acceptance_step = step + 1
 
             with torch.no_grad():
-                try:
-                    temp_distribution = policy.actor(data["obs"])
-                    log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
-                    ratio = torch.exp(log_prob - data["log_prob"])
-                    loss_reward = -(ratio * data["adv_r"]).mean()
-                except ValueError:
-                    step_frac *= args.backtrack_coef
-                    continue
-                # loss of cost of policy cost from real/expected reward
                 temp_distribution = policy.actor(data["obs"])
                 log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
                 ratio = torch.exp(log_prob - data["log_prob"])
-                loss_cost = (ratio * data["adv_c"]).mean()
+                loss_pi = -(ratio * advantage).mean()
                 # compute KL distance between new and old policy
                 current_distribution = policy.actor(data["obs"])
-                kl = torch.distributions.kl.kl_divergence(
-                    old_distribution, current_distribution
-                ).mean()
-            # compute improvement of reward
-            loss_reward_improve = loss_reward_before - loss_reward.item()
-            # compute difference of cost
-            loss_cost_diff = loss_cost.item() - loss_cost_before
-
+                kl = (
+                    torch.distributions.kl.kl_divergence(
+                        old_distribution, current_distribution
+                    )
+                    .mean()
+                    .item()
+                )
+            # real loss improve: old policy loss - new policy loss
+            loss_improve = loss_before - loss_pi.item()
             logger.log(
-                f"Expected Improvement: {expected_reward_improve} Actual: {loss_reward_improve}",
+                f"Expected Improvement: {expected_improve} Actual: {loss_improve}"
             )
-            # check whether there are nan.
-            if not torch.isfinite(loss_reward) and not torch.isfinite(loss_cost):
+            if not torch.isfinite(loss_pi):
                 logger.log("WARNING: loss_pi not finite")
-            if not torch.isfinite(kl):
-                logger.log("WARNING: KL not finite")
-                continue
-            if loss_reward_improve < 0 if optim_case > 1 else False:
+            elif loss_improve < 0:
                 logger.log("INFO: did not improve improve <0")
-            # change of cost's range
-            elif loss_cost_diff > max(-ep_costs, 0):
-                logger.log(f"INFO: no improve {loss_cost_diff} > {max(-ep_costs, 0)}")
-            # check KL-distance to avoid too far gap
             elif kl > args.target_kl:
-                logger.log(f"INFO: violated KL constraint {kl} at step {step + 1}.")
+                logger.log("INFO: violated KL constraint.")
             else:
-                # step only if surrogate is improved and we are
-                # within the trust region
-                logger.log(f"Accept step at i={step + 1}")
+                # step only if surrogate is improved and when within trust reg.
+                acceptance_step = step + 1
+                logger.log(f"Accept step at i={acceptance_step}")
+                final_kl = kl
                 break
             step_frac *= args.backtrack_coef
         else:
-            # if didn't find a step satisfy those conditions
             logger.log("INFO: no suitable step found...")
             step_direction = torch.zeros_like(step_direction)
             acceptance_step = 0
@@ -628,8 +612,8 @@ def main(args):
                 "Misc/gradient_norm": torch.norm(grads).mean().item(),
                 "Misc/H_inv_g": x.norm().item(),
                 "Misc/AcceptanceStep": acceptance_step,
-                "Loss/Loss_actor": (loss_pi_r + loss_pi_c).mean().item(),
-                "Train/KL": kl,
+                "Loss/Loss_actor": loss_pi.mean().item(),
+                "Train/KL": final_kl,
             },
         )
 
@@ -693,6 +677,7 @@ def main(args):
         logger.log_tabular("Train/Epoch", epoch + 1)
         logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
         logger.log_tabular("Train/KL")
+        logger.log_tabular("Train/LagragianMultiplier", lagrange.lagrangian_multiplier)
         logger.log_tabular("Loss/Loss_reward_critic")
         logger.log_tabular("Loss/Loss_cost_critic")
         logger.log_tabular("Loss/Loss_actor")

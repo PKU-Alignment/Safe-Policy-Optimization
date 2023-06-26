@@ -29,14 +29,13 @@ import torch
 import torch.nn as nn
 import torch.optim
 from rich.progress import track
-from torch.distributions import Normal
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim.lr_scheduler import ConstantLR, LinearLR
 from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_env
-from safepo.common.lagrange import Lagrange
+from safepo.common.lagrange import PIDLagrangian as Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 
@@ -52,18 +51,18 @@ def parse_args():
         help="if toggled, cuda will be enabled by default",
     )
     parser.add_argument(
-        "--torch-threads", type=int, default=1, help="number of threads for torch"
+        "--torch-threads", type=int, default=4, help="number of threads for torch"
     )
     parser.add_argument(
         "--num-envs",
         type=int,
-        default=1,
+        default=10,
         help="the number of parallel game environments",
     )
     parser.add_argument(
         "--total-steps",
         type=int,
-        default=1024000,
+        default=10000000,
         help="total timesteps of the experiments",
     )
     parser.add_argument(
@@ -90,7 +89,7 @@ def parse_args():
     parser.add_argument(
         "--steps_per_epoch",
         type=int,
-        default=2048,
+        default=20000,
         help="the number of steps to run in each environment per policy rollout",
     )
     parser.add_argument(
@@ -108,7 +107,7 @@ def parse_args():
     parser.add_argument(
         "--target-kl",
         type=float,
-        default=0.01,
+        default=0.02,
         help="the target KL divergence threshold",
     )
     parser.add_argument(
@@ -210,10 +209,43 @@ def parse_args():
         help="the initial value of the lagrangian multiplier",
     )
     parser.add_argument(
-        "--lagrangian-multiplier-lr",
+        "--pid-kp", type=float, default=0.1, help="the Kp of PID controller"
+    )
+    parser.add_argument(
+        "--pid-ki", type=float, default=0.01, help="the Ki of PID controller"
+    )
+    parser.add_argument(
+        "--pid-kd", type=float, default=0.01, help="the Kd of PID controller"
+    )
+    parser.add_argument(
+        "--pid-d-delay", type=int, default=10, help="the delay of derivative term"
+    )
+    parser.add_argument(
+        "--pid-delta-p-ema-alpha",
         type=float,
-        default=0.035,
-        help="the learning rate of the lagrangian multiplier",
+        default=0.95,
+        help="the exponential moving average alpha of the proportional term of the PID controller.",
+    )
+    parser.add_argument(
+        "--pid-delta-d-ema-alpha",
+        type=float,
+        default=0.95,
+        help="the exponential moving average alpha of the derivative term of the PID controller.",
+    )
+    parser.add_argument(
+        "--sum-norm",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        help="toggles to normalize the sum of the cost",
+    )
+    parser.add_argument(
+        "--diff-norm",
+        type=lambda x: bool(strtobool(x)),
+        default=False,
+        help="toggles to normalize the derivate of the cost",
+    )
+    parser.add_argument(
+        "--penalty-max", type=float, default=100.0, help="the max penalty coefficient"
     )
 
     args = parser.parse_args()
@@ -279,9 +311,17 @@ def main(args):
 
     # setup lagrangian multiplier
     lagrange = Lagrange(
+        pid_kd=args.pid_kd,
+        pid_kp=args.pid_kp,
+        pid_ki=args.pid_ki,
+        pid_d_delay=args.pid_d_delay,
+        pid_delta_p_ema_alpha=args.pid_delta_p_ema_alpha,
+        pid_delta_d_ema_alpha=args.pid_delta_d_ema_alpha,
+        sum_norm=args.sum_norm,
+        diff_norm=args.diff_norm,
+        penalty_max=args.penalty_max,
         cost_limit=args.cost_limit,
         lagrangian_multiplier_init=args.lagrangian_multiplier_init,
-        lagrangian_multiplier_lr=args.lagrangian_multiplier_lr,
     )
 
     # set up the logger
@@ -436,7 +476,8 @@ def main(args):
         old_distribution = policy.actor(data["obs"])
 
         # comnpute advantage
-        advantage = data["adv_r"]
+        advantage = data["adv_r"] - lagrange.lagrangian_multiplier * data["adv_c"]
+        advantage /= lagrange.lagrangian_multiplier + 1
 
         dataloader = DataLoader(
             dataset=TensorDataset(
@@ -452,8 +493,6 @@ def main(args):
         )
         update_counts = 0
         final_kl = torch.ones_like(old_distribution.loc)
-
-        # the first stage update is the same as the original PPO
         for i in track(range(args.update_iters), description="Updating..."):
             for (
                 obs_b,
@@ -522,60 +561,6 @@ def main(args):
             if kl > args.target_kl:
                 logger.log(f"Early stopping at iter {i + 1} due to reaching max kl")
                 break
-
-        with torch.no_grad():
-            old_distribution = policy.actor(data["obs"])
-            old_mean = old_distribution.mean
-            old_std = old_distribution.stddev
-
-        advantage = data["adv_c"]
-
-        dataloader = DataLoader(
-            dataset=TensorDataset(
-                data["obs"], data["act"], data["log_prob"], advantage, old_mean, old_std
-            ),
-            batch_size=args.batch_size,
-            shuffle=True,
-        )
-
-        update_counts_2 = 0
-        for i in track(range(args.update_iters), description="Updating..."):
-            for obs_b, act_b, log_prob_b, adv_b, old_mean_b, old_std_b in dataloader:
-                old_distribution_b = Normal(old_mean_b, old_std_b)
-                distribution = policy.actor(obs_b)
-                log_prob = distribution.log_prob(act_b).sum(dim=-1)
-                ratio = torch.exp(log_prob - log_prob_b)
-                temp_kl = torch.distributions.kl_divergence(
-                    distribution, old_distribution_b
-                ).sum(-1, keepdim=True)
-                coef = (1 - args.gamma * args.lam) / (1 - args.gamma)
-                loss_pi_cost = (
-                    lagrange.lagrangian_multiplier * coef * ratio * adv_b + temp_kl
-                ).mean()
-                actor_optimizer.zero_grad()
-                loss_pi_cost.backward()
-                clip_grad_norm_(
-                    policy.actor.parameters(),
-                    args.max_grad_norm,
-                )
-                actor_optimizer.step()
-
-            new_distribution = policy.actor(data["obs"])
-
-            kl = (
-                torch.distributions.kl.kl_divergence(old_distribution, new_distribution)
-                .sum(-1, keepdim=True)
-                .mean()
-                .item()
-            )
-            final_kl = kl
-            update_counts_2 += 1
-            if kl > args.target_kl:
-                logger.log(
-                    f"Early stopping at iter {i + 1} due to reaching max kl at second stage"
-                )
-                break
-
         update_end_time = time.time()
         actor_scheduler.step()
 
@@ -590,7 +575,6 @@ def main(args):
         logger.log_tabular("Train/Epoch", epoch + 1)
         logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
         logger.log_tabular("Train/StopIter", update_counts)
-        logger.log_tabular("Train/SeconStageStopIter", update_counts_2)
         logger.log_tabular("Train/KL", final_kl)
         logger.log_tabular("Train/LagragianMultiplier", lagrange.lagrangian_multiplier)
         logger.log_tabular("Train/LR", actor_scheduler.get_last_lr()[0])

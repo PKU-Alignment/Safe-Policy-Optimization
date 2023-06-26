@@ -29,7 +29,6 @@ import torch
 import torch.nn as nn
 import torch.optim
 from rich.progress import track
-from torch.distributions import Normal
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim.lr_scheduler import ConstantLR, LinearLR
 from torch.utils.data import DataLoader, TensorDataset
@@ -52,18 +51,18 @@ def parse_args():
         help="if toggled, cuda will be enabled by default",
     )
     parser.add_argument(
-        "--torch-threads", type=int, default=1, help="number of threads for torch"
+        "--torch-threads", type=int, default=4, help="number of threads for torch"
     )
     parser.add_argument(
         "--num-envs",
         type=int,
-        default=1,
+        default=10,
         help="the number of parallel game environments",
     )
     parser.add_argument(
         "--total-steps",
         type=int,
-        default=1024000,
+        default=10000000,
         help="total timesteps of the experiments",
     )
     parser.add_argument(
@@ -90,7 +89,7 @@ def parse_args():
     parser.add_argument(
         "--steps_per_epoch",
         type=int,
-        default=2048,
+        default=20000,
         help="the number of steps to run in each environment per policy rollout",
     )
     parser.add_argument(
@@ -215,21 +214,6 @@ def parse_args():
         default=0.035,
         help="the learning rate of the lagrangian multiplier",
     )
-    parser.add_argument(
-        "--lagrangian-upper-bound",
-        type=float,
-        default=2.0,
-        help="the upper bound of lagrange multiplier",
-    )
-    parser.add_argument(
-        "--focops-eta", type=float, default=0.02, help="the eta of the focops"
-    )
-    parser.add_argument(
-        "--focops-lam",
-        type=float,
-        default=1.5,
-        help="the hyperparameters related to the greediness of the algorithm",
-    )
 
     args = parser.parse_args()
     return args
@@ -315,8 +299,6 @@ def main(args):
     logger.save_config(dict_args)
     logger.setup_torch_saver(policy.actor)
     logger.log("Start with training.")
-
-    time.time()
 
     # training loop
     for epoch in range(epochs):
@@ -448,10 +430,7 @@ def main(args):
 
         # update policy
         data = buffer.get()
-        with torch.no_grad():
-            old_distribution = policy.actor(data["obs"])
-            old_mean = old_distribution.mean
-            old_std = old_distribution.stddev
+        old_distribution = policy.actor(data["obs"])
 
         # comnpute advantage
         advantage = data["adv_r"] - lagrange.lagrangian_multiplier * data["adv_c"]
@@ -465,8 +444,6 @@ def main(args):
                 data["target_value_r"],
                 data["target_value_c"],
                 advantage,
-                old_mean,
-                old_std,
             ),
             batch_size=args.batch_size,
             shuffle=True,
@@ -481,8 +458,6 @@ def main(args):
                 target_value_r_b,
                 target_value_c_b,
                 adv_b,
-                old_mean_b,
-                old_std_b,
             ) in dataloader:
                 reward_critic_optimizer.zero_grad()
                 loss_r = nn.functional.mse_loss(
@@ -510,22 +485,15 @@ def main(args):
                 )
                 cost_critic_optimizer.step()
 
-                old_distribution_b = Normal(loc=old_mean_b, scale=old_std_b)
-
                 distribution = policy.actor(obs_b)
                 log_prob = distribution.log_prob(act_b).sum(dim=-1)
                 ratio = torch.exp(log_prob - log_prob_b)
-                temp_kl = torch.distributions.kl_divergence(
-                    distribution, old_distribution_b
-                ).sum(-1, keepdim=True)
-
-                loss_pi = (temp_kl - (1 / args.focops_lam) * ratio * adv_b) * (
-                    temp_kl.detach() <= args.focops_eta
-                ).type(torch.float32)
-
-                loss_pi = loss_pi.mean()
-                loss_pi -= args.entropy_coef * distribution.entropy().mean()
-
+                ratio_cliped = torch.clamp(
+                    ratio,
+                    1 - args.clip,
+                    1 + args.clip,
+                )
+                loss_pi = -torch.min(ratio * adv_b, ratio_cliped * adv_b).mean()
                 actor_optimizer.zero_grad()
                 loss_pi.backward()
                 clip_grad_norm_(policy.actor.parameters(), args.max_grad_norm)

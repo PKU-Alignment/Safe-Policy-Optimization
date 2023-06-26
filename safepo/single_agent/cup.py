@@ -29,6 +29,7 @@ import torch
 import torch.nn as nn
 import torch.optim
 from rich.progress import track
+from torch.distributions import Normal
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim.lr_scheduler import ConstantLR, LinearLR
 from torch.utils.data import DataLoader, TensorDataset
@@ -51,18 +52,18 @@ def parse_args():
         help="if toggled, cuda will be enabled by default",
     )
     parser.add_argument(
-        "--torch-threads", type=int, default=1, help="number of threads for torch"
+        "--torch-threads", type=int, default=4, help="number of threads for torch"
     )
     parser.add_argument(
         "--num-envs",
         type=int,
-        default=1,
+        default=10,
         help="the number of parallel game environments",
     )
     parser.add_argument(
         "--total-steps",
         type=int,
-        default=1024000,
+        default=10000000,
         help="total timesteps of the experiments",
     )
     parser.add_argument(
@@ -89,7 +90,7 @@ def parse_args():
     parser.add_argument(
         "--steps_per_epoch",
         type=int,
-        default=2048,
+        default=20000,
         help="the number of steps to run in each environment per policy rollout",
     )
     parser.add_argument(
@@ -107,7 +108,7 @@ def parse_args():
     parser.add_argument(
         "--target-kl",
         type=float,
-        default=0.02,
+        default=0.01,
         help="the target KL divergence threshold",
     )
     parser.add_argument(
@@ -300,6 +301,8 @@ def main(args):
     logger.setup_torch_saver(policy.actor)
     logger.log("Start with training.")
 
+    time.time()
+
     # training loop
     for epoch in range(epochs):
         rollout_start_time = time.time()
@@ -433,8 +436,7 @@ def main(args):
         old_distribution = policy.actor(data["obs"])
 
         # comnpute advantage
-        advantage = data["adv_r"] - lagrange.lagrangian_multiplier * data["adv_c"]
-        advantage /= lagrange.lagrangian_multiplier + 1
+        advantage = data["adv_r"]
 
         dataloader = DataLoader(
             dataset=TensorDataset(
@@ -450,6 +452,8 @@ def main(args):
         )
         update_counts = 0
         final_kl = torch.ones_like(old_distribution.loc)
+
+        # the first stage update is the same as the original PPO
         for i in track(range(args.update_iters), description="Updating..."):
             for (
                 obs_b,
@@ -518,6 +522,60 @@ def main(args):
             if kl > args.target_kl:
                 logger.log(f"Early stopping at iter {i + 1} due to reaching max kl")
                 break
+
+        with torch.no_grad():
+            old_distribution = policy.actor(data["obs"])
+            old_mean = old_distribution.mean
+            old_std = old_distribution.stddev
+
+        advantage = data["adv_c"]
+
+        dataloader = DataLoader(
+            dataset=TensorDataset(
+                data["obs"], data["act"], data["log_prob"], advantage, old_mean, old_std
+            ),
+            batch_size=args.batch_size,
+            shuffle=True,
+        )
+
+        update_counts_2 = 0
+        for i in track(range(args.update_iters), description="Updating..."):
+            for obs_b, act_b, log_prob_b, adv_b, old_mean_b, old_std_b in dataloader:
+                old_distribution_b = Normal(old_mean_b, old_std_b)
+                distribution = policy.actor(obs_b)
+                log_prob = distribution.log_prob(act_b).sum(dim=-1)
+                ratio = torch.exp(log_prob - log_prob_b)
+                temp_kl = torch.distributions.kl_divergence(
+                    distribution, old_distribution_b
+                ).sum(-1, keepdim=True)
+                coef = (1 - args.gamma * args.lam) / (1 - args.gamma)
+                loss_pi_cost = (
+                    lagrange.lagrangian_multiplier * coef * ratio * adv_b + temp_kl
+                ).mean()
+                actor_optimizer.zero_grad()
+                loss_pi_cost.backward()
+                clip_grad_norm_(
+                    policy.actor.parameters(),
+                    args.max_grad_norm,
+                )
+                actor_optimizer.step()
+
+            new_distribution = policy.actor(data["obs"])
+
+            kl = (
+                torch.distributions.kl.kl_divergence(old_distribution, new_distribution)
+                .sum(-1, keepdim=True)
+                .mean()
+                .item()
+            )
+            final_kl = kl
+            update_counts_2 += 1
+            if kl > args.target_kl:
+                logger.log(
+                    f"Early stopping at iter {i + 1} due to reaching max kl at second stage"
+                )
+                break
+
         update_end_time = time.time()
         actor_scheduler.step()
 
@@ -532,6 +590,7 @@ def main(args):
         logger.log_tabular("Train/Epoch", epoch + 1)
         logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
         logger.log_tabular("Train/StopIter", update_counts)
+        logger.log_tabular("Train/SeconStageStopIter", update_counts_2)
         logger.log_tabular("Train/KL", final_kl)
         logger.log_tabular("Train/LagragianMultiplier", lagrange.lagrangian_multiplier)
         logger.log_tabular("Train/LR", actor_scheduler.get_last_lr()[0])

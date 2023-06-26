@@ -269,6 +269,7 @@ class Plotter:
             All the data stored in a list of DataFrames.
         """
         logdirs = []
+        print(all_logdirs)
         for logdir in all_logdirs:
             if osp.isdir(logdir) and logdir[-1] == os.sep:
                 logdirs += [logdir]
@@ -412,7 +413,7 @@ class Plotter:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--logdir', nargs='*')
+    parser.add_argument('--logdir', type=str)
     parser.add_argument('--legend', '-l', nargs='*')
     parser.add_argument('--xaxis', '-x', default='Steps')
     parser.add_argument('--value', '-y', default='Rewards', nargs='*')
@@ -427,15 +428,19 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     plotter = Plotter()
-    plotter.make_plots(
-        args.logdir,
-        args.legend,
-        args.xaxis,
-        args.value,
-        args.count,
-        smooth=args.smooth,
-        select=args.select,
-        exclude=args.exclude,
-        estimator=args.estimator,
-        use_eval_result=args.use_eval_result,
-    )
+    listdir = os.listdir(args.logdir)
+    for env in listdir:
+        logdir = os.path.join(args.logdir, env)
+        plotter.make_plots(
+            [logdir],
+            args.legend,
+            args.xaxis,
+            args.value,
+            args.count,
+            smooth=args.smooth,
+            select=args.select,
+            exclude=args.exclude,
+            estimator=args.estimator,
+            use_eval_result=args.use_eval_result,
+            save_dir=args.logdir,
+        )

@@ -51,18 +51,18 @@ def parse_args():
         help="if toggled, cuda will be enabled by default",
     )
     parser.add_argument(
-        "--torch-threads", type=int, default=1, help="number of threads for torch"
+        "--torch-threads", type=int, default=4, help="number of threads for torch"
     )
     parser.add_argument(
         "--num-envs",
         type=int,
-        default=1,
+        default=10,
         help="the number of parallel game environments",
     )
     parser.add_argument(
         "--total-steps",
         type=int,
-        default=1024000,
+        default=10000000,
         help="total timesteps of the experiments",
     )
     parser.add_argument(
@@ -89,7 +89,7 @@ def parse_args():
     parser.add_argument(
         "--steps_per_epoch",
         type=int,
-        default=2048,
+        default=20000,
         help="the number of steps to run in each environment per policy rollout",
     )
     parser.add_argument(
@@ -196,18 +196,6 @@ def parse_args():
         type=int,
         default=15,
         help="the number of conjugate gradient iterations",
-    )
-    parser.add_argument(
-        "--backtrack-iters",
-        type=int,
-        default=15,
-        help="the number of backtracking line search iterations",
-    )
-    parser.add_argument(
-        "--backtrack-coef",
-        type=float,
-        default=0.8,
-        help="the coefficient for backtracking line search",
     )
     parser.add_argument(
         "--cost-limit",
@@ -533,12 +521,10 @@ def main(args):
         advantage /= lagrange.lagrangian_multiplier + 1
 
         # compute loss_pi
-        temp_distribution = policy.actor(data["obs"])
-        log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
+        distribution = policy.actor(data["obs"])
+        log_prob = distribution.log_prob(data["act"]).sum(dim=-1)
         ratio = torch.exp(log_prob - data["log_prob"])
         loss_pi = -(ratio * advantage).mean()
-        loss_before = loss_pi.item()
-        old_distribution = policy.actor(data["obs"])
 
         loss_pi.backward()
 
@@ -551,58 +537,15 @@ def main(args):
         step_direction = x * alpha
         assert torch.isfinite(step_direction).all(), "step_direction is not finite"
 
-        step_frac = 1.0
-        # Change expected objective function gradient = expected_imrpove best this moment
-        expected_improve = grads.dot(step_direction)
-
-        final_kl = 0.0
-
-        # While not within_trust_region and not out of total_steps:
-        for step in range(args.backtrack_iters):
-            # update theta params
-            new_theta = theta_old + step_frac * step_direction
-            # set new params as params of net
-            set_param_values_to_model(policy.actor, new_theta)
-
-            with torch.no_grad():
-                temp_distribution = policy.actor(data["obs"])
-                log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
-                ratio = torch.exp(log_prob - data["log_prob"])
-                loss_pi = -(ratio * advantage).mean()
-                # compute KL distance between new and old policy
-                current_distribution = policy.actor(data["obs"])
-                kl = (
-                    torch.distributions.kl.kl_divergence(
-                        old_distribution, current_distribution
-                    )
-                    .mean()
-                    .item()
-                )
-            # real loss improve: old policy loss - new policy loss
-            loss_improve = loss_before - loss_pi.item()
-            logger.log(
-                f"Expected Improvement: {expected_improve} Actual: {loss_improve}"
-            )
-            if not torch.isfinite(loss_pi):
-                logger.log("WARNING: loss_pi not finite")
-            elif loss_improve < 0:
-                logger.log("INFO: did not improve improve <0")
-            elif kl > args.target_kl:
-                logger.log("INFO: violated KL constraint.")
-            else:
-                # step only if surrogate is improved and when within trust reg.
-                acceptance_step = step + 1
-                logger.log(f"Accept step at i={acceptance_step}")
-                final_kl = kl
-                break
-            step_frac *= args.backtrack_coef
-        else:
-            logger.log("INFO: no suitable step found...")
-            step_direction = torch.zeros_like(step_direction)
-            acceptance_step = 0
-
-        theta_new = theta_old + step_frac * step_direction
+        theta_new = theta_old + step_direction
         set_param_values_to_model(policy.actor, theta_new)
+        with torch.no_grad():
+            new_distribution = policy.actor(data["obs"])
+            final_kl = (
+                torch.distributions.kl.kl_divergence(distribution, new_distribution)
+                .mean()
+                .item()
+            )
 
         logger.store(
             **{
@@ -611,7 +554,6 @@ def main(args):
                 "Misc/xHx": xHx.item(),
                 "Misc/gradient_norm": torch.norm(grads).mean().item(),
                 "Misc/H_inv_g": x.norm().item(),
-                "Misc/AcceptanceStep": acceptance_step,
                 "Loss/Loss_actor": loss_pi.mean().item(),
                 "Train/KL": final_kl,
             },
@@ -693,7 +635,6 @@ def main(args):
         logger.log_tabular("Misc/xHx")
         logger.log_tabular("Misc/gradient_norm")
         logger.log_tabular("Misc/H_inv_g")
-        logger.log_tabular("Misc/AcceptanceStep")
 
         logger.dump_tabular()
         if epoch % 100 == 0:

@@ -50,18 +50,18 @@ def parse_args():
         help="if toggled, cuda will be enabled by default",
     )
     parser.add_argument(
-        "--torch-threads", type=int, default=1, help="number of threads for torch"
+        "--torch-threads", type=int, default=4, help="number of threads for torch"
     )
     parser.add_argument(
         "--num-envs",
         type=int,
-        default=1,
+        default=10,
         help="the number of parallel game environments",
     )
     parser.add_argument(
         "--total-steps",
         type=int,
-        default=1024000,
+        default=10000000,
         help="total timesteps of the experiments",
     )
     parser.add_argument(
@@ -88,7 +88,7 @@ def parse_args():
     parser.add_argument(
         "--steps_per_epoch",
         type=int,
-        default=2048,
+        default=20000,
         help="the number of steps to run in each environment per policy rollout",
     )
     parser.add_argument(
@@ -199,7 +199,7 @@ def parse_args():
     parser.add_argument(
         "--backtrack-iters",
         type=int,
-        default=15,
+        default=200,
         help="the number of backtracking line search iterations",
     )
     parser.add_argument(
@@ -374,8 +374,6 @@ def main(args):
     logger.setup_torch_saver(policy.actor)
     logger.log("Start with training.")
 
-    time.time()
-
     # training loop
     for epoch in range(epochs):
         rollout_start_time = time.time()
@@ -519,6 +517,7 @@ def main(args):
         x = conjugate_gradients(fvp, policy, fvp_obs, grads, args.cg_iters)
         assert torch.isfinite(x).all(), "x is not finite"
         xHx = torch.dot(x, fvp(x, policy, fvp_obs))
+        H_inv_g = fvp(x, policy, fvp_obs)
         assert xHx.item() >= 0, "xHx is negative"
         alpha = torch.sqrt(2 * args.target_kl / (xHx + 1e-8))
 
@@ -539,102 +538,15 @@ def main(args):
         r = grads.dot(p)
         s = b_grads.dot(p)
 
-        if b_grads.dot(b_grads) <= 1e-6 and ep_costs < 0:
-            # feasible step and cost grad is zero: use plain TRPO update...
-            A = torch.zeros(1)
-            B = torch.zeros(1)
-            optim_case = 4
-        else:
-            assert torch.isfinite(r).all(), "r is not finite"
-            assert torch.isfinite(s).all(), "s is not finite"
-
-            A = q - r**2 / (s + 1e-8)
-            B = 2 * args.target_kl - ep_costs**2 / (s + 1e-8)
-
-            if ep_costs < 0 and B < 0:
-                # point in trust region is feasible and safety boundary doesn't intersect
-                # ==> entire trust region is feasible
-                optim_case = 3
-            elif ep_costs < 0 <= B:
-                # point in trust region is feasible but safety boundary intersects
-                # ==> only part of trust region is feasible
-                optim_case = 2
-            elif ep_costs >= 0 and B >= 0:
-                # point in trust region is infeasible and cost boundary doesn't intersect
-                # ==> entire trust region is infeasible
-                optim_case = 1
-                logger.log("Alert! Attempting feasible recovery!", "yellow")
-            else:
-                # x = 0 infeasible, and safety half space is outside trust region
-                # ==> whole trust region is infeasible, try to fail gracefully
-                optim_case = 0
-                logger.log("Alert! Attempting infeasible recovery!", "red")
-
-        if optim_case in (3, 4):
-            # under 3 and 4 cases directly use TRPO method
-            alpha = torch.sqrt(2 * args.target_kl / (xHx + 1e-8))
-            nu_star = torch.zeros(1)
-            lambda_star = 1 / (alpha + 1e-8)
-            step_direction = alpha * x
-
-        elif optim_case in (1, 2):
-
-            def project(
-                data: torch.Tensor, low: torch.Tensor, high: torch.Tensor
-            ) -> torch.Tensor:
-                """Project data to [low, high] interval."""
-                return torch.clamp(data, low, high)
-
-            #  analytical Solution to LQCLP, employ lambda,nu to compute final solution of OLOLQC
-            #  λ=argmax(f_a(λ),f_b(λ)) = λa_star or λb_star
-            #  computing formula shown in appendix, lambda_a and lambda_b
-            lambda_a = torch.sqrt(A / B)
-            lambda_b = torch.sqrt(q / (2 * args.target_kl))
-            # λa_star = Proj(lambda_a ,0 ~ r/c)  λb_star=Proj(lambda_b,r/c~ +inf)
-            # where projection(str,b,c)=max(b,min(str,c))
-            # may be regarded as a projection from effective region towards safety region
-            r_num = r.item()
-            eps_cost = ep_costs + 1e-8
-            if ep_costs < 0:
-                lambda_a_star = project(
-                    lambda_a, torch.as_tensor(0.0), r_num / eps_cost
-                )
-                lambda_b_star = project(
-                    lambda_b, r_num / eps_cost, torch.as_tensor(torch.inf)
-                )
-            else:
-                lambda_a_star = project(
-                    lambda_a, r_num / eps_cost, torch.as_tensor(torch.inf)
-                )
-                lambda_b_star = project(
-                    lambda_b, torch.as_tensor(0.0), r_num / eps_cost
-                )
-
-            def f_a(lam: torch.Tensor) -> torch.Tensor:
-                return -0.5 * (A / (lam + 1e-8) + B * lam) - r * ep_costs / (s + 1e-8)
-
-            def f_b(lam: torch.Tensor) -> torch.Tensor:
-                return -0.5 * (q / (lam + 1e-8) + 2 * args.target_kl * lam)
-
-            lambda_star = (
-                lambda_a_star
-                if f_a(lambda_a_star) >= f_b(lambda_b_star)
-                else lambda_b_star
+        step_direction = (
+            torch.sqrt(2 * args.target_kl / (q + 1e-8)) * H_inv_g
+            - torch.clamp_min(
+                (torch.sqrt(2 * args.target_kl / q) * r + ep_costs) / s,
+                torch.tensor(0.0, device=args.device),
             )
-
-            # discard all negative values with torch.clamp(x, min=0)
-            # Nu_star = (lambda_star * - r)/s
-            nu_star = torch.clamp(lambda_star * ep_costs - r, min=0) / (s + 1e-8)
-            # final x_star as final direction played as policy's loss to backward and update
-            step_direction = 1.0 / (lambda_star + 1e-8) * (x - nu_star * p)
-
-        else:  # case == 0
-            # purely decrease costs
-            # without further check
-            lambda_star = torch.zeros(1)
-            nu_star = torch.sqrt(2 * args.target_kl / (s + 1e-8))
-            step_direction = -nu_star * p
-
+            * p
+        )
+        optim_case = 0
         # get distance each time theta goes towards certain direction
         step_frac = 1.0
         # get and flatten parameters from pi-net

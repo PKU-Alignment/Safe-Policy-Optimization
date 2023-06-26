@@ -26,6 +26,8 @@ setup(
         'tensorboard >= 2.8.0',
         'pyyaml >= 6.0',
         'matplotlib >= 3.7.1',
+        "seaborn >= 0.12.2",
+        "pandas >=  1.5.3",
         'safety-gymnasium >= 0.1.0',
     ],
     description='Pytorch version of Safe Reinforcement Learning Algorithm',
