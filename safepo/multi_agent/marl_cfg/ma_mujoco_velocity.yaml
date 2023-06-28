@@ -1,0 +1,19 @@
+Safety2x4AntVelocity-v0:
+  env:
+    agent_conf: 2x4
+    scenario: Ant-v4
+
+SafetyAnt4x2Velocity-v0:
+  env:
+    agent_conf: 4x2
+    scenario: Ant-v4
+
+Safety6x1HalfCheetahVelocity-v0:
+  env:
+    agent_conf: 6x1
+    scenario: HalfCheetah-v4
+
+Safety2x3HalfCheetahVelocity-v0:
+  env:
+    agent_conf: 2x3
+    scenario: HalfCheetah-v4

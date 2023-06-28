@@ -42,7 +42,7 @@ env:
   maxConsecutiveSuccesses: 0
 
   asset:
-    assetRoot: "../assets"
+    assetRoot: "../envs/assets"
     assetFileName: "mjcf/open_ai_assets/hand/shadow_hand.xml"
     assetFileNameBlock: "urdf/objects/cube_multicolor.urdf"
     assetFileNameEgg: "mjcf/open_ai_assets/hand/egg.xml"

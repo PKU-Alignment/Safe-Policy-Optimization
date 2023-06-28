@@ -4,12 +4,12 @@ experiment_name: check
 run_dir: ./runs
 use_centralized_V: True
 use_obs_instead_of_state: False
-num_env_steps: 10000000
-episode_length: 200
-n_rollout_threads: 32
+num_env_steps: 100000000
+episode_length: 8
+n_rollout_threads: 80
 n_eval_rollout_threads: 1
 use_linear_lr_decay: False
-hidden_size: 64
+hidden_size: 512
 use_render: False
 recurrent_N: 1
 use_single_network: False
@@ -20,7 +20,7 @@ eval_interval: 25
 log_interval: 25
 eval_episodes: 10000
 
-gamma: 0.99
+gamma: 0.96
 gae_lambda: 0.95
 use_gae: True
 use_popart: True
@@ -33,18 +33,18 @@ accept_ratio: 0.5
 clip_param: 0.2
 ppo_epoch: 5
 num_mini_batch: 1
-data_chunk_length: 10
+data_chunk_length: 
 value_loss_coef: 1
-entropy_coef: 0.01
-max_grad_norm: 10.0
+entropy_coef: 0.0
+max_grad_norm: 10
 huber_delta: 10.0
 use_recurrent_policy: False
 use_naive_recurrent_policy: False
 use_max_grad_norm: True
 use_clipped_value_loss: True
 use_huber_loss: True
-use_value_active_masks: True
-use_policy_active_masks: True
+use_value_active_masks: False
+use_policy_active_masks: False
 
 lr: 5.e-4
 critic_lr: 5.e-4
@@ -62,3 +62,16 @@ layer_N: 2
 
 std_x_coef: 1
 std_y_coef: 0.5
+
+mamujoco: 
+  num_env_steps: 10000000
+  episode_length: 200
+  n_rollout_threads: 32
+  n_eval_rollout_threads: 10
+  hidden_size: 64
+  gamma: 0.99
+  entropy_coef: 0.01
+  max_grad_norm: 10.0
+  use_value_active_masks: True
+  use_policy_active_masks: True
+  data_chunk_length: 10

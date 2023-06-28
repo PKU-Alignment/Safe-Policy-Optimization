@@ -24,8 +24,7 @@ class SeparatedReplayBuffer(object):
         self._use_popart = config["use_popart"]
         self._use_valuenorm = config["use_valuenorm"]
         self._use_proper_time_limits = config["use_proper_time_limits"]
-
-        self.device = config["device"]
+        self.device = config.get("device", "cuda:0")
         self.algo = config["algorithm_name"]
 
         obs_shape = get_shape_from_obs_space(obs_space)

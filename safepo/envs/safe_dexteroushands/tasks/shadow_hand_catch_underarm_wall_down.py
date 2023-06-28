@@ -13,8 +13,8 @@ import numpy as np
 import torch
 from isaacgym import gymapi, gymtorch
 from matplotlib.pyplot import axis
-from tasks.hand_base.base_task import BaseTask
-from utils.torch_jit_utils import *
+from safepo.envs.safe_dexteroushands.tasks.hand_base.base_task import BaseTask
+from safepo.envs.safe_dexteroushands.utils.torch_jit_utils import *
 
 
 class ShadowHandCatchUnderarmWallDown(BaseTask):

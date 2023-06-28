@@ -16,14 +16,13 @@ class Runner:
 
     def __init__(self,
                  vec_env,
-                 vec_eval_env,
                  config,
                  model_dir=""
                  ):
         self.envs = vec_env
-        self.eval_envs = vec_eval_env
+        self.eval_envs = vec_env
         # parameters
-        self.env_name = config["env_name"]
+        self.env_name = vec_env.task.cfg["env"]["env_name"]
         self.algorithm_name = config["algorithm_name"]
         self.experiment_name = config["experiment_name"]
         self.use_centralized_V = config["use_centralized_V"]
@@ -44,12 +43,11 @@ class Runner:
         self.eval_episodes = config["eval_episodes"]
         self.log_interval = config["log_interval"]
 
-        self.seed = config["seed"]
+        self.seed = self.envs.task.cfg["seed"]
         self.model_dir = model_dir
 
-        self.num_agents = self.envs.n_agents
-
-        self.device = config["device"]
+        self.num_agents = self.envs.num_agents
+        self.device = self.envs.rl_device
 
         torch.autograd.set_detect_anomaly(True)
         torch.backends.cudnn.enabled = True
@@ -136,15 +134,10 @@ class Runner:
 
             for step in range(self.episode_length):
                 # Sample actions
-                values, actions, action_log_probs, rnn_states, rnn_states_critic, env_actions = self.collect(step)
+                values, actions, action_log_probs, rnn_states, rnn_states_critic = self.collect(step)
 
                 # Obser reward and next obs
-                obs, share_obs, rewards, costs, dones, infos, _ = self.envs.step(env_actions)
-                obs = torch.as_tensor(obs, dtype=torch.float32, device=self.device)
-                share_obs = torch.as_tensor(share_obs, dtype=torch.float32, device=self.device)
-                rewards = torch.as_tensor(rewards, dtype=torch.float32, device=self.device)
-                costs = torch.as_tensor(costs, dtype=torch.float32, device=self.device)
-                dones = torch.as_tensor(dones, dtype=torch.float32, device=self.device)
+                obs, share_obs, rewards, costs, dones, infos, _ = self.envs.step(actions)
 
                 dones_env = torch.all(dones, dim=1)
 
@@ -161,6 +154,7 @@ class Runner:
                         done_episodes_costs.append(train_episode_costs[:, t].clone())
                         train_episode_costs[:, t] = 0
 
+                done_episodes_costs_aver = train_episode_costs.mean()
                 data = obs, share_obs, rewards, dones, infos, \
                        values, actions, action_log_probs, \
                        rnn_states, rnn_states_critic
@@ -207,15 +201,13 @@ class Runner:
     def warmup(self):
         # reset env
         obs, share_obs, _ = self.envs.reset()
-        obs = torch.as_tensor(obs, dtype=torch.float32).to(self.device)
-        share_obs = torch.as_tensor(share_obs, dtype=torch.float32).to(self.device)
         # replay buffer
         if not self.use_centralized_V:
             share_obs = obs
 
         for agent_id in range(self.num_agents):
-            self.buffer[agent_id].share_obs[0] = share_obs[:, agent_id].clone()
-            self.buffer[agent_id].obs[0] = obs[:, agent_id].clone()
+            self.buffer[agent_id].share_obs[0].copy_(share_obs[:, agent_id])
+            self.buffer[agent_id].obs[0].copy_(obs[:, agent_id])
 
     @torch.no_grad()
     def collect(self, step):
@@ -239,12 +231,12 @@ class Runner:
             rnn_state_critic_collector.append(rnn_state_critic.detach())
         # [self.envs, agents, dim]
         values = torch.transpose(torch.stack(value_collector), 1, 0)
-        actions = torch.transpose(torch.stack(action_collector), 1, 0)
+        # actions = torch.transpose(torch.stack(action_collector), 1, 0)
         # action_log_probs = torch.transpose(torch.stack(action_log_prob_collector), 1, 0)
         rnn_states = torch.transpose(torch.stack(rnn_state_collector), 1, 0)
         rnn_states_critic = torch.transpose(torch.stack(rnn_state_critic_collector), 1, 0)
 
-        return values, action_collector, action_log_prob_collector, rnn_states, rnn_states_critic, actions.detach().numpy()
+        return values, action_collector, action_log_prob_collector, rnn_states, rnn_states_critic
 
     def insert(self, data):
         obs, share_obs, rewards, dones, infos, \

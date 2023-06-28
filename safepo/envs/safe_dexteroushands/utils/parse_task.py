@@ -7,28 +7,28 @@
 
 import json
 
-from tasks.hand_base.multi_vec_task import (MultiVecTaskPython,
+from safepo.envs.safe_dexteroushands.tasks.hand_base.multi_vec_task import (MultiVecTaskPython,
                                             SingleVecTaskPythonArm)
-from tasks.hand_base.vec_task import (VecTaskCPU, VecTaskGPU, VecTaskPython,
+from safepo.envs.safe_dexteroushands.tasks.hand_base.vec_task import (VecTaskCPU, VecTaskGPU, VecTaskPython,
                                       VecTaskPythonArm)
-from tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
-from tasks.shadow_hand_catch_abreast import ShadowHandCatchAbreast
-from tasks.shadow_hand_catch_over2underarm import ShadowHandCatchOver2Underarm
-from tasks.shadow_hand_catch_underarm import ShadowHandCatchUnderarm
-from tasks.shadow_hand_door_close_inward import ShadowHandDoorCloseInward
-from tasks.shadow_hand_door_close_outward import ShadowHandDoorCloseOutward
-from tasks.shadow_hand_door_open_inward import ShadowHandDoorOpenInward
-from tasks.shadow_hand_door_open_outward import ShadowHandDoorOpenOutward
-from tasks.shadow_hand_lift_underarm import ShadowHandLiftUnderarm
-from tasks.shadow_hand_over import ShadowHandOver
-from tasks.shadow_hand_two_catch_underarm import ShadowHandTwoCatchUnderarm
-from tasks.ShadowHandCatchOver2underarm_Safe_finger import \
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_abreast import ShadowHandCatchAbreast
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_over2underarm import ShadowHandCatchOver2Underarm
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_underarm import ShadowHandCatchUnderarm
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_close_inward import ShadowHandDoorCloseInward
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_close_outward import ShadowHandDoorCloseOutward
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_open_inward import ShadowHandDoorOpenInward
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_open_outward import ShadowHandDoorOpenOutward
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_lift_underarm import ShadowHandLiftUnderarm
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_over import ShadowHandOver
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_two_catch_underarm import ShadowHandTwoCatchUnderarm
+from safepo.envs.safe_dexteroushands.tasks.ShadowHandCatchOver2underarm_Safe_finger import \
     ShadowHandCatchOver2Underarm_Safe_finger
-from tasks.ShadowHandCatchOver2underarm_Safe_joint import \
+from safepo.envs.safe_dexteroushands.tasks.ShadowHandCatchOver2underarm_Safe_joint import \
     ShadowHandCatchOver2Underarm_Safe_joint
-from tasks.ShadowHandOver_Safe_finger import ShadowHandOver_Safe_finger
-from tasks.ShadowHandOver_Safe_joint import ShadowHandOver_Safe_joint
-from utils.config import warn_task_name
+from safepo.envs.safe_dexteroushands.tasks.ShadowHandOver_Safe_finger import ShadowHandOver_Safe_finger
+from safepo.envs.safe_dexteroushands.tasks.ShadowHandOver_Safe_joint import ShadowHandOver_Safe_joint
+from safepo.envs.safe_dexteroushands.utils.config import warn_task_name
 
 
 def parse_task(args, cfg, cfg_train, sim_params, agent_index):

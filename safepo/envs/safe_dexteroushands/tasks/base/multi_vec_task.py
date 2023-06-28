@@ -11,7 +11,7 @@ from tracemalloc import start
 
 import numpy as np
 import torch
-from gym import spaces
+from gymnasium import spaces
 from isaacgym import gymtorch
 from isaacgym.torch_utils import to_torch
 

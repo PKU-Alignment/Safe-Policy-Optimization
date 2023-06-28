@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from gym.spaces import Space
+from gymnasium.spaces import Space
 from torch.autograd import grad
 from torch.distributions import Normal
 from torch.nn.functional import softplus

@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 from algorithms.rl.ppo import RolloutStorage
 #python ./utils/logger/tools.py --alg-name ppo --alg-type sarl --env-num 2048 --env-step 8 --root-dir ./logs/shadow_hand_over --refresh 
-from gym.spaces import Space
+from gymnasium.spaces import Space
 from torch.utils.tensorboard import SummaryWriter
 
 
