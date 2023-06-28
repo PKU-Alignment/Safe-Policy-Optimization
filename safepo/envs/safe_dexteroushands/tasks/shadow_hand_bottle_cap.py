@@ -13,8 +13,8 @@ import numpy as np
 import torch
 from isaacgym import gymapi, gymtorch
 from matplotlib.pyplot import axis
-from tasks.hand_base.base_task import BaseTask
-from utils.torch_jit_utils import *
+from safepo.envs.safe_dexteroushands.tasks.hand_base.base_task import BaseTask
+from safepo.envs.safe_dexteroushands.utils.torch_jit_utils import *
 
 
 class ShadowHandBottleCap(BaseTask):
@@ -231,7 +231,7 @@ class ShadowHandBottleCap(BaseTask):
         asset_root = "../../assets"
         shadow_hand_asset_file = "mjcf/open_ai_assets/hand/shadow_hand.xml"
         shadow_hand_another_asset_file = "mjcf/open_ai_assets/hand/shadow_hand1.xml"
-        table_texture_files = "../assets/textures/texture_stone_stone_texture_0.jpg"
+        table_texture_files = "safepo/envs/assets/textures/texture_stone_stone_texture_0.jpg"
         table_texture_handle = self.gym.create_texture_from_file(self.sim, table_texture_files)
 
         if "asset" in self.cfg["env"]:

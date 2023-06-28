@@ -4,12 +4,12 @@ experiment_name: check
 run_dir: ./runs
 use_centralized_V: False # false in IPPO
 use_obs_instead_of_state: False
-num_env_steps: 10000000
-episode_length: 200
-n_rollout_threads: 32
-n_eval_rollout_threads: 10
+num_env_steps: 100000000
+episode_length: 8
+n_rollout_threads: 80
+n_eval_rollout_threads: 1
 use_linear_lr_decay: False
-hidden_size: 64
+hidden_size: 512
 use_render: False
 recurrent_N: 1
 use_single_network: False
@@ -20,7 +20,7 @@ eval_interval: 25
 log_interval: 25
 eval_episodes: 10000
 
-gamma: 0.99
+gamma: 0.96
 gae_lambda: 0.95
 use_gae: True
 use_popart: False  # false in IPPO
@@ -62,3 +62,11 @@ layer_N: 2
 
 std_x_coef: 1
 std_y_coef: 0.5
+
+mamujoco: 
+  num_env_steps: 10000000
+  episode_length: 200
+  n_rollout_threads: 32
+  n_eval_rollout_threads: 10
+  hidden_size: 64
+  gamma: 0.99

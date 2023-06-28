@@ -11,10 +11,10 @@ from tracemalloc import start
 
 import numpy as np
 import torch
-from gym import spaces
+from gymnasium import spaces
 from isaacgym import gymtorch
 from isaacgym.torch_utils import to_torch
-from tasks.hand_base.base_task import BaseTask
+from safepo.envs.safe_dexteroushands.tasks.hand_base.base_task import BaseTask
 
 
 # VecEnv Wrapper for RL training

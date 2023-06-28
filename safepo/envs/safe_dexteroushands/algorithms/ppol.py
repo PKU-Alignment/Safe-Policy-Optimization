@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import wandb
-from gym.spaces import Space
+from gymnasium.spaces import Space
 from torch.nn.functional import softplus
 from torch.utils.tensorboard import SummaryWriter
 

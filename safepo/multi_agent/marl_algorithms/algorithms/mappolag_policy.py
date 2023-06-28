@@ -1,5 +1,5 @@
 import torch
-from utils.util import update_linear_schedule
+from safepo.multi_agent.marl_algorithms.algorithms.utils.util import update_linear_schedule
 
 from safepo.multi_agent.marl_algorithms.algorithms.actor_critic import (
     Actor, Critic)

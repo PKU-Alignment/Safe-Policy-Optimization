@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
-from marl_algorithms.utils.act import ACTLayer
-from marl_algorithms.utils.cnn import CNNBase
-from marl_algorithms.utils.mlp import MLPBase
-from marl_algorithms.utils.rnn import RNNLayer
-from marl_algorithms.utils.util import check, init
+from safepo.multi_agent.marl_algorithms.utils.act import ACTLayer
+from safepo.multi_agent.marl_algorithms.utils.cnn import CNNBase
+from safepo.multi_agent.marl_algorithms.utils.mlp import MLPBase
+from safepo.multi_agent.marl_algorithms.utils.rnn import RNNLayer
+from safepo.multi_agent.marl_algorithms.utils.util import check, init
 from safepo.multi_agent.marl_algorithms.algorithms.utils.util import get_shape_from_obs_space
 
 

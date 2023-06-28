@@ -140,7 +140,6 @@ To use SafePO-Baselines, you need to install environments. Please refer to [Mujo
 conda create -n safe python=3.8
 conda activate safe
 # because the cuda version, we recommend you install pytorch manual.
-pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 torchaudio==0.8.0 -f https://download.pytorch.org/whl/torch_stable.html
 pip install -e .
 ```
 
@@ -209,21 +208,22 @@ We also provide a safe MARL algorithm benchmark for safe MARL research on the ch
 
 ### Safety DexterousHands
 
-```safepo/envs/safe_dexteroushands/train_marl.py``` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
+`safepo/multi_agent/train_marl.py` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
 
-```python
+```bash
+cd safepo/multi_agent
 # algo: macpo, mappolag, mappo, ippo, happo
 python train_marl.py --task=ShadowHandOver --algo=macpo
 ```
 
 ### Safety-Gymnasium Multi-agent Velocity
 
-```safepo/multi_agnet/train_marl.py``` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command to run MACPO in Safety2x4AntVelocity-v0, with default arguments:
+`safepo/multi_agent/train_marl_sg.py` is the entrance file. Running `train_marl_sg.py` with arguments about algorithms and tasks does the training. For example, you can use the following command to run MACPO in Safety2x4AntVelocity-v0, with default arguments:
 
 ```python
+cd safepo/multi_agent
 # algo: macpo, mappolag, mappo, ippo, happo
-# env: Safety2x4AntVelocity-v0
-python train_marl.py --algo=macpo --scenario=Ant-v4 --agent_conf=2x4 
+python train_marl_sg.py --task=Safety2x4AntVelocity-v0 --algo=macpo
 ```
 
 The SafePO multi-agent algorithms share almost all hyperparameters for Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. However, there are some differences in certain hyperparameters, which are listed below:

@@ -6,19 +6,18 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import json
-
-from tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
-from tasks.shadow_hand_catch_abreast import ShadowHandCatchAbreast
-from tasks.shadow_hand_catch_over2underarm import ShadowHandCatchOver2Underarm
-from tasks.shadow_hand_catch_underarm import ShadowHandCatchUnderarm
-from tasks.shadow_hand_door_close_inward import ShadowHandDoorCloseInward
-from tasks.shadow_hand_door_close_outward import ShadowHandDoorCloseOutward
-from tasks.shadow_hand_door_open_inward import ShadowHandDoorOpenInward
-from tasks.shadow_hand_door_open_outward import ShadowHandDoorOpenOutward
-from tasks.shadow_hand_lift_underarm import ShadowHandLiftUnderarm
-from tasks.shadow_hand_over import ShadowHandOver
-from tasks.shadow_hand_two_catch_underarm import ShadowHandTwoCatchUnderarm
-from utils.config import warn_task_name
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_abreast import ShadowHandCatchAbreast
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_over2underarm import ShadowHandCatchOver2Underarm
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_underarm import ShadowHandCatchUnderarm
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_close_inward import ShadowHandDoorCloseInward
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_close_outward import ShadowHandDoorCloseOutward
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_open_inward import ShadowHandDoorOpenInward
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_open_outward import ShadowHandDoorOpenOutward
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_lift_underarm import ShadowHandLiftUnderarm
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_over import ShadowHandOver
+from safepo.envs.safe_dexteroushands.tasks.shadow_hand_two_catch_underarm import ShadowHandTwoCatchUnderarm
+from safepo.envs.safe_dexteroushands.utils.config import warn_task_name
 
 from safepo.envs.safe_dexteroushands.tasks.base.multi_vec_task import \
     MultiVecTaskPython

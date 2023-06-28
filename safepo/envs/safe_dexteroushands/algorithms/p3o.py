@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from gym.spaces import Space
+from gymnasium.spaces import Space
 from torch.nn.functional import softplus
 from torch.utils.tensorboard import SummaryWriter
 

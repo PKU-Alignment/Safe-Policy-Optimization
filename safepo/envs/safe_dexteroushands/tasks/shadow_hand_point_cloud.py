@@ -37,8 +37,8 @@ import torch
 from isaacgym import gymapi, gymtorch
 from matplotlib.pyplot import axis
 from PIL import Image as Im
-from tasks.hand_base.base_task import BaseTask
-from utils.torch_jit_utils import *
+from safepo.envs.safe_dexteroushands.tasks.hand_base.base_task import BaseTask
+from safepo.envs.safe_dexteroushands.utils.torch_jit_utils import *
 
 
 class ShadowHandPointCloud(BaseTask):
