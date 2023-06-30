@@ -125,10 +125,6 @@ Our team has also designed a number of more interesting safety tasks for two-han
 | ShadowHandCatchOver2UnderarmWall     | None        | <img src="assets/catchunderarm_wall.png" align="middle" width="150"/>      |
 | ShadowHandCatchOver2UnderarmWallDown | None        | <img src="assets/catchunderarm_wall_down.png" align="middle" width="150"/> |
 
-And the safe region are :
-| Wall                                                    | Wall Down                                                    |
-| ------------------------------------------------------- | ------------------------------------------------------------ |
-| <img src="assets/wall.png" align="middle" width="150"/> | <img src="assets/wall_down.png" align="middle" width="150"/> |
 
 ## Pre-requisites
 
@@ -217,6 +213,8 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 ```
 
 ### Safety-Gymnasium Multi-agent Velocity
+
+**note: This task is still under development. We will release the code as soon as possible.**
 
 `safepo/multi_agent/train_marl_sg.py` is the entrance file. Running `train_marl_sg.py` with arguments about algorithms and tasks does the training. For example, you can use the following command to run MACPO in Safety2x4AntVelocity-v0, with default arguments:
 
