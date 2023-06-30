@@ -218,6 +218,8 @@ python train_marl.py --task=ShadowHandOver --algo=macpo
 
 ### Safety-Gymnasium Multi-agent Velocity
 
+**note: This task is still under development. We will release the code as soon as possible.**
+
 `safepo/multi_agent/train_marl_sg.py` is the entrance file. Running `train_marl_sg.py` with arguments about algorithms and tasks does the training. For example, you can use the following command to run MACPO in Safety2x4AntVelocity-v0, with default arguments:
 
 ```python
