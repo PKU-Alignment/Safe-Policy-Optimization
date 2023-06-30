@@ -125,10 +125,6 @@ Our team has also designed a number of more interesting safety tasks for two-han
 | ShadowHandCatchOver2UnderarmWall     | None        | <img src="assets/catchunderarm_wall.png" align="middle" width="150"/>      |
 | ShadowHandCatchOver2UnderarmWallDown | None        | <img src="assets/catchunderarm_wall_down.png" align="middle" width="150"/> |
 
-And the safe region are :
-| Wall                                                    | Wall Down                                                    |
-| ------------------------------------------------------- | ------------------------------------------------------------ |
-| <img src="assets/wall.png" align="middle" width="150"/> | <img src="assets/wall_down.png" align="middle" width="150"/> |
 
 ## Pre-requisites
 
