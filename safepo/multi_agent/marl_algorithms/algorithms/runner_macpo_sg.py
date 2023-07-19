@@ -1,12 +1,32 @@
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+
 import os
 import time
+import csv
+import json
+import os.path as osp
 
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
-
+from gymnasium.utils.save_video import save_video
 from safepo.multi_agent.marl_algorithms.algorithms.utils.separated_buffer_macpo import \
     SeparatedReplayBuffer
+from safepo.common.logger import convert_json
 
 
 def _t2n(x):
@@ -57,36 +77,44 @@ class Runner:
         torch.backends.cudnn.benchmark = True
 
         self.run_dir = config["run_dir"]
-        self.log_dir = str(self.run_dir + '/' + self.env_name + '/' + self.algorithm_name +'/logs_seed{}'.format(self.seed))
+        self.log_dir = str(config["log_dir"]+'/logs_seed{}'.format(self.seed))
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
         self.writter = SummaryWriter(self.log_dir)
-        self.save_dir = str(self.run_dir + '/' + self.env_name + '/' + self.algorithm_name + '/models_seed{}'.format(self.seed))
+        self.save_dir = str(config["log_dir"]+'/models_seed{}'.format(self.seed))
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
-
-        if self.algorithm_name == "happo":
-            from algorithms.algorithms.happo_policy import \
-                HAPPO_Policy as Policy
-            from algorithms.algorithms.happo_trainer import HAPPO as TrainAlgo
-        if self.algorithm_name == "mappo":
-            from algorithms.algorithms.mappo_policy import \
-                MAPPO_Policy as Policy
-            from algorithms.algorithms.mappo_trainer import MAPPO as TrainAlgo
+        self.output_file = open(  # noqa: SIM115 # pylint: disable=consider-using-with
+            os.path.join(self.log_dir, "progress.csv"),
+            encoding="utf-8",
+            mode="w",
+        )
+        self.csv_writer = csv.writer(self.output_file)
+        self.csv_writer.writerow(['Train/Steps', 'Train/Episode Reward', 'Train/Episode Cost', \
+                                  'Eval/Episode Reward', 'Eval/Episode Cost'])
+        
+        # save config
+        config_json = convert_json(config)
+        config_json["exp_name"] = self.experiment_name
+        output = json.dumps(
+            config_json, separators=(",", ":\t"), indent=4, sort_keys=True
+        )
+        with open(osp.join(self.log_dir, "config.json"), "w") as out:
+            out.write(output)
         if self.algorithm_name == "macpo":
             from safepo.multi_agent.marl_algorithms.algorithms.macpo_policy import \
                 MACPO_Policy as Policy
             from safepo.multi_agent.marl_algorithms.algorithms.macpo_trainer import \
                 MACPO as TrainAlgo
-        if self.algorithm_name == "mappolag":
+        elif self.algorithm_name == "mappolag":
             from safepo.multi_agent.marl_algorithms.algorithms.mappolag_policy import \
                 MAPPO_L_Policy as Policy
             from safepo.multi_agent.marl_algorithms.algorithms.mappolag_trainer import \
                 R_MAPPO_Lagr as TrainAlgo
-        if self.algorithm_name == "ippo":
-            from algorithms.algorithms.mappo_policy import \
-                IPPO_Policy as Policy
-            from algorithms.algorithms.mappo_trainer import IPPO as TrainAlgo
+
+        else:
+            print('wrong_algo_name', self.algorithm_name)
+            raise NotImplementedError
         self.policy = []
         for agent_id in range(self.num_agents):
             share_observation_space = self.envs.share_observation_space[agent_id] if self.use_centralized_V else self.envs.observation_space[agent_id]
@@ -191,6 +219,12 @@ class Runner:
 
                 self.log_train(train_infos, total_num_steps)
 
+            # eval
+            eval_rewards='Not Recorded'
+            eval_costs='Not Recorded'
+            if episode % self.eval_interval == 0 and self.use_eval:
+                eval_rewards, eval_costs = self.eval(total_num_steps)
+
             if len(done_episodes_rewards) != 0:
                 aver_episode_rewards = torch.stack(done_episodes_rewards).mean()
                 aver_episode_costs = torch.stack(done_episodes_costs).mean()
@@ -200,9 +234,8 @@ class Runner:
                                             total_num_steps)
                 self.writter.add_scalar("train_episode_costs", aver_episode_costs,
                                             total_num_steps)
-            # eval
-            if episode % self.eval_interval == 0 and self.use_eval:
-                self.eval(total_num_steps)
+                self.csv_writer.writerow([total_num_steps, aver_episode_rewards.item(), aver_episode_costs.item(), eval_rewards, eval_costs])
+                self.output_file.flush()
 
     def return_aver_cost(self, aver_episode_costs):
         for agent_id in range(self.num_agents):
@@ -248,6 +281,10 @@ class Runner:
             rnn_state_critic_collector.append(rnn_state_critic.detach())
             cost_preds_collector.append(cost_pred.detach())
             rnn_states_cost_collector.append(rnn_state_cost.detach())
+        # TODO: padding for humanoid
+        if self.env_name == "Safety9|8HumanoidVelocity-v0":
+            zeros = torch.zeros(action_collector[-1].shape[0], 1)
+            action_collector[-1]=torch.cat((action_collector[-1], zeros), dim=1)
         # [self.envs, agents, dim]
         values = torch.transpose(torch.stack(value_collector), 1, 0)
         actions = torch.transpose(torch.stack(action_collector), 1, 0)
@@ -283,7 +320,9 @@ class Runner:
 
         if not self.use_centralized_V:
             share_obs = obs
-
+        # TODO: padding for humanoid
+        if self.env_name == "Safety9|8HumanoidVelocity-v0":
+            actions[1]=actions[1][:, :8]
         for agent_id in range(self.num_agents):
             self.buffer[agent_id].insert(share_obs[:, agent_id], obs[:, agent_id], rnn_states[:, agent_id],
                                          rnn_states_critic[:, agent_id], actions[agent_id],
@@ -403,10 +442,11 @@ class Runner:
         eval_episode = 0
         eval_episode_rewards = []
         eval_episode_costs = []
+        save_video_path=os.path.join(self.save_dir, 'video')
         one_episode_rewards = torch.zeros(1, self.n_rollout_threads, device=self.device)
         one_episode_costs = torch.zeros(1, self.n_rollout_threads, device=self.device)
 
-        eval_obs, eval_share_obs, _ = self.eval_envs.reset()
+        eval_obs, _, _ = self.eval_envs.reset()
         eval_obs = torch.as_tensor(eval_obs, dtype=torch.float32, device=self.device)
 
         eval_rnn_states = torch.zeros(self.n_eval_rollout_threads, self.num_agents, self.recurrent_N, self.hidden_size,
@@ -415,7 +455,6 @@ class Runner:
 
         while True:
             eval_actions_collector = []
-            eval_rnn_states_collector = []
             for agent_id in range(self.num_agents):
                 self.trainer[agent_id].prep_rollout()
                 eval_actions, temp_rnn_state = \
@@ -425,13 +464,15 @@ class Runner:
                                                       deterministic=True)
                 eval_rnn_states[:, agent_id] = temp_rnn_state
                 eval_actions_collector.append(eval_actions)
-
+            # TODO: padding for humanoid
+            if self.env_name == "Safety9|8HumanoidVelocity-v0":
+                zeros = torch.zeros(eval_actions_collector[-1].shape[0], 1)
+                eval_actions_collector[-1]=torch.cat((eval_actions_collector[-1], zeros), dim=1)
             eval_actions = torch.transpose(torch.stack(eval_actions_collector), 1, 0).detach().numpy()
 
             # Obser reward and next obs
-            eval_obs, eval_share_obs, eval_rewards, eval_costs, eval_dones, eval_infos, _ = self.eval_envs.step(
+            eval_obs, _, eval_rewards, eval_costs, eval_dones, eval_infos, _ = self.eval_envs.step(
                 eval_actions)
-            
             eval_obs = torch.as_tensor(eval_obs, dtype=torch.float32, device=self.device)
             eval_rewards = torch.as_tensor(eval_rewards, dtype=torch.float32, device=self.device)
             eval_costs = torch.as_tensor(eval_costs, dtype=torch.float32, device=self.device)
@@ -466,7 +507,93 @@ class Runner:
                 self.log_env(eval_env_infos, total_num_steps)
                 print("eval_average_episode_rewards is {}.".format(np.mean(eval_episode_rewards)),
                       "eval_average_episode_costs is {}.".format(np.mean((eval_episode_costs))))
-                break
+                return np.mean(eval_episode_rewards), np.mean(eval_episode_costs)
+
+    @torch.no_grad()
+    def render(self, total_num_steps):
+        eval_episode = 0
+        eval_episode_rewards = []
+        eval_episode_costs = []
+        frames = []
+        frames.append(self.eval_envs.render())
+        save_video_path=os.path.join(self.save_dir, 'video')
+        one_episode_rewards = torch.zeros(1, self.n_rollout_threads, device=self.device)
+        one_episode_costs = torch.zeros(1, self.n_rollout_threads, device=self.device)
+
+        eval_obs, _, _ = self.eval_envs.reset()
+        eval_obs = torch.as_tensor(eval_obs, dtype=torch.float32, device=self.device)
+
+        eval_rnn_states = torch.zeros(self.n_eval_rollout_threads, self.num_agents, self.recurrent_N, self.hidden_size,
+                                   device=self.device)
+        eval_masks = torch.ones(self.n_eval_rollout_threads, self.num_agents, 1, device=self.device)
+
+        while True:
+            eval_actions_collector = []
+            for agent_id in range(self.num_agents):
+                self.trainer[agent_id].prep_rollout()
+                eval_actions, temp_rnn_state = \
+                    self.trainer[agent_id].policy.act(eval_obs[:, agent_id],
+                                                      eval_rnn_states[:, agent_id],
+                                                      eval_masks[:, agent_id],
+                                                      deterministic=True)
+                eval_rnn_states[:, agent_id] = temp_rnn_state
+                eval_actions_collector.append(eval_actions)
+            # TODO: padding for humanoid
+            if self.env_name == "Safety9|8HumanoidVelocity-v0":
+                zeros = torch.zeros(eval_actions_collector[-1].shape[0], 1)
+                eval_actions_collector[-1]=torch.cat((eval_actions_collector[-1], zeros), dim=1)
+            eval_actions = torch.transpose(torch.stack(eval_actions_collector), 1, 0).detach().numpy()
+
+            # Obser reward and next obs
+            eval_obs, _, eval_rewards, eval_costs, eval_dones, eval_infos, _ = self.eval_envs.step(
+                eval_actions)
+            frames.append(self.eval_envs.render())
+            eval_obs = torch.as_tensor(eval_obs, dtype=torch.float32, device=self.device)
+            eval_rewards = torch.as_tensor(eval_rewards, dtype=torch.float32, device=self.device)
+            eval_costs = torch.as_tensor(eval_costs, dtype=torch.float32, device=self.device)
+            eval_dones = torch.as_tensor(eval_dones, dtype=torch.float32, device=self.device)
+
+            reward_env = torch.mean(eval_rewards, dim=1).flatten()
+            cost_env = torch.mean(eval_costs, dim=1).flatten()
+
+            one_episode_rewards += reward_env
+            one_episode_costs += cost_env
+
+            eval_dones_env = torch.all(eval_dones, dim=1)
+
+            eval_rnn_states[eval_dones_env == True] = torch.zeros(
+                (eval_dones_env == True).sum(), self.num_agents, self.recurrent_N, self.hidden_size, device=self.device)
+
+            eval_masks = torch.ones(self.n_eval_rollout_threads, self.num_agents, 1, device=self.device)
+            eval_masks[eval_dones_env == True] = torch.zeros((eval_dones_env == True).sum(), self.num_agents, 1,
+                                                          device=self.device)
+
+            if eval_dones_env.any(): 
+                save_video(
+                    frames,
+                    save_video_path,
+                    fps=30,
+                    episode_trigger=lambda x: True,
+                    episode_index=eval_episode,
+                    name_prefix='eval',
+                )
+                frames=[]
+                frames.append(self.eval_envs.render())
+            for eval_i in range(self.n_eval_rollout_threads):
+                if eval_dones_env[eval_i]:
+                    eval_episode += 1
+                    eval_episode_rewards.append(one_episode_rewards[:, eval_i].mean().item())
+                    one_episode_rewards[:, eval_i] = 0
+                    eval_episode_costs.append(one_episode_costs[:, eval_i].mean().item())
+                    one_episode_costs[:, eval_i] = 0
+
+            if eval_episode >= self.single_eval_episodes:
+                eval_env_infos = {'eval_average_episode_rewards': eval_episode_rewards,
+                                  'eval_average_episode_costs': eval_episode_costs}
+                self.log_env(eval_env_infos, total_num_steps)
+                print("eval_average_episode_rewards is {}.".format(np.mean(eval_episode_rewards)),
+                      "eval_average_episode_costs is {}.".format(np.mean((eval_episode_costs))))
+                return np.mean(eval_episode_rewards), np.mean(eval_episode_costs)
 
     @torch.no_grad()
     def compute(self):

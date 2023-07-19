@@ -32,6 +32,7 @@ setup(
         "pandas >=  1.5.3",
         'safety-gymnasium >= 0.1.0',
         "rich>=13.3.0",
+        "moviepy>=1.0.3",
     ],
     description='Pytorch version of Safe Reinforcement Learning Algorithm',
     author='OmniSafeAI Team',

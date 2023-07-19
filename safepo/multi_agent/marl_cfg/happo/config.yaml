@@ -46,7 +46,7 @@ use_huber_loss: True
 use_value_active_masks: False
 use_policy_active_masks: False
 
-lr: 5.e-4
+actor_lr: 5.e-4
 critic_lr: 5.e-4
 opti_eps: 1.e-5
 weight_decay: 0.0

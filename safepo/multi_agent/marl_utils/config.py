@@ -7,7 +7,7 @@
 
 import os
 import random
-import sys
+from distutils.util import strtobool
 
 import numpy as np
 from isaacgym import gymapi, gymutil
@@ -64,17 +64,19 @@ def retrieve_cfg(args, use_rlg_config=False):
     if args.task == "ShadowHandOver":
         return os.path.join(args.logdir, "shadow_hand_over/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo) , "cfg/shadow_hand_over.yaml"
     elif args.task == "ShadowHandCatchOverarm":
-        return os.path.join(args.logdir, "shadow_hand_catch_overarm/{}/{}".format(args.algo, args.algo)), "cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_catch_overarm.yaml"
+        return os.path.join(args.logdir, "shadow_hand_catch_overarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_catch_overarm.yaml"
     elif args.task == "ShadowHandCatchUnderarm":
-        return os.path.join(args.logdir, "shadow_hand_catch_underarm/{}/{}".format(args.algo, args.algo)), "cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_catch_underarm.yaml"
+        return os.path.join(args.logdir, "shadow_hand_catch_underarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_catch_underarm.yaml"
     elif args.task == "ShadowHandTwoCatchUnderarm":
-        return os.path.join(args.logdir, "shadow_hand_two_catch_underarm/{}/{}".format(args.algo, args.algo)), "cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_two_catch_underarm.yaml"
-    elif args.task == "ShadowHandCatchAbreast":
-        return os.path.join(args.logdir, "shadow_hand_catch_abreast/{}/{}".format(args.algo, args.algo)), "cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_catch_abreast.yaml"
-    elif args.task == "ShadowHandReOrientation":
-        return os.path.join(args.logdir, "shadow_hand_re_orientation/{}/{}".format(args.algo, args.algo)), "cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_re_orientation.yaml"
+        return os.path.join(args.logdir, "shadow_hand_two_catch_underarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_two_catch_underarm.yaml"
     elif args.task == "ShadowHandOverOverarm":
-        return os.path.join(args.logdir, "shadow_hand_over_overarm/{}/{}".format(args.algo, args.algo)), "cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_over_overarm.yaml"
+        return os.path.join(args.logdir, "shadow_hand_over_overarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_over_overarm.yaml"
+    elif args.task == "ShadowHandDoorCloseInward":
+        return os.path.join(args.logdir, "shadow_hand_door_close_inward/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_door_close_inward.yaml"
+    elif args.task == "ShadowHandBottleCap":
+        return os.path.join(args.logdir, "shadow_hand_bottle_cap/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_bottle_cap.yaml"
+    elif args.task == "ShadowHandLiftUnderarm":
+        return os.path.join(args.logdir, "shadow_hand_lift_underarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_lift_underarm.yaml"
     else:
         warn_task_name()
 
@@ -107,6 +109,8 @@ def load_cfg(args, use_rlg_config=False):
     else:
         cfg["task"] = {"randomize": False}
 
+    # Set algorithms device
+    cfg_train["rl_device"] = args.rl_device
     logdir = args.logdir
     if use_rlg_config:
 
@@ -158,6 +162,8 @@ def load_cfg(args, use_rlg_config=False):
             cfg_train["seed"] = args.seed
 
         log_id = args.logdir
+
+        cfg_train['log_dir']=cfg_train["run_dir"]+'/'+args.experiment+'/'+args.task+'/'+cfg_train["algorithm_name"]
         if args.experiment != 'Base':
             if args.metadata:
                 log_id = args.logdir + "_{}_{}_{}_{}".format(args.experiment, args.task_type, args.device, str(args.physics_engine).split("_")[-1])
@@ -221,12 +227,10 @@ def get_args(benchmark=False, use_rlg_config=False):
             "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False,
             "help": "Use horovod for multi-gpu training, have effect only with rl_games RL library"},
-        {"name": "--task", "type": str, "default": "Humanoid",
+        {"name": "--task", "type": str, "default": "ShadowHandOver",
             "help": "Can be BallBalance, Cartpole, CartpoleYUp, Ant, Humanoid, Anymal, FrankaCabinet, Quadcopter, ShadowHand, Ingenuity"},
         {"name": "--task_type", "type": str,
             "default": "Python", "help": "Choose Python or C++"},
-        {"name": "--rl_device", "type": str, "default": "cuda:0",
-            "help": "Choose CPU or GPU device for inferencing policy network"},
         {"name": "--logdir", "type": str, "default": "logs/"},
         {"name": "--experiment", "type": str, "default": "Base",
             "help": "Experiment name. If used with --metadata flag an additional information about physics engine, sim device, pipeline and domain randomization will be added to the name"},
@@ -252,8 +256,11 @@ def get_args(benchmark=False, use_rlg_config=False):
             "help": "Apply additional PyTorch settings for more deterministic behaviour"},
         {"name": "--algo", "type": str, "default": "happo",
             "help": "Choose an algorithm"},
-        {"name": "--model_dir", "type": str, "default": "",
-            "help": "Choose a model dir"}]
+        {"name": "--model-dir", "type": str, "default": "",
+            "help": "Choose a model dir"},
+        {"name": "--device-id", "type": int, "default": "0", "help": "The cuda device id to use"},
+        {"name": "--write-terminal", "type": lambda x: bool(strtobool(x)), "default": True, "help": "Toggles terminal logging"},
+            ]
 
     if benchmark:
         custom_parameters += [{"name": "--num_proc", "type": int, "default": 1, "help": "Number of child processes to launch"},
@@ -269,8 +276,9 @@ def get_args(benchmark=False, use_rlg_config=False):
         custom_parameters=custom_parameters)
 
     # allignment with examples
-    args.device_id = args.compute_device_id
+    # args.device_id = args.compute_device_id
     args.device = args.sim_device_type if args.use_gpu_pipeline else 'cpu'
+    args.rl_device = args.sim_device_type+':'+str(args.device_id) if args.use_gpu_pipeline else 'cpu'
 
     if args.test:
         args.play = args.test
