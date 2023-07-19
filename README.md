@@ -24,6 +24,7 @@
 - [Supported Environments](#supported-environments)
 - [Safety-Gymnasium](#safety-gymnasium)
 - [Safe-Dexterous-Hands](#safe-dexterous-hands)
+  - [Prerequisites](#prerequisites)
   - [Selected Tasks](#selected-tasks)
 - [What's More](#whats-more)
 - [Pre-requisites](#pre-requisites)
@@ -31,11 +32,12 @@
 - [Getting Started](#getting-started)
   - [Single-Agent](#single-agent)
   - [Multi-Agent](#multi-agent)
-  - [Safety DexterousHands](#safety-dexteroushands)
-  - [Safety-Gymnasium Multi-agent Velocity](#safety-gymnasium-multi-agent-velocity)
+    - [Safety DexterousHands](#safety-dexteroushands)
+    - [Safety-Gymnasium Multi-agent Velocity](#safety-gymnasium-multi-agent-velocity)
+    - [Multi-Agent Benchmark](#multi-agent-benchmark)
 - [Machine Configuration](#machine-configuration)
 - [Ethical and Responsible Use](#ethical-and-responsible-use)
-- [PKU-MARL Team](#pku-marl-team)
+- [PKU-Alignment Team](#pku-alignment-team)
 
 ## Overview of Algorithms
 
@@ -56,7 +58,6 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 |             [MAPPO-Lag](https://arxiv.org/pdf/2110.02793.pdf)              |    Preprint(Cite: 4)    | [Pytorch](https://github.com/chauncygu/Multi-Agent-Constrained-Policy-Optimisation) | ![GitHub last commit](https://img.shields.io/github/last-commit/chauncygu/Multi-Agent-Constrained-Policy-Optimisation?label=last%20update) | [![GitHub stars](https://img.shields.io/github/stars/chauncygu/Safe-Multi-Agent-Isaac-Gym)](https://github.com/chauncygu/Safe-Multi-Agent-Isaac-Gym/stargazers) |
 | [HAPPO (Purely reward optimisation)](https://arxiv.org/pdf/2109.11251.pdf) |  ICLR 2022 (Cite: 10)   |                [Pytorch](https://github.com/cyanrain7/TRPO-in-MARL)                 |                ![GitHub last commit](https://img.shields.io/github/last-commit/cyanrain7/TRPO-in-MARL?label=last%20update)                 |               [![GitHub stars](https://img.shields.io/github/stars/cyanrain7/TRPO-in-MARL)](https://github.com/cyanrain7/TRPO-in-MARL/stargazers)               |
 | [MAPPO (Purely reward optimisation)](https://arxiv.org/pdf/2103.01955.pdf) |   Preprint(Cite: 98)    |                [Pytorch](https://github.com/marlbenchmark/on-policy)                |                ![GitHub last commit](https://img.shields.io/github/last-commit/marlbenchmark/on-policy?label=last%20update)                |              [![GitHub stars](https://img.shields.io/github/stars/marlbenchmark/on-policy)](https://github.com/marlbenchmark/on-policy/stargazers)              |
-| [IPPO (Purely reward optimisation)](https://arxiv.org/pdf/2011.09533.pdf)  |   Preprint(Cite: 28)    |                                         :x:                                         |                                                                    :x:                                                                     |                                                                               :x:                                                                               |
 
 ## Supported Environments
 
@@ -104,6 +105,16 @@ Here is a list of all the environments Saty-Gymnasiumn support for now; some are
 
 **note**: These tasks support multi-agent algorithms only currently.
 
+### Prerequisites
+
+It uses [Anaconda](https://www.anaconda.com/) to create virtual environments.
+To install Anaconda, follow instructions [here](https://docs.anaconda.com/anaconda/install/linux/).
+
+Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` 
+directory, like `joint_monkey.py`. Please follow troubleshooting steps described in the Isaac Gym Preview Release 3/4
+install instructions if you have any trouble running the samples.
+
+
 ### Selected Tasks
 
 | Base Environments            | Description                                                                                                                                                           | Demo                                                        |
@@ -132,7 +143,7 @@ To use SafePO-Baselines, you need to install environments. Please refer to [Mujo
 
 ## Conda-Environment
 
-```python
+```bash
 conda create -n safe python=3.8
 conda activate safe
 # because the cuda version, we recommend you install pytorch manual.
@@ -152,7 +163,7 @@ cd safepo/single_agent
 python ppo_lag.py --env-id SafetyPointGoal1-v0 --seed 0
 ```
 
-To run a benchamrk parallelly, for example, you can use the following command to run PPO-Lag, TRPO-Lag in SafetyAntVelocity-v1, SafetyHalfCheetahVelocity-v1: 
+To run a benchamrk parallelly, for example, you can use the following command to run `PPO-Lag`, `TRPO-Lag` in `SafetyAntVelocity-v1`, `SafetyHalfCheetahVelocity-v1`: 
 
 ```bash
 cd safepo/single_agent
@@ -193,7 +204,7 @@ Here we provide the list of arguments:
 | --cg-iters           	| 15                  	| the number of conjugate gradient iterations                	|
 | --backtrack-iters    	| 15                  	| the number of backtracking line search iterations          	|
 | --backtrack-coef     	| 0.8                 	| the coefficient for backtracking line search               	|
-| --cost-limit         	| 25.0                	| the cost limit for the safety constraint                   	|
+| --safety-bound         	| 25.0                	| the cost limit for the safety constraint                   	|
 
 **Note**: Some hyper-parameters are varied for different algorithms. For more details, please refer to the corresponding code files.
 
@@ -202,26 +213,26 @@ Here we provide the list of arguments:
 We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. HAPPO, IPPO, MACPO, MAPPO-Lag and MAPPO have already been implemented.
 
 
-### Safety DexterousHands
+#### Safety DexterousHands
 
-`safepo/multi_agent/train_marl.py` is the entrance file. Running `train_marl.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
+`safepo/multi_agent/train_marl.py` is the entrance file. Running `train_hand.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
+
+```bash
+cd safepo/multi_agent
+# algo: macpo, mappolag, mappo, happo
+python train_hand.py --task=ShadowHandOver --algo=macpo
+```
+
+#### Safety-Gymnasium Multi-agent Velocity
+
+**note: This task is still under development. We will release the code as soon as possible.**
+
+`safepo/multi_agent/train_vel.py` is the entrance file. Running `train_vel.py` with arguments about algorithms and tasks does the training. For example, you can use the following command to run `MACPO` in `Safety2x4AntVelocity-v0`, with default arguments:
 
 ```bash
 cd safepo/multi_agent
 # algo: macpo, mappolag, mappo, ippo, happo
-python train_marl.py --task=ShadowHandOver --algo=macpo
-```
-
-### Safety-Gymnasium Multi-agent Velocity
-
-**note: This task is still under development. We will release the code as soon as possible.**
-
-`safepo/multi_agent/train_marl_sg.py` is the entrance file. Running `train_marl_sg.py` with arguments about algorithms and tasks does the training. For example, you can use the following command to run MACPO in Safety2x4AntVelocity-v0, with default arguments:
-
-```python
-cd safepo/multi_agent
-# algo: macpo, mappolag, mappo, ippo, happo
-python train_marl_sg.py --task=Safety2x4AntVelocity-v0 --algo=macpo
+python train_vel.py --task=Safety2x4AntVelocity-v0 --algo=macpo
 ```
 
 The SafePO multi-agent algorithms share almost all hyperparameters for Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. However, there are some differences in certain hyperparameters, which are listed below:
@@ -229,13 +240,42 @@ The SafePO multi-agent algorithms share almost all hyperparameters for Safety De
 | Argument                  	| Info                                        	| Default (for Safety DexterousHands) 	| Default (for Safety-Gymnasium multi-agent velocity) 	|
 |---------------------------	|---------------------------------------------	|-------------------------------------	|-----------------------------------------------------	|
 | --episode-length          	| Episode length                              	| 8                                   	| 200                                                 	|
-| --num-env-steps           	| The number of total steps                   	| 100000000                           	| 10000000                                            	|
-| --cost-lim                	| The tolerance of cost violation             	| 0.0                                 	| 1.0                                                 	|
+| --num-env-steps           	| The number of total steps                   	| 100000000                           	| 10000000                                            	|                              	|
 | --n-rollout-threads       	| The number of episodes to run               	| 80                                  	| 32                                                  	|
-| --hidden-size             	| The size of hidden layers of neural network 	| 512                                 	| 64                                                  	|
+| --hidden-size             	| The size of hidden layers of neural network 	| 512                                 	| 128                                                  	|
 | --entropy-coef            	| The coefficient of entropy                  	| 0.00                                	| 0.01                                                	|
 | --use-value-active-masks  	| Whether to use value active masks           	| False                               	| True                                                	|
 | --use-policy-active-masks 	| Whether to use policy active masks          	| False                               	| True                                                	|
+
+#### Multi-Agent Benchmark
+
+To run a benchamrk parallelly, for example, you can use the following command to run `MACPO`, `MAPPO` in `Safety2x4AntVelocity-v0`, `Safety6x1HalfCheetahVelocity-v0`: 
+
+```bash
+cd safepo/multi_agent
+# algo: macpo, mappo
+python velocity_benchmark.py --algo macpo mappo --tasks Safety2x4AntVelocity-v0 Safety6x1HalfCheetahVelocity-v0 --workers 1 --exp-name benchmark
+```
+
+After running the benchmark, you can use the following command to plot the results:
+
+```bash
+cd safepo/multi_agent
+python plot.py --logdir ./runs/benchmark
+```
+
+To get the evaluation results, you can use the following command:
+
+```bash
+cd safepo/multi_agent
+python eval.py
+```
+
+**Note**: To run a evaluation, you need to modify the `eval.py` file and specify the `basedir`. For example:
+  
+```python 
+basedir = './runs/benchmark'
+```
 
 ## Machine Configuration
 
@@ -243,9 +283,9 @@ We test all algorithms and experiments on **CPU: AMD Ryzen Threadripper PRO 3975
 
 ## Ethical and Responsible Use
 
-SafePO aims to benefit safe RL community research, and is released under the [Apache-2.0 license](https://github.com/PKU-MARL/Safe-Policy-Optimization/blob/main/LICENSE). Illegal usage or any violation of the license is not allowed.
+SafePO aims to benefit safe RL community research, and is released under the [Apache-2.0 license](https://github.com/PKU-Alignment/Safe-Policy-Optimization/blob/main/LICENSE). Illegal usage or any violation of the license is not allowed.
 
-## PKU-MARL Team
+## PKU-Alignment Team
 
 The Baseline is a project contributed by PKU-Alignment at Peking University. We also thank the list of contributors of the following open source repositories:
 [Spinning Up](https://spinningup.openai.com/en/latest/), [Bullet-Safety-Gym](https://github.com/SvenGronauer/Bullet-Safety-Gym/tree/master/bullet_safety_gym/envs), [Safety-Gym](https://github.com/openai/safety-gym).
