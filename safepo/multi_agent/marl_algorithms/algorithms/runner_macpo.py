@@ -1,16 +1,31 @@
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+
 import os
 import time
-
+import csv
+import json
+import os.path as osp
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from safepo.multi_agent.marl_algorithms.algorithms.utils.separated_buffer_macpo import \
     SeparatedReplayBuffer
-
-
-def _t2n(x):
-    return x.detach().cpu().numpy()
+from safepo.common.logger import convert_json
 
 class Runner:
 
@@ -54,37 +69,42 @@ class Runner:
         torch.backends.cudnn.benchmark = True
 
         self.run_dir = config["run_dir"]
-        self.log_dir = str(self.run_dir + '/' + self.env_name + '/' + self.algorithm_name +'/logs_seed{}'.format(self.seed))
+        self.log_dir = str(config["log_dir"]+'/logs_seed{}'.format(self.seed))
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
         self.writter = SummaryWriter(self.log_dir)
-        self.save_dir = str(self.run_dir + '/' + self.env_name + '/' + self.algorithm_name + '/models_seed{}'.format(self.seed))
+        self.save_dir = str(config["log_dir"]+'/models_seed{}'.format(self.seed))
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
-
-        if self.algorithm_name == "happo":
-            from algorithms.algorithms.happo_policy import \
-                HAPPO_Policy as Policy
-            from algorithms.algorithms.happo_trainer import HAPPO as TrainAlgo
-        if self.algorithm_name == "mappo":
-            from algorithms.algorithms.mappo_policy import \
-                MAPPO_Policy as Policy
-            from algorithms.algorithms.mappo_trainer import MAPPO as TrainAlgo
+        self.output_file = open(  # noqa: SIM115 # pylint: disable=consider-using-with
+            os.path.join(self.log_dir, "progress.csv"),
+            encoding="utf-8",
+            mode="w",
+        )
+        self.csv_writer = csv.writer(self.output_file)
+        self.csv_writer.writerow(['Train/Steps', 'Train/Episode Reward', 'Train/Episode Cost', \
+                                  'Eval/Episode Reward', 'Eval/Episode Cost'])
+        
+        # save config
+        config_json = convert_json(config)
+        config_json["exp_name"] = self.experiment_name
+        output = json.dumps(
+            config_json, separators=(",", ":\t"), indent=4, sort_keys=True
+        )
+        with open(osp.join(self.log_dir, "config.json"), "w") as out:
+            out.write(output)
         if self.algorithm_name == "macpo":
             from safepo.multi_agent.marl_algorithms.algorithms.macpo_policy import \
                 MACPO_Policy as Policy
             from safepo.multi_agent.marl_algorithms.algorithms.macpo_trainer import \
                 MACPO as TrainAlgo
-        if self.algorithm_name == "mappolag":
+        elif self.algorithm_name == "mappolag":
             from safepo.multi_agent.marl_algorithms.algorithms.mappolag_policy import \
                 MAPPO_L_Policy as Policy
             from safepo.multi_agent.marl_algorithms.algorithms.mappolag_trainer import \
                 R_MAPPO_Lagr as TrainAlgo
-        if self.algorithm_name == "ippo":
-            from algorithms.algorithms.mappo_policy import \
-                IPPO_Policy as Policy
-            from algorithms.algorithms.mappo_trainer import IPPO as TrainAlgo
-        print(self.algorithm_name)
+        else:
+            raise NotImplementedError
         self.policy = []
         for agent_id in range(self.num_agents):
             share_observation_space = self.envs.share_observation_space[agent_id] if self.use_centralized_V else self.envs.observation_space[agent_id]
@@ -184,6 +204,12 @@ class Runner:
 
                 self.log_train(train_infos, total_num_steps)
 
+            # eval
+            eval_rewards='Not Recorded'
+            eval_costs='Not Recorded'
+            if episode % self.eval_interval == 0 and self.use_eval:
+                eval_rewards, eval_costs = self.eval(total_num_steps)
+                
             if len(done_episodes_rewards) != 0:
                 aver_episode_rewards = torch.stack(done_episodes_rewards).mean()
                 aver_episode_costs = torch.stack(done_episodes_costs).mean()
@@ -193,9 +219,8 @@ class Runner:
                                             total_num_steps)
                 self.writter.add_scalar("train_episode_costs", aver_episode_costs,
                                             total_num_steps)
-            # eval
-            if episode % self.eval_interval == 0 and self.use_eval:
-                self.eval(total_num_steps)
+                self.csv_writer.writerow([total_num_steps, aver_episode_rewards.item(), aver_episode_costs.item(), eval_rewards, eval_costs])
+                self.output_file.flush()
 
     def return_aver_cost(self, aver_episode_costs):
         for agent_id in range(self.num_agents):
