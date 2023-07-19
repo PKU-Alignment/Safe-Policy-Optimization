@@ -46,8 +46,8 @@ use_huber_loss: True
 use_value_active_masks: False
 use_policy_active_masks: False
 
-lr: 5.e-4
-critic_lr: 5.e-4
+actor_lr: 9.e-5
+critic_lr: 5.e-3
 opti_eps: 1.e-5
 weight_decay: 0.0
 
@@ -68,10 +68,11 @@ mamujoco:
   episode_length: 200
   n_rollout_threads: 32
   n_eval_rollout_threads: 10
-  hidden_size: 64
+  hidden_size: 128
   gamma: 0.99
   entropy_coef: 0.01
   max_grad_norm: 10.0
   use_value_active_masks: True
   use_policy_active_masks: True
   data_chunk_length: 10
+  use_valuenorm: False

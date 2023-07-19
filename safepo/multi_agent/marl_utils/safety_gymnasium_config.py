@@ -7,7 +7,7 @@
 
 import os
 import random
-import sys
+from distutils.util import strtobool
 
 import numpy as np
 import torch
@@ -36,7 +36,6 @@ def set_seed(seed, torch_deterministic=False):
         seed = 42
     elif seed == -1:
         seed = np.random.randint(0, 10000)
-    print("Setting seed: {}".format(seed))
 
     random.seed(seed)
     np.random.seed(seed)
@@ -76,7 +75,9 @@ def retrieve_cfg(args, use_rlg_config=False):
         return os.path.join(args.logdir, "shadow_hand_re_orientation/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "marl_cfg/shadow_hand_re_orientation.yaml"
     elif args.task == "ShadowHandOverOverarm":
         return os.path.join(args.logdir, "shadow_hand_over_overarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "marl_cfg/shadow_hand_over_overarm.yaml"
-    elif args.task in ["Safety2x4AntVelocity-v0", "Safety4x2AntVelocity-v0", "Safety6x1HalfCheetahVelocity-v0", "Safety2x3HalfCheetahVelocity-v0"]:
+    elif args.task in ["Safety2x4AntVelocity-v0", "Safety4x2AntVelocity-v0", "Safety6x1HalfCheetahVelocity-v0", "Safety2x3HalfCheetahVelocity-v0", \
+                       "Safety2x4dAntVelocity-v0", "Safety3x1HopperVelocity-v0", "Safety9or8HumanoidVelocity-v0", "Safety2x1SwimmerVelocity-v0", 
+                       "Safety2x3Walker2dVelocity-v0", "Safety10x2SwimmerVelocity-v0", "Safety2x3AntVelocity-v0", "Safety1p1HalfCheetahVelocity-v0"]:
         return os.path.join(args.logdir, "ma_mujoco_velocity/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "marl_cfg/ma_mujoco_velocity.yaml"
     else:
         warn_task_name()
@@ -111,6 +112,9 @@ def load_cfg(args, use_rlg_config=False):
     cfg_train["agent_obsk"] = args.agent_obsk
     cfg_train["use_eval"] = args.use_eval
     cfg_train["single_eval_episodes"] = args.single_eval_episodes
+    cfg_train["safety_bound"]=args.safety_bound
+    cfg_train["n_rollout_threads"]=args.n_rollout_threads
+    cfg_train["algorithm_name"]=args.algo
 
     # Set physics domain randomization
     if "task" in cfg:
@@ -175,6 +179,8 @@ def load_cfg(args, use_rlg_config=False):
             cfg_train["seed"] = args.seed
 
         log_id = args.logdir
+
+        cfg_train['log_dir']=cfg_train["run_dir"]+'/'+args.experiment+'/'+cfg_train["env_name"]+'/'+cfg_train["algorithm_name"]
         if args.experiment != 'Base':
             if args.metadata:
                 log_id = args.logdir + "_{}_{}_{}_{}".format(args.experiment, args.task_type, args.device, str(args.physics_engine).split("_")[-1])
@@ -189,7 +195,7 @@ def load_cfg(args, use_rlg_config=False):
     return cfg, cfg_train, logdir
 
 
-def get_args(benchmark=False, use_rlg_config=False):
+def get_args(benchmark=False, use_rlg_config=False, **kwargs):
 
     # Define custom parameters
     custom_parameters = [
@@ -201,7 +207,7 @@ def get_args(benchmark=False, use_rlg_config=False):
         {"name": "--checkpoint", "type": str, "default": "Base", "help": "Path to the saved weights, only for rl_games RL library"},
         {"name": "--headless", "action": "store_true", "default": False, "help": "Force display off at all times"},
         {"name": "--horovod", "action": "store_true", "default": False, "help": "Use horovod for multi-gpu training, have effect only with rl_games RL library"},
-        {"name": "--task", "type": str, "default": "Humanoid", "help": "Can be BallBalance, Cartpole, CartpoleYUp, Ant, Humanoid, Anymal, FrankaCabinet, Quadcopter, ShadowHand, Ingenuity"},
+        {"name": "--task", "type": str, "default": "Safety2x4AntVelocity-v0", "help": "Can be BallBalance, Cartpole, CartpoleYUp, Ant, Humanoid, Anymal, FrankaCabinet, Quadcopter, ShadowHand, Ingenuity"},
         {"name": "--task-type", "type": str, "default": "Python", "help": "Choose Python or C++"},
         {"name": "--rl-device", "type": str, "default": "cuda:0", "help": "Choose CPU or GPU device for inferencing policy network"},
         {"name": "--logdir", "type": str, "default": "log/"},
@@ -219,12 +225,13 @@ def get_args(benchmark=False, use_rlg_config=False):
         {"name": "--torch-deterministic", "action": "store_true", "default": False, "help": "Apply additional PyTorch settings for more deterministic behaviour"},
         {"name": "--algo", "type": str, "default": "happo", "help": "Choose an algorithm"},
         {"name": "--model-dir", "type": str, "default": "", "help": "Choose a model dir"},
-        {"name": "--cost-lim", "type": float, "default": 1.0, "help": "cost_lim"},
+        {"name": "--safety-bound", "type": float, "default": 25.0, "help": "cost_lim"},
         {"name": "--agent-obsk", "type": int, "default": 1, "help": "The number of observations to use for the agent"},
         {"name": "--episode-limit", "type": int, "default": 1000, "help": "The number of episodes to run"},
-        {"name": "--n-rollout-threads", "type": int, "default": 2, "help": "The number of parallel environments"},
+        {"name": "--n-rollout-threads", "type": int, "default": 20, "help": "The number of parallel environments"},
         {"name": "--n-eval-rollout-threads", "type": int, "default": 2, "help": "The number of parallel environments for evaluation"},
         {"name": "--device", "type": str, "default": "cpu", "help": "The device to run the model on"},
+        {"name": "--write-terminal", "type": lambda x: bool(strtobool(x)), "default": True, "help": "Toggles terminal logging"},
     ]
 
     # Add benchmark parameters if necessary
@@ -244,6 +251,10 @@ def get_args(benchmark=False, use_rlg_config=False):
 
     # Parse arguments
     args = parser.parse_args()
+    args.algo = kwargs.get("algo", args.algo)
+    args.model_dir = kwargs.get("model_dir", args.model_dir)
+    args.task = kwargs.get("task", args.task)
+    args.seed = kwargs.get("seed", args.seed)
 
     if args.test:
         args.play = args.test
