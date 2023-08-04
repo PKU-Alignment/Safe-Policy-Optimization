@@ -19,7 +19,6 @@ import time
 import csv
 import json
 import os.path as osp
-
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -27,10 +26,6 @@ from gymnasium.utils.save_video import save_video
 from safepo.multi_agent.marl_algorithms.algorithms.utils.separated_buffer_macpo import \
     SeparatedReplayBuffer
 from safepo.common.logger import convert_json
-
-
-def _t2n(x):
-    return x.detach().cpu().numpy()
 
 class Runner:
 
@@ -56,7 +51,6 @@ class Runner:
         self.hidden_size = config["hidden_size"]
         self.use_render = config["use_render"]
         self.recurrent_N = config["recurrent_N"]
-        self.use_single_network = config["use_single_network"]
         # interval
         self.save_interval = config["save_interval"]
         self.use_eval = config["use_eval"]
@@ -68,8 +62,7 @@ class Runner:
         self.seed = config["seed"]
         self.model_dir = model_dir
 
-        self.num_agents = self.envs.n_agents
-
+        self.num_agents = self.envs.num_agents
         self.device = config["device"]
 
         torch.autograd.set_detect_anomaly(True)
@@ -162,10 +155,10 @@ class Runner:
             for step in range(self.episode_length):
                 # Sample actions
                 values, actions, action_log_probs, rnn_states, rnn_states_critic, cost_preds, \
-                rnn_states_cost, env_actions = self.collect(step)
+                rnn_states_cost = self.collect(step)
 
                 # Obser reward and next obs
-                obs, share_obs, rewards, costs, dones, infos, _ = self.envs.step(env_actions)
+                obs, share_obs, rewards, costs, dones, infos, _ = self.envs.step(actions)
                 obs = torch.as_tensor(obs, dtype=torch.float32, device=self.device)
                 share_obs = torch.as_tensor(share_obs, dtype=torch.float32, device=self.device)
                 rewards = torch.as_tensor(rewards, dtype=torch.float32, device=self.device)
@@ -287,14 +280,14 @@ class Runner:
             action_collector[-1]=torch.cat((action_collector[-1], zeros), dim=1)
         # [self.envs, agents, dim]
         values = torch.transpose(torch.stack(value_collector), 1, 0)
-        actions = torch.transpose(torch.stack(action_collector), 1, 0)
+        # actions = torch.transpose(torch.stack(action_collector), 1, 0)
         # action_log_probs = torch.transpose(torch.stack(action_log_prob_collector), 1, 0)
         rnn_states = torch.transpose(torch.stack(rnn_state_collector), 1, 0)
         rnn_states_critic = torch.transpose(torch.stack(rnn_state_critic_collector), 1, 0)
         cost_preds = torch.transpose(torch.stack(cost_preds_collector), 1, 0)
         rnn_states_cost = torch.transpose(torch.stack(rnn_states_cost_collector), 1, 0)
 
-        return values, action_collector, action_log_prob_collector, rnn_states, rnn_states_critic, cost_preds, rnn_states_cost, actions.detach().numpy()
+        return values, action_collector, action_log_prob_collector, rnn_states, rnn_states_critic, cost_preds, rnn_states_cost
 
     def insert(self, data, aver_episode_costs=0):
         aver_episode_costs = aver_episode_costs
@@ -442,7 +435,6 @@ class Runner:
         eval_episode = 0
         eval_episode_rewards = []
         eval_episode_costs = []
-        save_video_path=os.path.join(self.save_dir, 'video')
         one_episode_rewards = torch.zeros(1, self.n_rollout_threads, device=self.device)
         one_episode_costs = torch.zeros(1, self.n_rollout_threads, device=self.device)
 
@@ -468,11 +460,11 @@ class Runner:
             if self.env_name == "Safety9|8HumanoidVelocity-v0":
                 zeros = torch.zeros(eval_actions_collector[-1].shape[0], 1)
                 eval_actions_collector[-1]=torch.cat((eval_actions_collector[-1], zeros), dim=1)
-            eval_actions = torch.transpose(torch.stack(eval_actions_collector), 1, 0).detach().numpy()
+
 
             # Obser reward and next obs
             eval_obs, _, eval_rewards, eval_costs, eval_dones, eval_infos, _ = self.eval_envs.step(
-                eval_actions)
+                eval_actions_collector)
             eval_obs = torch.as_tensor(eval_obs, dtype=torch.float32, device=self.device)
             eval_rewards = torch.as_tensor(eval_rewards, dtype=torch.float32, device=self.device)
             eval_costs = torch.as_tensor(eval_costs, dtype=torch.float32, device=self.device)

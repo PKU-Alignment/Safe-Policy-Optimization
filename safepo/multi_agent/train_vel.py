@@ -4,18 +4,13 @@ import sys
 import torch
 from safepo.multi_agent.marl_utils.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv, ShareEnv
 
-from marl_utils.safety_gymnasium_config import (get_args, load_cfg,
+from safepo.multi_agent.marl_utils.safety_gymnasium_config import (get_args, load_cfg,
                                set_np_formatting, set_seed)
-from marl_utils.process_sg_marl import process_MultiAgentRL
-from marl_utils.process_sarl import *
+from safepo.multi_agent.marl_utils.process_sg_marl import process_MultiAgentRL
 
 def make_train_env(env_cfg):
     def get_env_fn(rank):
         def init_env():
-            env_args = {"scenario": env_cfg['scenario'],
-                        "agent_conf": env_cfg['agent_conf'],
-                        "agent_obsk": env_cfg['agent_obsk'],
-                        "episode_limit": 1000}
             env=ShareEnv(
                 scenario=env_cfg['scenario'],
                 agent_conf=env_cfg['agent_conf'],
@@ -35,11 +30,6 @@ def make_train_env(env_cfg):
 def make_eval_env(env_cfg):
     def get_env_fn(rank):
         def init_env():
-            env_args = {"scenario": env_cfg['scenario'],
-                        "agent_conf": env_cfg['agent_conf'],
-                        "agent_obsk": env_cfg['agent_obsk'],
-                        "episode_limit": 1000}
-            #env = MujocoMulti(env_args=env_args)
             env=ShareEnv(
                 scenario=env_cfg['scenario'],
                 agent_conf=env_cfg['agent_conf'],

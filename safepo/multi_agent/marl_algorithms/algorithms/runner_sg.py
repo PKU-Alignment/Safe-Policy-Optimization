@@ -67,7 +67,7 @@ class Runner:
         self.seed = config["seed"]
         self.model_dir = model_dir
 
-        self.num_agents = self.envs.n_agents
+        self.num_agents = self.envs.num_agents
 
         self.device = config["device"]
 

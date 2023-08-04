@@ -321,7 +321,7 @@ def fvp(
 
     flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads])
 
-    return flat_grad_grad_kl + params * args.cg_damping
+    return flat_grad_grad_kl + params * 0.1
 
 
 def main(args):
@@ -361,11 +361,11 @@ def main(args):
         obs_space=obs_space,
         act_space=act_space,
         size=args.steps_per_epoch,
-        gamma=args.gamma,
-        lam=args.lam,
-        lam_c=args.lam_c,
-        standardized_adv_r=args.standardized_adv_r,
-        standardized_adv_c=args.standardized_adv_c,
+        gamma=0.99,
+        lam=0.95,
+        lam_c=0.95,
+        standardized_adv_r=True,
+        standardized_adv_c=True,
         device=device,
         num_envs=args.num_envs,
     )
@@ -482,7 +482,7 @@ def main(args):
 
         eval_start_time = time.time()
 
-        eval_episodes = args.eval_episodes if epoch < epochs - 1 else 10
+        eval_episodes = 1 if epoch < epochs - 1 else 10
         if args.use_eval:
             for _ in range(eval_episodes):
                 eval_done = False
@@ -524,7 +524,7 @@ def main(args):
 
         # update policy
         data = buffer.get()
-        fvp_obs = data["obs"][:: args.fvp_sample_freq]
+        fvp_obs = data["obs"][:: 1]
         theta_old = get_flat_params_from(policy.actor)
         policy.actor.zero_grad()
 
@@ -543,7 +543,7 @@ def main(args):
         loss_pi.backward()
 
         grads = -get_flat_gradients_from(policy.actor)
-        x = conjugate_gradients(fvp, policy, fvp_obs, grads, args.cg_iters)
+        x = conjugate_gradients(fvp, policy, fvp_obs, grads, 15)
         assert torch.isfinite(x).all(), "x is not finite"
         xHx = torch.dot(x, fvp(x, policy, fvp_obs))
         assert xHx.item() >= 0, "xHx is negative"
@@ -558,7 +558,7 @@ def main(args):
         final_kl = 0.0
 
         # While not within_trust_region and not out of total_steps:
-        for step in range(args.backtrack_iters):
+        for step in range(15):
             # update theta params
             new_theta = theta_old + step_frac * step_direction
             # set new params as params of net
@@ -595,7 +595,7 @@ def main(args):
                 logger.log(f"Accept step at i={acceptance_step}")
                 final_kl = kl
                 break
-            step_frac *= args.backtrack_coef
+            step_frac *= 0.8
         else:
             logger.log("INFO: no suitable step found...")
             step_direction = torch.zeros_like(step_direction)
@@ -623,7 +623,7 @@ def main(args):
                 data["target_value_r"],
                 data["target_value_c"],
             ),
-            batch_size=args.batch_size,
+            batch_size=128,
             shuffle=True,
         )
         for _ in track(range(args.update_iters), description="Updating..."):
@@ -637,11 +637,11 @@ def main(args):
                     policy.reward_critic(obs_b), target_value_r_b
                 )
                 for param in policy.reward_critic.parameters():
-                    loss_r += param.pow(2).sum() * args.critic_norm_coef
+                    loss_r += param.pow(2).sum() * 0.001
                 loss_r.backward()
                 clip_grad_norm_(
                     policy.reward_critic.parameters(),
-                    args.max_grad_norm,
+                    40.0,
                 )
                 reward_critic_optimizer.step()
 
@@ -650,11 +650,11 @@ def main(args):
                     policy.cost_critic(obs_b), target_value_c_b
                 )
                 for param in policy.cost_critic.parameters():
-                    loss_c += param.pow(2).sum() * args.critic_norm_coef
+                    loss_c += param.pow(2).sum() * 0.001
                 loss_c.backward()
                 clip_grad_norm_(
                     policy.cost_critic.parameters(),
-                    args.max_grad_norm,
+                    40.0,
                 )
                 cost_critic_optimizer.step()
 

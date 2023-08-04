@@ -1,11 +1,9 @@
 import sys
 import os
-
-from marl_utils.config import (get_args, load_cfg, parse_sim_params,
+from safepo.multi_agent.marl_utils.config import (get_args, load_cfg, parse_sim_params,
                                set_np_formatting, set_seed)
-from marl_utils.parse_task import parse_task
-from marl_utils.process_marl import process_MultiAgentRL
-from marl_utils.process_sarl import *
+from safepo.multi_agent.marl_utils.parse_task import parse_task
+from safepo.multi_agent.marl_utils.process_marl import process_MultiAgentRL
 
 
 def train():
@@ -13,13 +11,12 @@ def train():
     agent_index = [[[0, 1, 2, 3, 4, 5]],
                    [[0, 1, 2, 3, 4, 5]]]
 
-    if args.algo in ["mappo", "happo", "ippo", "macpo", "mappolag"]:
+    if args.algo in ["mappo", "happo", "macpo", "mappolag"]:
         # maddpg exists a bug now
         args.task_type = "MultiAgent"
-
         task, env = parse_task(args, cfg, cfg_train, sim_params, agent_index)
 
-        runner = process_MultiAgentRL(args,env=env, config=cfg_train, model_dir=args.model_dir)
+        runner = process_MultiAgentRL(args, env, env, config=cfg_train, model_dir=args.model_dir)
 
         if args.model_dir != "":
             runner.eval(100000)
@@ -27,7 +24,7 @@ def train():
             runner.run()
 
     else:
-        print("Unrecognized algorithm!\nAlgorithm should be one of: [happo, hatrpo, mappo,ippo,maddpg,sac,td3,trpo,ppo,ddpg]")
+        print("Unrecognized algorithm!\nAlgorithm should be one of: [happo, mappo, macpo, mappolag]")
 
 
 if __name__ == '__main__':

@@ -34,11 +34,6 @@ class MACPO_Policy():
 
     def __init__(self, config, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
         self.device = device
-        self.lr = config["actor_lr"]
-        self.critic_lr = config["critic_lr"]
-        self.opti_eps = config["opti_eps"]
-        self.weight_decay = config["weight_decay"]
-        self.algorithm_name = config["algorithm_name"]
         self.config = config
 
         self.obs_space = obs_space
@@ -50,16 +45,16 @@ class MACPO_Policy():
         self.cost_critic = Critic(config, self.share_obs_space, self.device)
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
-                                                lr=self.lr, eps=self.opti_eps,
-                                                weight_decay=self.weight_decay)
+                                                lr=self.config["actor_lr"], eps=self.config["opti_eps"],
+                                                weight_decay=self.config["weight_decay"])
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
-                                                 lr=self.critic_lr,
-                                                 eps=self.opti_eps,
-                                                 weight_decay=self.weight_decay)
+                                                 lr=self.config["critic_lr"],
+                                                 eps=self.config["opti_eps"],
+                                                 weight_decay=self.config["weight_decay"])
         self.cost_optimizer = torch.optim.Adam(self.cost_critic.parameters(),
-                                               lr=self.critic_lr,
-                                               eps=self.opti_eps,
-                                               weight_decay=self.weight_decay)
+                                               lr=self.config["critic_lr"],
+                                               eps=self.config["opti_eps"],
+                                               weight_decay=self.config["weight_decay"])
 
     def lr_decay(self, episode, episodes):
         """
@@ -67,9 +62,9 @@ class MACPO_Policy():
         :param episode: (int) current training episode.
         :param episodes: (int) total number of training episodes.
         """
-        update_linear_schedule(self.actor_optimizer, episode, episodes, self.lr)
-        update_linear_schedule(self.critic_optimizer, episode, episodes, self.critic_lr)
-        update_linear_schedule(self.cost_optimizer, episode, episodes, self.critic_lr)
+        update_linear_schedule(self.actor_optimizer, episode, episodes, self.config["actor_lr"])
+        update_linear_schedule(self.critic_optimizer, episode, episodes, self.config["critic_lr"])
+        update_linear_schedule(self.cost_optimizer, episode, episodes, self.config["critic_lr"])
 
     def get_actions(self, cent_obs, obs, rnn_states_actor, rnn_states_critic, masks, available_actions=None,
                     deterministic=False, rnn_states_cost=None):
@@ -146,45 +141,16 @@ class MACPO_Policy():
         :return action_log_probs: (torch.Tensor) log probabilities of the input actions.
         :return dist_entropy: (torch.Tensor) action distribution entropy for the given inputs.
         """
-
-        # todo: for mappo and matrpo, etc(not consider safe rl)
-        # if rnn_states_cost is None:
-        #     action_log_probs, dist_entropy = self.actor.evaluate_actions(obs,
-        #                                                                  rnn_states_actor,
-        #                                                                  action,
-        #                                                                  masks,
-        #                                                                  available_actions,
-        #                                                                  active_masks)
-        #
-        #     values, _ = self.critic(cent_obs, rnn_states_critic, masks)
-        #     return values, action_log_probs, dist_entropy
-
-        # else:
-        # print("rnn_states_cost", rnn_states_cost)
-
-        if self.algorithm_name == "macpo": # todo: for mactrpo
-            action_log_probs, dist_entropy, action_mu, action_std = self.actor.evaluate_actions(obs,
-                                                                                                rnn_states_actor,
-                                                                                                action,
-                                                                                                masks,
-                                                                                                available_actions,
-                                                                                                active_masks)
-            values, _ = self.critic(cent_obs, rnn_states_critic, masks)
-            cost_values, _ = self.cost_critic(cent_obs, rnn_states_cost, masks)
-            values, _ = self.critic(cent_obs, rnn_states_critic, masks)
-            return values, action_log_probs, dist_entropy, cost_values, action_mu, action_std
-        else: # todo: for lagrangrian
-            action_log_probs, dist_entropy = self.actor.evaluate_actions(obs,
-                                                                         rnn_states_actor,
-                                                                         action,
-                                                                         masks,
-                                                                         available_actions,
-                                                                         active_masks)
-
-            values, _ = self.critic(cent_obs, rnn_states_critic, masks)
-            cost_values, _ = self.cost_critic(cent_obs, rnn_states_cost, masks)
-            return values, action_log_probs, dist_entropy, cost_values
-
+        action_log_probs, dist_entropy, action_mu, action_std = self.actor.evaluate_actions(obs,
+                                                                                            rnn_states_actor,
+                                                                                            action,
+                                                                                            masks,
+                                                                                            available_actions,
+                                                                                            active_masks)
+        values, _ = self.critic(cent_obs, rnn_states_critic, masks)
+        cost_values, _ = self.cost_critic(cent_obs, rnn_states_cost, masks)
+        values, _ = self.critic(cent_obs, rnn_states_critic, masks)
+        return values, action_log_probs, dist_entropy, cost_values, action_mu, action_std
 
     def act(self, obs, rnn_states_actor, masks, available_actions=None, deterministic=False):
         """

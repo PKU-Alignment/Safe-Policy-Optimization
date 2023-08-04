@@ -24,7 +24,7 @@ class SeparatedReplayBuffer(object):
         self._use_popart = config["use_popart"]
         self._use_valuenorm = config["use_valuenorm"]
         self._use_proper_time_limits = config["use_proper_time_limits"]
-        self.device = config.get("rl_device", "cpu")
+        self.device = config.get("device", "cpu")
 
 
 

@@ -24,7 +24,7 @@ class SeparatedReplayBuffer(object):
         self._use_popart = config["use_popart"]
         self._use_valuenorm = config["use_valuenorm"]
         self._use_proper_time_limits = config["use_proper_time_limits"]
-        self.device = config.get("rl_device", "cpu")
+        self.device = config.get("device", "cpu")
         self.algo = config["algorithm_name"]
 
         obs_shape = get_shape_from_obs_space(obs_space)
@@ -180,6 +180,7 @@ class SeparatedReplayBuffer(object):
                 gae = 0
                 for step in reversed(range(self.rewards.shape[0])):
                     if self._use_popart or self._use_valuenorm:
+
                         delta = self.rewards[step] + self.gamma * value_normalizer.denormalize(self.value_preds[step + 1]) * self.masks[step + 1] - value_normalizer.denormalize(self.value_preds[step])
                         gae = delta + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
                         self.returns[step] = gae + value_normalizer.denormalize(self.value_preds[step])

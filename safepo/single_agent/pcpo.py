@@ -308,7 +308,7 @@ def fvp(
 
     flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads])
 
-    return flat_grad_grad_kl + params * args.cg_damping
+    return flat_grad_grad_kl + params * 0.1
 
 
 def main(args):
@@ -348,11 +348,11 @@ def main(args):
         obs_space=obs_space,
         act_space=act_space,
         size=args.steps_per_epoch,
-        gamma=args.gamma,
-        lam=args.lam,
-        lam_c=args.lam_c,
-        standardized_adv_r=args.standardized_adv_r,
-        standardized_adv_c=args.standardized_adv_c,
+        gamma=0.99,
+        lam=0.95,
+        lam_c=0.95,
+        standardized_adv_r=True,
+        standardized_adv_c=True,
         device=device,
         num_envs=args.num_envs,
     )
@@ -462,7 +462,7 @@ def main(args):
 
         eval_start_time = time.time()
 
-        eval_episodes = args.eval_episodes if epoch < epochs - 1 else 10
+        eval_episodes = 1 if epoch < epochs - 1 else 10
         if args.use_eval:
             for _ in range(eval_episodes):
                 eval_done = False
@@ -500,7 +500,7 @@ def main(args):
 
         # update policy
         data = buffer.get()
-        fvp_obs = data["obs"][:: args.fvp_sample_freq]
+        fvp_obs = data["obs"][:: 1]
         theta_old = get_flat_params_from(policy.actor)
         policy.actor.zero_grad()
         # compute loss_pi
@@ -514,7 +514,7 @@ def main(args):
         loss_pi_r.backward()
 
         grads = -get_flat_gradients_from(policy.actor)
-        x = conjugate_gradients(fvp, policy, fvp_obs, grads, args.cg_iters)
+        x = conjugate_gradients(fvp, policy, fvp_obs, grads, 15)
         assert torch.isfinite(x).all(), "x is not finite"
         xHx = torch.dot(x, fvp(x, policy, fvp_obs))
         H_inv_g = fvp(x, policy, fvp_obs)
@@ -533,7 +533,7 @@ def main(args):
         b_grads = get_flat_gradients_from(policy.actor)
         ep_costs = logger.get_stats("Metrics/EpCost") - args.cost_limit
 
-        p = conjugate_gradients(fvp, policy, fvp_obs, b_grads, args.cg_iters)
+        p = conjugate_gradients(fvp, policy, fvp_obs, b_grads, 15)
         q = xHx
         r = grads.dot(p)
         s = b_grads.dot(p)
@@ -556,7 +556,7 @@ def main(args):
 
         kl = torch.zeros(1)
         # while not within_trust_region and not finish all steps:
-        for step in range(args.backtrack_iters):
+        for step in range(15):
             # get new theta
             new_theta = theta_old + step_frac * step_direction
             # set new theta as new actor parameters
@@ -571,7 +571,7 @@ def main(args):
                     ratio = torch.exp(log_prob - data["log_prob"])
                     loss_reward = -(ratio * data["adv_r"]).mean()
                 except ValueError:
-                    step_frac *= args.backtrack_coef
+                    step_frac *= 0.8
                     continue
                 # loss of cost of policy cost from real/expected reward
                 temp_distribution = policy.actor(data["obs"])
@@ -610,7 +610,7 @@ def main(args):
                 # within the trust region
                 logger.log(f"Accept step at i={step + 1}")
                 break
-            step_frac *= args.backtrack_coef
+            step_frac *= 0.8
         else:
             # if didn't find a step satisfy those conditions
             logger.log("INFO: no suitable step found...")
@@ -639,7 +639,7 @@ def main(args):
                 data["target_value_r"],
                 data["target_value_c"],
             ),
-            batch_size=args.batch_size,
+            batch_size=128,
             shuffle=True,
         )
         for _ in track(range(args.update_iters), description="Updating..."):
@@ -653,11 +653,11 @@ def main(args):
                     policy.reward_critic(obs_b), target_value_r_b
                 )
                 for param in policy.reward_critic.parameters():
-                    loss_r += param.pow(2).sum() * args.critic_norm_coef
+                    loss_r += param.pow(2).sum() * 0.001
                 loss_r.backward()
                 clip_grad_norm_(
                     policy.reward_critic.parameters(),
-                    args.max_grad_norm,
+                    40.0,
                 )
                 reward_critic_optimizer.step()
 
@@ -666,11 +666,11 @@ def main(args):
                     policy.cost_critic(obs_b), target_value_c_b
                 )
                 for param in policy.cost_critic.parameters():
-                    loss_c += param.pow(2).sum() * args.critic_norm_coef
+                    loss_c += param.pow(2).sum() * 0.001
                 loss_c.backward()
                 clip_grad_norm_(
                     policy.cost_critic.parameters(),
-                    args.max_grad_norm,
+                    40.0,
                 )
                 cost_critic_optimizer.step()
 

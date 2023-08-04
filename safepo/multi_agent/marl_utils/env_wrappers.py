@@ -19,6 +19,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from multiprocessing import Pipe, Process
 
+import torch
 import numpy as np
 from gymnasium.vector.vector_env import VectorEnv
 from gymnasium.spaces import Box
@@ -83,13 +84,13 @@ class ShareEnv(SafeMAEnv):
             render_mode=render_mode,
             **kwargs,
         )
-        self.n_agents = len(self.agent_action_partitions)
+        self.num_agents = len(self.agent_action_partitions)
         self.n_actions = max([len(l) for l in self.agent_action_partitions])
         self.share_obs_size = self._get_share_obs_size()
         self.obs_size=self._get_obs_size()
         self.share_observation_spaces = {}
         self.observation_spaces={}
-        for agent in range(self.n_agents):
+        for agent in range(self.num_agents):
             self.share_observation_spaces[f"agent_{agent}"] = Box(low=-10, high=10, shape=(self.share_obs_size,)) 
             self.observation_spaces[f"agent_{agent}"] = Box(low=-10, high=10, shape=(self.obs_size,)) 
 
@@ -97,8 +98,8 @@ class ShareEnv(SafeMAEnv):
         """Returns all agent observat3ions in a list"""
         state = self.env.state()
         obs_n = []
-        for a in range(self.n_agents):
-            agent_id_feats = np.zeros(self.n_agents, dtype=np.float32)
+        for a in range(self.num_agents):
+            agent_id_feats = np.zeros(self.num_agents, dtype=np.float32)
             agent_id_feats[a] = 1.0
             obs_i = np.concatenate([state, agent_id_feats])
             obs_i = (obs_i - np.mean(obs_i)) / np.std(obs_i)
@@ -114,7 +115,7 @@ class ShareEnv(SafeMAEnv):
         state = self.env.state()
         state_normed = (state - np.mean(state)) / (np.std(state)+1e-8)
         share_obs = []
-        for _ in range(self.n_agents):
+        for _ in range(self.num_agents):
             share_obs.append(state_normed)
         return share_obs
 
@@ -126,7 +127,7 @@ class ShareEnv(SafeMAEnv):
         """All actions are always available"""
         return np.ones(
             shape=(
-                self.n_agents,
+                self.num_agents,
                 self.n_actions,
             )
         )
@@ -158,14 +159,14 @@ class ShareEnv(SafeMAEnv):
         """
         dict_actions={}
         for agent_id, agent in enumerate(self.possible_agents):
-            dict_actions[agent]=actions[agent_id]
-        observations, rewards, costs, terminations, truncations, infos = super().step(dict_actions)
+            dict_actions[agent]=actions[agent_id].cpu().numpy()
+        _, rewards, costs, terminations, truncations, infos = super().step(dict_actions)
         dones={}
         for agent_id, agent in enumerate(self.possible_agents):
             dones[agent] = terminations[agent] or truncations[agent]
             rewards[agent] = [rewards[agent]]
             costs[agent]=[costs[agent]]
-        observations, rewards, costs, dones, infos = list(observations.values()), list(rewards.values()), list(costs.values()), list(dones.values()), list(infos.values())
+        rewards, costs, dones, infos = list(rewards.values()), list(costs.values()), list(dones.values()), list(infos.values())
         return self._get_obs(), self._get_share_obs(), rewards, costs, dones, infos, self._get_avail_actions()
 
 
@@ -358,18 +359,19 @@ def shareworker(remote, parent_remote, env_fn_wrapper):
             fr = env.render_vulnerability(data)
             remote.send(fr)
         elif cmd == 'get_num_agents':
-            remote.send(env.n_agents)
+            remote.send(env.num_agents)
         else:
             raise NotImplementedError
 
 
 class ShareSubprocVecEnv(ShareVecEnv):
-    def __init__(self, env_fns, spaces=None):
+    def __init__(self, env_fns, device=torch.device("cpu")):
         """
         envs: list of gym environments to run in subprocesses
         """
         self.waiting = False
         self.closed = False
+        self.device = device
         nenvs = len(env_fns)
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
         self.ps = [
@@ -382,16 +384,16 @@ class ShareSubprocVecEnv(ShareVecEnv):
         for remote in self.work_remotes:
             remote.close()
         self.remotes[0].send(('get_num_agents', None))
-        self.n_agents = self.remotes[0].recv()
+        self.num_agents = self.remotes[0].recv()
         self.remotes[0].send(('get_spaces', None))
         observation_space, share_observation_space, action_space = self.remotes[0].recv()
-        # print("wrapper:", share_observation_space)
         ShareVecEnv.__init__(
             self, len(env_fns), observation_space, share_observation_space, action_space
         )
 
     def step_async(self, actions):
-        for remote, action in zip(self.remotes, actions):
+        env_actions = torch.transpose(torch.stack(actions), 1, 0)
+        for remote, action in zip(self.remotes, env_actions):
             remote.send(('step', action))
         self.waiting = True
 
@@ -399,26 +401,20 @@ class ShareSubprocVecEnv(ShareVecEnv):
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
         obs, share_obs, rews, costs, dones, infos, available_actions = zip(*results)
-
-        # cost_x = np.array([item[0]['cost'] for item in infos])
-        # print("=====cost_x=====: ", cost_x.sum())
-        # print("=====np.stack(dones)=====: ", np.stack(dones))
-        return (
-            np.stack(obs),
-            np.stack(share_obs),
-            np.stack(rews),
-            np.stack(costs),
-            np.stack(dones),
-            infos,
-            np.stack(available_actions),
+        obs, share_obs, rews, costs, dones, available_actions = map(
+            lambda x: torch.tensor(np.stack(x), device=self.device), (obs, share_obs, rews, costs, dones, available_actions)
         )
+        return obs, share_obs, rews, costs, dones, infos, available_actions
 
     def reset(self):
         for remote in self.remotes:
             remote.send(('reset', None))
         results = [remote.recv() for remote in self.remotes]
-        obs, share_obs, available_actions = zip(*results)
-        return np.stack(obs), np.stack(share_obs), np.stack(available_actions)
+        obs, share_obs, available_actions = map(
+            lambda x: torch.tensor(np.stack(x), device=self.device), zip(*results)
+        )
+        return obs, share_obs, available_actions
+
 
     def reset_task(self):
         for remote in self.remotes:
@@ -438,17 +434,19 @@ class ShareSubprocVecEnv(ShareVecEnv):
         self.closed = True
 
 class ShareDummyVecEnv(ShareVecEnv):
-    def __init__(self, env_fns):
+    def __init__(self, env_fns, device=torch.device("cpu")):
         self.envs = [fn() for fn in env_fns]
         env = self.envs[0]
-        self.n_agents=env.n_agents
+        self.device = device
+        self.num_agents=env.num_agents
         ShareVecEnv.__init__(
             self, len(env_fns), env.observation_spaces, env.share_observation_spaces, env.action_spaces
         )
         self.actions = None
 
     def step_async(self, actions):
-        self.actions = actions
+        env_actions = torch.transpose(torch.stack(actions), 1, 0)
+        self.actions = env_actions
 
     def step_wait(self):
         results = [env.step(a) for (a, env) in zip(self.actions, self.envs)]
@@ -463,13 +461,19 @@ class ShareDummyVecEnv(ShareVecEnv):
                     obs[i], share_obs[i], available_actions[i] = self.envs[i].reset()
         self.actions = None
 
+        obs, share_obs, rews, cos, dones, available_actions = map(
+            lambda x: torch.tensor(x).to(self.device), (obs, share_obs, rews, cos, dones, available_actions)
+        )
+
         return obs, share_obs, rews, cos, dones, infos, available_actions
 
     def reset(self):
         results = [env.reset() for env in self.envs]
-        obs, share_obs, available_actions = map(np.array, zip(*results))
+        obs, share_obs, available_actions = map(
+            lambda x: torch.tensor(np.stack(x), device=self.device), zip(*results)
+        )
         return obs, share_obs, available_actions
-
+    
     def close(self):
         for env in self.envs:
             env.close()

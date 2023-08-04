@@ -35,7 +35,6 @@ def set_seed(seed, torch_deterministic=False):
         seed = 42
     elif seed == -1:
         seed = np.random.randint(0, 10000)
-    print("Setting seed: {}".format(seed))
 
     random.seed(seed)
     np.random.seed(seed)
@@ -57,38 +56,35 @@ def set_seed(seed, torch_deterministic=False):
     return seed
 
 
-def retrieve_cfg(args, use_rlg_config=False):
+def retrieve_cfg(args):
 
-    #TODO: add config files of sac, td3
-    # 这里的设计有点不合理 可以修正
     if args.task == "ShadowHandOver":
-        return os.path.join(args.logdir, "shadow_hand_over/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo) , "cfg/shadow_hand_over.yaml"
-    elif args.task == "ShadowHandCatchOverarm":
-        return os.path.join(args.logdir, "shadow_hand_catch_overarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_catch_overarm.yaml"
+        return os.path.join(args.logdir, "shadow_hand_over/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "marl_cfg/shadow_hand_over.yaml"
     elif args.task == "ShadowHandCatchUnderarm":
-        return os.path.join(args.logdir, "shadow_hand_catch_underarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_catch_underarm.yaml"
-    elif args.task == "ShadowHandTwoCatchUnderarm":
-        return os.path.join(args.logdir, "shadow_hand_two_catch_underarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_two_catch_underarm.yaml"
-    elif args.task == "ShadowHandOverOverarm":
-        return os.path.join(args.logdir, "shadow_hand_over_overarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_over_overarm.yaml"
-    elif args.task == "ShadowHandDoorCloseInward":
-        return os.path.join(args.logdir, "shadow_hand_door_close_inward/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_door_close_inward.yaml"
-    elif args.task == "ShadowHandBottleCap":
-        return os.path.join(args.logdir, "shadow_hand_bottle_cap/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_bottle_cap.yaml"
-    elif args.task == "ShadowHandLiftUnderarm":
-        return os.path.join(args.logdir, "shadow_hand_lift_underarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "cfg/shadow_hand_lift_underarm.yaml"
+        return os.path.join(args.logdir, "shadow_hand_catch_underarm/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "marl_cfg/shadow_hand_catch_underarm.yaml"
+    elif args.task in ["Safety2x4AntVelocity-v0", "Safety4x2AntVelocity-v0", "Safety6x1HalfCheetahVelocity-v0", "Safety2x3HalfCheetahVelocity-v0", \
+                       "Safety2x4dAntVelocity-v0", "Safety3x1HopperVelocity-v0", "Safety9or8HumanoidVelocity-v0", "Safety2x1SwimmerVelocity-v0", 
+                       "Safety2x3Walker2dVelocity-v0", "Safety10x2SwimmerVelocity-v0", "Safety2x3AntVelocity-v0", "Safety1p1HalfCheetahVelocity-v0"]:
+        return os.path.join(args.logdir, "ma_mujoco_velocity/{}/{}".format(args.algo, args.algo)), "marl_cfg/{}/config.yaml".format(args.algo), "marl_cfg/ma_mujoco_velocity.yaml"
     else:
         warn_task_name()
-
 
 
 def load_cfg(args, use_rlg_config=False):
     with open(os.path.join(os.getcwd(), args.cfg_train), 'r') as f:
         cfg_train = yaml.load(f, Loader=yaml.SafeLoader)
+        if args.task in ["Safety2x4AntVelocity-v0", "Safety4x2AntVelocity-v0", "Safety6x1HalfCheetahVelocity-v0", "Safety2x3HalfCheetahVelocity-v0", \
+                       "Safety2x4dAntVelocity-v0", "Safety3x1HopperVelocity-v0", "Safety9or8HumanoidVelocity-v0", "Safety2x1SwimmerVelocity-v0", 
+                       "Safety2x3Walker2dVelocity-v0", "Safety10x2SwimmerVelocity-v0", "Safety2x3AntVelocity-v0", "Safety1p1HalfCheetahVelocity-v0"]:
+            cfg_train.update(cfg_train.get("mamujoco"))
 
-    hand_dir = os.getcwd().split("multi_agent")[0]+"envs/safe_dexteroushands/"
-    with open(os.path.join(hand_dir, args.cfg_env), 'r') as f:
-        cfg = yaml.load(f, Loader=yaml.SafeLoader)
+    with open(os.path.join(os.getcwd(), args.cfg_env), 'r') as f:
+        if args.task in ["Safety2x4AntVelocity-v0", "Safety4x2AntVelocity-v0", "Safety6x1HalfCheetahVelocity-v0", "Safety2x3HalfCheetahVelocity-v0", \
+                       "Safety2x4dAntVelocity-v0", "Safety3x1HopperVelocity-v0", "Safety9or8HumanoidVelocity-v0", "Safety2x1SwimmerVelocity-v0", 
+                       "Safety2x3Walker2dVelocity-v0", "Safety10x2SwimmerVelocity-v0", "Safety2x3AntVelocity-v0", "Safety1p1HalfCheetahVelocity-v0"]:
+            cfg = yaml.load(f, Loader=yaml.SafeLoader)[args.task]
+        else: 
+            cfg = yaml.load(f, Loader=yaml.SafeLoader)
 
     # Override number of environments if passed on the command line
     if args.num_envs > 0:
@@ -99,6 +95,10 @@ def load_cfg(args, use_rlg_config=False):
 
     cfg["name"] = args.task
     cfg["headless"] = args.headless
+    cfg_train["use_eval"] = args.use_eval
+    cfg_train["single_eval_episodes"] = args.single_eval_episodes
+    cfg_train["safety_bound"]=args.safety_bound
+    cfg_train["algorithm_name"]=args.algo
 
     # Set physics domain randomization
     if "task" in cfg:
@@ -109,8 +109,8 @@ def load_cfg(args, use_rlg_config=False):
     else:
         cfg["task"] = {"randomize": False}
 
-    # Set algorithms device
-    cfg_train["rl_device"] = args.rl_device
+    # Set torch device
+    cfg_train["device"] = args.device
     logdir = args.logdir
     if use_rlg_config:
 
@@ -217,6 +217,8 @@ def get_args(benchmark=False, use_rlg_config=False):
     custom_parameters = [
         {"name": "--test", "action": "store_true", "default": False,
             "help": "Run trained policy, no training"},
+        {"name": "--use-eval", "type": bool, "default": False, "help": "Use evaluation environment for testing"},
+        {"name": "--single-eval-episodes", "type": int, "default": 2, "help": "Number of episodes to evaluate in single evaluation run"},
         {"name": "--play", "action": "store_true", "default": False,
             "help": "Run trained policy, the same as test, can be used only by rl_games RL library"},
         {"name": "--resume", "type": int, "default": 0,
@@ -258,9 +260,11 @@ def get_args(benchmark=False, use_rlg_config=False):
             "help": "Choose an algorithm"},
         {"name": "--model-dir", "type": str, "default": "",
             "help": "Choose a model dir"},
+        {"name": "--safety-bound", "type": float, "default": 25.0, "help": "cost_lim"},
         {"name": "--device-id", "type": int, "default": "0", "help": "The cuda device id to use"},
         {"name": "--write-terminal", "type": lambda x: bool(strtobool(x)), "default": True, "help": "Toggles terminal logging"},
             ]
+    
 
     if benchmark:
         custom_parameters += [{"name": "--num_proc", "type": int, "default": 1, "help": "Number of child processes to launch"},

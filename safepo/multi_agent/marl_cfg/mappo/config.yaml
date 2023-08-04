@@ -1,11 +1,12 @@
 env_name: mappo
 algorithm_name: mappo
 experiment_name: check
+seed: 0
 run_dir: ./runs
 use_centralized_V: True
 use_obs_instead_of_state: False
 num_env_steps: 100000000
-episode_length: 8
+episode_length: 75
 n_rollout_threads: 80
 n_eval_rollout_threads: 1
 use_linear_lr_decay: False

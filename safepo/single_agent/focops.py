@@ -283,11 +283,11 @@ def main(args):
         obs_space=obs_space,
         act_space=act_space,
         size=args.steps_per_epoch,
-        gamma=args.gamma,
-        lam=args.lam,
-        lam_c=args.lam_c,
-        standardized_adv_r=args.standardized_adv_r,
-        standardized_adv_c=args.standardized_adv_c,
+        gamma=0.99,
+        lam=0.95,
+        lam_c=0.95,
+        standardized_adv_r=True,
+        standardized_adv_c=True,
         device=device,
         num_envs=args.num_envs,
     )
@@ -406,7 +406,7 @@ def main(args):
 
         eval_start_time = time.time()
 
-        eval_episodes = args.eval_episodes if epoch < epochs - 1 else 10
+        eval_episodes = 1 if epoch < epochs - 1 else 10
         if args.use_eval:
             for _ in range(eval_episodes):
                 eval_done = False
@@ -468,7 +468,7 @@ def main(args):
                 old_mean,
                 old_std,
             ),
-            batch_size=args.batch_size,
+            batch_size=128,
             shuffle=True,
         )
         update_counts = 0
@@ -489,11 +489,11 @@ def main(args):
                     policy.reward_critic(obs_b), target_value_r_b
                 )
                 for param in policy.reward_critic.parameters():
-                    loss_r += param.pow(2).sum() * args.critic_norm_coef
+                    loss_r += param.pow(2).sum() * 0.001
                 loss_r.backward()
                 clip_grad_norm_(
                     policy.reward_critic.parameters(),
-                    args.max_grad_norm,
+                    40.0,
                 )
                 reward_critic_optimizer.step()
 
@@ -502,11 +502,11 @@ def main(args):
                     policy.cost_critic(obs_b), target_value_c_b
                 )
                 for param in policy.cost_critic.parameters():
-                    loss_c += param.pow(2).sum() * args.critic_norm_coef
+                    loss_c += param.pow(2).sum() * 0.001
                 loss_c.backward()
                 clip_grad_norm_(
                     policy.cost_critic.parameters(),
-                    args.max_grad_norm,
+                    40.0,
                 )
                 cost_critic_optimizer.step()
 
@@ -528,7 +528,7 @@ def main(args):
 
                 actor_optimizer.zero_grad()
                 loss_pi.backward()
-                clip_grad_norm_(policy.actor.parameters(), args.max_grad_norm)
+                clip_grad_norm_(policy.actor.parameters(), 40.0)
                 actor_optimizer.step()
 
                 logger.store(
