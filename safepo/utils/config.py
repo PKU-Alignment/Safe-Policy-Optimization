@@ -1,9 +1,18 @@
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
-# NVIDIA CORPORATION and its licensors retain all intellectual property
-# and proprietary rights in and to this software, related documentation
-# and any modifications thereto.  Any use, reproduction, disclosure or
-# distribution of this software and related documentation without an express
-# license agreement from NVIDIA CORPORATION is strictly prohibited.
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 
 import os
 import random
@@ -12,9 +21,9 @@ from distutils.util import strtobool
 import numpy as np
 import copy
 import torch
+import time
 import yaml
 import argparse
-#from isaacgym import gymapi, gymutil
 
 
 def set_np_formatting():
@@ -22,22 +31,12 @@ def set_np_formatting():
                         linewidth=4000, nanstr='nan', precision=2,
                         suppress=False, threshold=10000, formatter=None)
 
-
 def warn_task_name():
     raise Exception(
         "Unrecognized task!")
 
-def warn_algorithm_name():
-    raise Exception(
-                "Unrecognized algorithm!\nAlgorithm should be one of: [ppo, happo, hatrpo, mappo]")
-
-
 def set_seed(seed, torch_deterministic=False):
-    if seed == -1 and torch_deterministic:
-        seed = 42
-    elif seed == -1:
-        seed = np.random.randint(0, 10000)
-
+    
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -95,7 +94,7 @@ def parse_sim_params(args, cfg, cfg_train):
     return sim_params
 
 
-def get_args():
+def get_args(algo):
 
     # Define custom parameters
     custom_parameters = [
@@ -105,7 +104,6 @@ def get_args():
         {"name": "--scenario", "type": str, "default": "Ant", "help": "The scenario"},
         {"name": "--experiment", "type": str, "default": "Base", "help": "Experiment name. If used with --metadata flag an additional information about physics engine, sim device, pipeline and domain randomization will be added to the name"},
         {"name": "--seed", "type": int, "default":0, "help": "Random seed"},
-        {"name": "--algo", "type": str, "default": "happo", "help": "Choose an algorithm"},
         {"name": "--model-dir", "type": str, "default": "", "help": "Choose a model dir"},
         {"name": "--safety-bound", "type": float, "default": 25.0, "help": "cost_lim"},
         {"name": "--device", "type": str, "default": "cpu", "help": "The device to run the model on"},
@@ -135,21 +133,25 @@ def get_args():
         "ShadowHandOver": "shadow_hand_over",
         "ShadowHandCatchUnderarm": "shadow_hand_catch_underarm",
     }
-    cfg_train_path = "marl_cfg/{}/config.yaml".format(args.algo)
+    cfg_train_path = "marl_cfg/{}/config.yaml".format(algo)
     with open(os.path.join(os.getcwd(), cfg_train_path), 'r') as f:
         cfg_train = yaml.load(f, Loader=yaml.SafeLoader)
         if args.task == "MujocoVelocity":
             cfg_train.update(cfg_train.get("mamujoco"))
     cfg_train["use_eval"] = args.use_eval
     cfg_train["safety_bound"]=args.safety_bound
-    cfg_train["algorithm_name"]=args.algo
+    cfg_train["algorithm_name"]=algo
     cfg_train["device"] = args.device + ":" + str(args.device_id)
 
     if args.task == "MujocoVelocity":
         env_name = "Safety"+args.agent_conf+args.scenario+"Velocity-v0"
     else:
         env_name = args.task
-    cfg_train['log_dir']="./runs/"+args.experiment+'/'+env_name+'/'+args.algo
+    cfg_train["env_name"] = env_name
+    relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
+    subfolder = "-".join(["seed", str(args.seed).zfill(3)])
+    relpath = "-".join([subfolder, relpath])
+    cfg_train['log_dir']="../runs/"+args.experiment+'/'+env_name+'/'+algo+'/'+relpath
     cfg_env={}
     if args.task in ["ShadowHandOver", "ShadowHandCatchUnderarm"]:
         cfg_env_path = "marl_cfg/{}.yaml".format(config_map[args.task])

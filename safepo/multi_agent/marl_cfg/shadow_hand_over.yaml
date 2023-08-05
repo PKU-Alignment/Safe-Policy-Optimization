@@ -1,7 +1,7 @@
 # if given, will override the device setting in gym. 
 env: 
   env_name: "shadow_hand_over"
-  numEnvs: 512
+  numEnvs: 1
   envSpacing: 0.75
   episodeLength: 75
   enableDebugVis: False
