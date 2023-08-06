@@ -191,6 +191,7 @@ class Plotter:
             if 'progress.csv' in files:
                 exp_name = None
                 steps_per_epoch = None
+                print(root)
                 try:
                     with open(os.path.join(root, 'config.json'), encoding='utf-8') as f:
                         config = json.load(f)
@@ -269,7 +270,6 @@ class Plotter:
             All the data stored in a list of DataFrames.
         """
         logdirs = []
-        print(all_logdirs)
         for logdir in all_logdirs:
             if osp.isdir(logdir) and logdir[-1] == os.sep:
                 logdirs += [logdir]
@@ -404,8 +404,16 @@ class Plotter:
             save_name = all_logdirs[0].split('/')[-1]
         if show_image:
             plt.show()
+        save_dir = save_dir.replace('runs', 'results')
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
         fig.savefig(
-            os.path.join(save_dir, f'{save_name}.{save_format}'),
+            os.path.join(save_dir, f'figure_{save_name}.{save_format}'),
+            bbox_inches='tight',
+            pad_inches=0.0,
+        )
+        fig.savefig(
+            os.path.join(save_dir, f'{save_name}.pdf'),
             bbox_inches='tight',
             pad_inches=0.0,
         )

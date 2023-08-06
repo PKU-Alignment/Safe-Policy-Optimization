@@ -10,6 +10,7 @@ def parse_args():
         nargs="+",
         default=[
             "SafetyAntVelocity-v1",
+            "SafetyPointGoal1-v0",
         ],
         help="the ids of the environment to benchmark",
     )
@@ -29,19 +30,19 @@ def parse_args():
         help="the ids of the algorithm to benchmark",
     )
     parser.add_argument(
-        "--num-seeds", type=int, default=1, help="the number of random seeds"
+        "--num-seeds", type=int, default=3, help="the number of random seeds"
     )
     parser.add_argument(
-        "--start-seed", type=int, default=5, help="the number of the starting seed"
+        "--start-seed", type=int, default=0, help="the number of the starting seed"
     )
     parser.add_argument(
         "--workers",
         type=int,
-        default=1,
+        default=48,
         help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--exp-name", type=str, default="benchmark_single_env", help="name of the experiment"
+        "--experiment", type=str, default="benchmark_single_env", help="name of the experiment"
     )
     args = parser.parse_args()
 
@@ -61,7 +62,7 @@ if __name__ == "__main__":
 
     commands = []
 
-    log_dir = f"./runs/{args.exp_name}"
+    log_dir = f"../runs/{args.experiment}"
     for seed in range(0, args.num_seeds):
         for env_id in args.env_ids:
             for algo in args.algo:
@@ -72,7 +73,7 @@ if __name__ == "__main__":
                             "--env-id",
                             env_id,
                             "--seed",
-                            str(args.start_seed + seed),
+                            str(args.start_seed + 1000*seed),
                             "--write-terminal",
                             "False",
                             "--log-dir",

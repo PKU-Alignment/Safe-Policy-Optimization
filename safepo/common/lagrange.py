@@ -174,17 +174,17 @@ class PIDLagrangian:
     # pylint: disable-next=too-many-arguments
     def __init__(
         self,
-        pid_kp: float,
-        pid_ki: float,
-        pid_kd: float,
-        pid_d_delay: int,
-        pid_delta_p_ema_alpha: float,
-        pid_delta_d_ema_alpha: float,
-        sum_norm: bool,
-        diff_norm: bool,
-        penalty_max: int,
-        lagrangian_multiplier_init: float,
         cost_limit: float,
+        lagrangian_multiplier_init: float=0.005,
+        pid_kp: float=0.1,
+        pid_ki: float=0.01,
+        pid_kd: float=0.01,
+        pid_d_delay: int=10,
+        pid_delta_p_ema_alpha: float=0.95,
+        pid_delta_d_ema_alpha: float=0.95,
+        sum_norm: bool=True,
+        diff_norm: bool=False,
+        penalty_max: int=100.0,
     ) -> None:
         """Initialize an instance of :class:`PIDLagrangian`."""
         self._pid_kp: float = pid_kp

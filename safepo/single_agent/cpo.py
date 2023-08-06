@@ -16,15 +16,15 @@
 
 from __future__ import annotations
 
-import argparse
 import os
 import random
 import sys
 import time
 from collections import deque
-from distutils.util import strtobool
 from typing import Callable
 
+from distutils.util import strtobool
+import argparse
 import numpy as np
 import torch
 import torch.nn as nn
@@ -37,9 +37,9 @@ from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_env
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
+from safepo.utils.config import single_agent_args
 
-
-def parse_args():
+def single_agent_args():
     # training parameters
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
@@ -53,25 +53,10 @@ def parse_args():
     parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
     # logger parameters
     parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
-    parser.add_argument(
-        "--write-terminal",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
-        help="toggles terminal logging",
-    )
-    parser.add_argument(
-        "--use-tensorboard",
-        type=lambda x: bool(strtobool(x)),
-        default=False,
-        help="toggles tensorboard logging",
-    )
+    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
+    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
     # algorithm specific parameters
-    parser.add_argument(
-        "--cost-limit",
-        type=float,
-        default=25.0,
-        help="the cost limit for the safety constraint",
-    )
+    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
 
     args = parser.parse_args()
     return args
@@ -86,7 +71,6 @@ def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
             flat_params.append(data)
     assert flat_params, "No gradients were found in model parameters."
     return torch.cat(flat_params)
-
 
 def conjugate_gradients(
     fisher_product: Callable[[torch.Tensor], torch.Tensor],
@@ -115,7 +99,6 @@ def conjugate_gradients(
         rdotr = new_rdotr
     return vector_x
 
-
 def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> None:
     assert isinstance(vals, torch.Tensor)
     i: int = 0
@@ -130,7 +113,6 @@ def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> Non
             i += int(size)  # increment array position
     assert i == len(vals), f"Lengths do not match: {i} vs. {len(vals)}"
 
-
 def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
     grads = []
     for _, param in model.named_parameters():
@@ -139,7 +121,6 @@ def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
             grads.append(grad.view(-1))  # flatten tensor and append
     assert grads, "No gradients were found in model parameters."
     return torch.cat(grads)
-
 
 def fvp(
     params: torch.Tensor,
@@ -167,7 +148,6 @@ def fvp(
     flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads])
 
     return flat_grad_grad_kl + params * 0.1
-
 
 def main(args):
     # set the random seed, device and number of threads
@@ -205,12 +185,7 @@ def main(args):
     buffer = VectorizedOnPolicyBuffer(
         obs_space=obs_space,
         act_space=act_space,
-        size=args.steps_per_epoch,
-        gamma=0.99,
-        lam=0.95,
-        lam_c=0.95,
-        standardized_adv_r=True,
-        standardized_adv_c=True,
+        size=local_steps_per_epoch,
         device=device,
         num_envs=args.num_envs,
     )
@@ -330,15 +305,11 @@ def main(args):
                 eval_rew, eval_cost, eval_len = 0.0, 0.0, 0.0
                 while not eval_done:
                     with torch.no_grad():
-                        act, log_prob, value_r, value_c = policy.step(
-                            eval_obs, deterministic=True
-                        )
+                        act, log_prob, value_r, value_c = policy.step(eval_obs, deterministic=True)
                     next_obs, reward, cost, terminated, truncated, info = env.step(
                         act.detach().squeeze().cpu().numpy()
                     )
-                    next_obs = torch.as_tensor(
-                        next_obs, dtype=torch.float32, device=device
-                    )
+                    next_obs = torch.as_tensor(next_obs, dtype=torch.float32, device=device)
                     eval_rew += reward
                     eval_cost += cost
                     eval_len += 1
@@ -557,29 +528,19 @@ def main(args):
                 target_value_c_b,
             ) in dataloader:
                 reward_critic_optimizer.zero_grad()
-                loss_r = nn.functional.mse_loss(
-                    policy.reward_critic(obs_b), target_value_r_b
-                )
+                loss_r = nn.functional.mse_loss(policy.reward_critic(obs_b), target_value_r_b)
                 for param in policy.reward_critic.parameters():
                     loss_r += param.pow(2).sum() * 0.001
                 loss_r.backward()
-                clip_grad_norm_(
-                    policy.reward_critic.parameters(),
-                    40.0,
-                )
+                clip_grad_norm_(policy.reward_critic.parameters(), 40.0)
                 reward_critic_optimizer.step()
 
                 cost_critic_optimizer.zero_grad()
-                loss_c = nn.functional.mse_loss(
-                    policy.cost_critic(obs_b), target_value_c_b
-                )
+                loss_c = nn.functional.mse_loss(policy.cost_critic(obs_b), target_value_c_b)
                 for param in policy.cost_critic.parameters():
                     loss_c += param.pow(2).sum() * 0.001
                 loss_c.backward()
-                clip_grad_norm_(
-                    policy.cost_critic.parameters(),
-                    40.0,
-                )
+                clip_grad_norm_(policy.cost_critic.parameters(), 40.0)
                 cost_critic_optimizer.step()
 
                 logger.store(
@@ -625,7 +586,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = parse_args()
+    args = single_agent_args()
     relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])

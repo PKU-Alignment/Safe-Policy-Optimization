@@ -31,7 +31,7 @@ from safepo.common.popart import PopArt
 from safepo.common.model import MultiAgentActor as Actor, MultiAgentCritic as Critic
 from safepo.common.buffer import SeparatedReplayBuffer
 from safepo.common.logger import EpochLogger
-from safepo.utils.config import get_args, parse_sim_params, set_np_formatting, set_seed
+from safepo.utils.config import multi_agent_args, parse_sim_params, set_np_formatting, set_seed
 
 def check(input):
     output = torch.from_numpy(input) if type(input) == np.ndarray else input
@@ -528,7 +528,6 @@ def train(args, cfg_train):
         cfg_eval["n_rollout_threads"] = cfg_eval["n_eval_rollout_threads"]
         eval_env = make_ma_mujoco_env(args, cfg_eval)
     else: 
-        from safepo.multi_agent.marl_utils.parse_task import parse_task
         sim_params = parse_sim_params(args, cfg_env, cfg_train)
         env = make_ma_shadow_hand_env(args, cfg_env, cfg_train, sim_params, agent_index)
         cfg_train["n_rollout_threads"] = env.num_envs
@@ -544,7 +543,7 @@ def train(args, cfg_train):
 
 if __name__ == '__main__':
     set_np_formatting()
-    args, cfg_env, cfg_train = get_args(algo="mappo")
+    args, cfg_env, cfg_train = multi_agent_args(algo="mappo")
     set_seed(cfg_train.get("seed", -1), cfg_train.get("torch_deterministic", False))
     if args.write_terminal:
         train(args=args, cfg_train=cfg_train)

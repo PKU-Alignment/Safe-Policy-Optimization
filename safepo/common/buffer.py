@@ -27,9 +27,9 @@ class VectorizedOnPolicyBuffer:
         obs_space,
         act_space,
         size: int,
-        gamma: float,
-        lam: float,
-        lam_c: float,
+        gamma: float=0.99,
+        lam: float=0.95,
+        lam_c: float=0.95,
         standardized_adv_r: bool = True,
         standardized_adv_c: bool = True,
         device: torch.device = "cpu",
@@ -416,17 +416,15 @@ class SeparatedReplayBuffer(object):
         masks = self.masks[:-1].reshape(-1, 1)
         active_masks = self.active_masks[:-1].reshape(-1, 1)
         action_log_probs = self.action_log_probs.reshape(-1, self.action_log_probs.shape[-1])
-        aver_episode_costs = self.aver_episode_costs # self.aver_episode_costs[:-1].reshape(-1, *self.aver_episode_costs.shape[2:])
+        aver_episode_costs = self.aver_episode_costs
 
         if self.factor is not None:
-            # factor = self.factor.reshape(-1,1)
             factor = self.factor.reshape(-1, self.factor.shape[-1])
         advantages = advantages.reshape(-1, 1)
         if cost_adv is not None:
             cost_adv = cost_adv.reshape(-1, 1)
 
         for indices in sampler:
-            # obs size [T+1 N Dim]-->[T N Dim]-->[T*N,Dim]-->[index,Dim]
             share_obs_batch = share_obs[indices]
             obs_batch = obs[indices]
             rnn_states_batch = rnn_states[indices]

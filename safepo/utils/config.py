@@ -43,7 +43,8 @@ def set_seed(seed, torch_deterministic=False):
     os.environ['PYTHONHASHSEED'] = str(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
+    torch.autograd.set_detect_anomaly(True)
+    
     if torch_deterministic:
         os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
         torch.backends.cudnn.benchmark = False
@@ -94,7 +95,7 @@ def parse_sim_params(args, cfg, cfg_train):
     return sim_params
 
 
-def get_args(algo):
+def multi_agent_args(algo):
 
     # Define custom parameters
     custom_parameters = [
@@ -171,3 +172,25 @@ def get_args(algo):
         warn_task_name()
 
     return args, cfg_env, cfg_train
+
+def single_agent_args():
+    # training parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
+    parser.add_argument("--device", type=str, default="cpu", help="the device (cpu or cuda) to run the code")
+    parser.add_argument("--num-envs", type=int, default=10, help="the number of parallel game environments")
+    parser.add_argument("--total-steps", type=int, default=10000000, help="total timesteps of the experiments",)
+    parser.add_argument("--env-id", type=str, default="SafetyPointGoal1-v0", help="the id of the environment",)
+    parser.add_argument("--use-eval", type=lambda x: bool(strtobool(x)), default=False, help="toggles evaluation",)
+    # general algorithm parameters
+    parser.add_argument("--steps-per-epoch", type=int, default=20000, help="the number of steps to run in each environment per policy rollout",)
+    parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
+    # logger parameters
+    parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
+    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
+    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
+    # algorithm specific parameters
+    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
+
+    args = parser.parse_args()
+    return args

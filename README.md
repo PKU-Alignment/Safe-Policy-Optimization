@@ -43,7 +43,6 @@
 
 Here we provide a table of Safe RL algorithms that the benchmark includes.
 
-
 |                                 Algorithm                                  |    Proceedings&Cites    |                                 Official Code Repo                                  |                                                         Official Code Last Update                                                          |                                                                      Official Github Stars                                                                      |
 | :------------------------------------------------------------------------: | :---------------------: | :---------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |             [PPO-Lag](https://cdn.openai.com/safexp-short.pdf)             |           :x:           |          [Tensorflow 1 ](https://github.com/openai/safety-starter-agents)           |             ![GitHub last commit](https://img.shields.io/github/last-commit/openai/safety-starter-agents?label=last%20update)              |         [![GitHub stars](https://img.shields.io/github/stars/openai/safety-starter-agents)](https://github.com/openai/safety-starter-agents/stargazers)         |
@@ -136,7 +135,6 @@ Our team has also designed a number of more interesting safety tasks for two-han
 | ShadowHandCatchOver2UnderarmWall     | None        | <img src="assets/catchunderarm_wall.png" align="middle" width="150"/>      |
 | ShadowHandCatchOver2UnderarmWallDown | None        | <img src="assets/catchunderarm_wall_down.png" align="middle" width="150"/> |
 
-
 ## Pre-requisites
 
 To use SafePO-Baselines, you need to install environments. Please refer to [Mujoco](https://mujoco.org/), [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) for more details on installation. Details regarding the installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
@@ -212,31 +210,6 @@ Here we provide the list of arguments:
 
 We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. HAPPO, IPPO, MACPO, MAPPO-Lag and MAPPO have already been implemented.
 
-
-#### Safety DexterousHands
-
-`safepo/multi_agent/train_marl.py` is the entrance file. Running `train_hand.py` with arguments about algorithms and tasks does the training. For example, you can use the following command:
-
-```bash
-cd safepo/multi_agent
-# algo: macpo, mappolag, mappo, happo
-python train_hand.py --task=ShadowHandOver --algo=macpo
-```
-
-#### Safety-Gymnasium Multi-agent Velocity
-
-**note: This task is still under development. We will release the code as soon as possible.**
-
-`safepo/multi_agent/train_vel.py` is the entrance file. Running `train_vel.py` with arguments about algorithms and tasks does the training. For example, you can use the following command to run `MACPO` in `Safety2x4AntVelocity-v0`, with default arguments:
-
-```bash
-cd safepo/multi_agent
-# algo: macpo, mappolag, mappo, ippo, happo
-python train_vel.py --task=Safety2x4AntVelocity-v0 --algo=macpo
-```
-
-The SafePO multi-agent algorithms share almost all hyperparameters for Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. However, there are some differences in certain hyperparameters, which are listed below:
-
 | Argument                  	| Info                                        	| Default (for Safety DexterousHands) 	| Default (for Safety-Gymnasium multi-agent velocity) 	|
 |---------------------------	|---------------------------------------------	|-------------------------------------	|-----------------------------------------------------	|
 | --episode-length          	| Episode length                              	| 8                                   	| 200                                                 	|
@@ -249,12 +222,12 @@ The SafePO multi-agent algorithms share almost all hyperparameters for Safety De
 
 #### Multi-Agent Benchmark
 
-To run a benchamrk parallelly, for example, you can use the following command to run `MACPO`, `MAPPO` in `Safety2x4AntVelocity-v0`, `Safety6x1HalfCheetahVelocity-v0`: 
+To run a benchamrk parallelly, you can use the following command:
 
 ```bash
 cd safepo/multi_agent
 # algo: macpo, mappo
-python velocity_benchmark.py --algo macpo mappo --tasks Safety2x4AntVelocity-v0 Safety6x1HalfCheetahVelocity-v0 --workers 1 --exp-name benchmark
+python benchmark.py --algo macpo mappo --tasks --workers 1 --exp-name benchmark
 ```
 
 After running the benchmark, you can use the following command to plot the results:
@@ -262,13 +235,6 @@ After running the benchmark, you can use the following command to plot the resul
 ```bash
 cd safepo/multi_agent
 python plot.py --logdir ./runs/benchmark
-```
-
-To get the evaluation results, you can use the following command:
-
-```bash
-cd safepo/multi_agent
-python eval.py
 ```
 
 **Note**: To run a evaluation, you need to modify the `eval.py` file and specify the `basedir`. For example:
