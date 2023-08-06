@@ -39,209 +39,50 @@ from safepo.common.env import make_env
 from safepo.common.lagrange import Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
+from safepo.utils.config import single_agent_args
 
 
 def parse_args():
     # training parameters
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cpu",
-        help="the device (cpu or cuda) to run the code",
-    )
-    parser.add_argument(
-        "--torch-threads", type=int, default=4, help="number of threads for torch"
-    )
-    parser.add_argument(
-        "--num-envs",
-        type=int,
-        default=10,
-        help="the number of parallel game environments",
-    )
-    parser.add_argument(
-        "--total-steps",
-        type=int,
-        default=10000000,
-        help="total timesteps of the experiments",
-    )
-    parser.add_argument(
-        "--env-id",
-        type=str,
-        default="SafetyPointGoal1-v0",
-        help="the id of the environment",
-    )
-    parser.add_argument(
-        "--use-eval",
-        type=lambda x: bool(strtobool(x)),
-        default=False,
-        nargs="?",
-        const=False,
-        help="toggles evaluation",
-    )
-    parser.add_argument(
-        "--eval-episodes",
-        type=int,
-        default=3,
-        help="the number of episodes for final evaluation",
-    )
-    # general algorithm parameters
-    parser.add_argument(
-        "--steps-per-epoch",
-        type=int,
-        default=20000,
-        help="the number of steps to run in each environment per policy rollout",
-    )
-    parser.add_argument(
-        "--update-iters",
-        type=int,
-        default=40,
-        help="the max iteration to update the policy",
-    )
-    parser.add_argument(
-        "--batch-size", type=int, default=64, help="the number of mini-batches"
-    )
-    parser.add_argument(
-        "--entropy_coef", type=float, default=0.0, help="coefficient of the entropy"
-    )
-    parser.add_argument(
-        "--target-kl",
-        type=float,
-        default=0.02,
-        help="the target KL divergence threshold",
-    )
-    parser.add_argument(
-        "--max-grad-norm",
-        type=float,
-        default=40.0,
-        help="the maximum norm for the gradient clipping",
-    )
-    parser.add_argument(
-        "--critic-norm-coef",
-        type=float,
-        default=0.001,
-        help="the critic norm coefficient",
-    )
-    parser.add_argument(
-        "--gamma", type=float, default=0.99, help="the discount factor gamma"
-    )
-    parser.add_argument(
-        "--lam",
-        type=float,
-        default=0.95,
-        help="the lambda for the reward general advantage estimation",
-    )
-    parser.add_argument(
-        "--lam-c",
-        type=float,
-        default=0.95,
-        help="the lambda for the cost general advantage estimation",
-    )
-    parser.add_argument(
-        "--standardized-adv-r",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
-        nargs="?",
-        const=True,
-        help="toggles reward advantages standardization",
-    )
-    parser.add_argument(
-        "--standardized-adv-c",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
-        nargs="?",
-        const=True,
-        help="toggles cost advantages standardization",
-    )
-    parser.add_argument(
-        "--actor-lr",
-        type=float,
-        default=3e-4,
-        help="the learning rate of the actor network",
-    )
-    parser.add_argument(
-        "--critic-lr",
-        type=float,
-        default=3e-4,
-        help="the learning rate of the critic network",
-    )
-    parser.add_argument(
-        "--linear-lr-decay",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
-        nargs="?",
-        const=True,
-        help="toggles learning rate annealing for policy and value networks",
-    )
-    # logger parameters
-    parser.add_argument(
-        "--log-dir",
-        type=str,
-        default="../runs",
-        help="directory to save agent logs",
-    )
-    parser.add_argument(
-        "--write-terminal",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
-        help="toggles terminal logging",
-    )
-    parser.add_argument(
-        "--use-tensorboard",
-        type=lambda x: bool(strtobool(x)),
-        default=False,
-        help="toggles tensorboard logging",
-    )
-    # algorithm specific parameters
-    parser.add_argument(
-        "--clip", type=float, default=0.2, help="the surrogate clipping coefficient"
-    )
-    parser.add_argument(
-        "--cost-limit",
-        type=float,
-        default=25.0,
-        help="the cost limit for the safety constraint",
-    )
-    parser.add_argument(
-        "--lagrangian-multiplier-init",
-        type=float,
-        default=0.001,
-        help="the initial value of the lagrangian multiplier",
-    )
-    parser.add_argument(
-        "--lagrangian-multiplier-lr",
-        type=float,
-        default=0.035,
-        help="the learning rate of the lagrangian multiplier",
-    )
-    parser.add_argument(
-        "--lagrangian-upper-bound",
-        type=float,
-        default=2.0,
-        help="the upper bound of lagrange multiplier",
-    )
-    parser.add_argument(
-        "--focops-eta", type=float, default=0.02, help="the eta of the focops"
-    )
-    parser.add_argument(
-        "--focops-lam",
-        type=float,
-        default=1.5,
-        help="the hyperparameters related to the greediness of the algorithm",
-    )
+    parser.add_argument("--focops-eta", type=float, default=0.02, help="the eta of the focops")
+    parser.add_argument("--focops-lam", type=float, default=1.5, help="the lambda of the focops")
 
     args = parser.parse_args()
     return args
 
-
+def single_agent_args():
+    # training parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
+    parser.add_argument("--device", type=str, default="cpu", help="the device (cpu or cuda) to run the code")
+    parser.add_argument("--num-envs", type=int, default=10, help="the number of parallel game environments")
+    parser.add_argument("--total-steps", type=int, default=10000000, help="total timesteps of the experiments",)
+    parser.add_argument("--env-id", type=str, default="SafetyPointGoal1-v0", help="the id of the environment",)
+    parser.add_argument("--use-eval", type=lambda x: bool(strtobool(x)), default=False, help="toggles evaluation",)
+    # general algorithm parameters
+    parser.add_argument("--steps-per-epoch", type=int, default=20000, help="the number of steps to run in each environment per policy rollout",)
+    parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
+    # logger parameters
+    parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
+    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
+    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
+    # algorithm specific parameters
+    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
+    parser.add_argument("--lagrangian-multiplier-init", type=float, default=0.001, help="the initial value of the lagrangian multiplier")
+    parser.add_argument("--lagrangian-multiplier-lr", type=float, default=0.035, help="the learning rate of the lagrangian multiplier")
+    parser.add_argument("--focops-eta", type=float, default=0.02, help="the eta of the focops")
+    parser.add_argument("--focops-lam", type=float, default=1.5, help="the lambda of the focops")
+    args = parser.parse_args()
+    return args
 def main(args):
     # set the random seed, device and number of threads
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
-    torch.set_num_threads(args.torch_threads)
+    torch.set_num_threads(4)
     device = torch.device(
         "cuda" if torch.cuda.is_available() and args.device == "cuda" else "cpu"
     )
@@ -260,17 +101,14 @@ def main(args):
         obs_dim=obs_space.shape[0],
         act_dim=act_space.shape[0],
     ).to(device)
-    actor_optimizer = torch.optim.Adam(policy.actor.parameters(), lr=args.actor_lr)
-    if args.linear_lr_decay:
-        actor_scheduler = LinearLR(
-            actor_optimizer,
-            start_factor=1.0,
-            end_factor=0.0,
-            total_iters=epochs,
-            verbose=True,
-        )
-    else:
-        actor_scheduler = ConstantLR(actor_optimizer)
+    actor_optimizer = torch.optim.Adam(policy.actor.parameters(), lr=3e-4)
+    actor_scheduler = LinearLR(
+        actor_optimizer,
+        start_factor=1.0,
+        end_factor=0.0,
+        total_iters=epochs,
+        verbose=True,
+    )
     reward_critic_optimizer = torch.optim.Adam(
         policy.reward_critic.parameters(), lr=args.critic_lr
     )
@@ -282,12 +120,7 @@ def main(args):
     buffer = VectorizedOnPolicyBuffer(
         obs_space=obs_space,
         act_space=act_space,
-        size=args.steps_per_epoch,
-        gamma=args.gamma,
-        lam=args.lam,
-        lam_c=args.lam_c,
-        standardized_adv_r=args.standardized_adv_r,
-        standardized_adv_c=args.standardized_adv_c,
+        size=local_steps_per_epoch,
         device=device,
         num_envs=args.num_envs,
     )
@@ -315,8 +148,6 @@ def main(args):
     logger.save_config(dict_args)
     logger.setup_torch_saver(policy.actor)
     logger.log("Start with training.")
-
-    time.time()
 
     # training loop
     for epoch in range(epochs):
@@ -406,7 +237,7 @@ def main(args):
 
         eval_start_time = time.time()
 
-        eval_episodes = args.eval_episodes if epoch < epochs - 1 else 10
+        eval_episodes = 1 if epoch < epochs - 1 else 10
         if args.use_eval:
             for _ in range(eval_episodes):
                 eval_done = False
@@ -468,12 +299,12 @@ def main(args):
                 old_mean,
                 old_std,
             ),
-            batch_size=args.batch_size,
+            batch_size=64,
             shuffle=True,
         )
         update_counts = 0
         final_kl = torch.ones_like(old_distribution.loc)
-        for i in track(range(args.update_iters), description="Updating..."):
+        for i in track(range(40), description="Updating..."):
             for (
                 obs_b,
                 act_b,
@@ -489,25 +320,17 @@ def main(args):
                     policy.reward_critic(obs_b), target_value_r_b
                 )
                 for param in policy.reward_critic.parameters():
-                    loss_r += param.pow(2).sum() * args.critic_norm_coef
+                    loss_r += param.pow(2).sum() * 0.001
                 loss_r.backward()
-                clip_grad_norm_(
-                    policy.reward_critic.parameters(),
-                    args.max_grad_norm,
-                )
+                clip_grad_norm_(policy.reward_critic.parameters(), 40.0)
                 reward_critic_optimizer.step()
 
                 cost_critic_optimizer.zero_grad()
-                loss_c = nn.functional.mse_loss(
-                    policy.cost_critic(obs_b), target_value_c_b
-                )
+                loss_c = nn.functional.mse_loss(policy.cost_critic(obs_b), target_value_c_b)
                 for param in policy.cost_critic.parameters():
-                    loss_c += param.pow(2).sum() * args.critic_norm_coef
+                    loss_c += param.pow(2).sum() * 0.001
                 loss_c.backward()
-                clip_grad_norm_(
-                    policy.cost_critic.parameters(),
-                    args.max_grad_norm,
-                )
+                clip_grad_norm_(policy.cost_critic.parameters(), 40.0)
                 cost_critic_optimizer.step()
 
                 old_distribution_b = Normal(loc=old_mean_b, scale=old_std_b)
@@ -519,16 +342,15 @@ def main(args):
                     distribution, old_distribution_b
                 ).sum(-1, keepdim=True)
 
-                loss_pi = (temp_kl - (1 / args.focops_lam) * ratio * adv_b) * (
-                    temp_kl.detach() <= args.focops_eta
+                loss_pi = (temp_kl - (1 / 1.5) * ratio * adv_b) * (
+                    temp_kl.detach() <= 0.02
                 ).type(torch.float32)
 
                 loss_pi = loss_pi.mean()
-                loss_pi -= args.entropy_coef * distribution.entropy().mean()
 
                 actor_optimizer.zero_grad()
                 loss_pi.backward()
-                clip_grad_norm_(policy.actor.parameters(), args.max_grad_norm)
+                clip_grad_norm_(policy.actor.parameters(), 40.0)
                 actor_optimizer.step()
 
                 logger.store(
@@ -547,7 +369,7 @@ def main(args):
             )
             final_kl = kl
             update_counts += 1
-            if kl > args.target_kl:
+            if kl > 0.02:
                 logger.log(f"Early stopping at iter {i + 1} due to reaching max kl")
                 break
         update_end_time = time.time()
@@ -585,7 +407,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = parse_args()
+    args = single_agent_args()
     relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])

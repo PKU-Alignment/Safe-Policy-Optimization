@@ -20,7 +20,6 @@ setup(
     packages=[package for package in find_packages() if package.startswith('safepo')],
     package_data={'safepo': ['py.typed', 'version.txt']},
     install_requires=[
-        'psutil',
         'joblib',
         'scipy',
         "torch >= 1.10.0",

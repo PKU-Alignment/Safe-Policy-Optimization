@@ -16,15 +16,15 @@
 
 from __future__ import annotations
 
-import argparse
 import os
 import random
 import sys
 import time
 from collections import deque
-from distutils.util import strtobool
 from typing import Callable
 
+from distutils.util import strtobool
+import argparse
 import numpy as np
 import torch
 import torch.nn as nn
@@ -37,183 +37,26 @@ from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_env
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
+from safepo.utils.config import single_agent_args
 
-
-def parse_args():
+def single_agent_args():
     # training parameters
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cpu",
-        help="the device (cpu or cuda) to run the code",
-    )
-    parser.add_argument(
-        "--torch-threads", type=int, default=4, help="number of threads for torch"
-    )
-    parser.add_argument(
-        "--num-envs",
-        type=int,
-        default=10,
-        help="the number of parallel game environments",
-    )
-    parser.add_argument(
-        "--total-steps",
-        type=int,
-        default=10000000,
-        help="total timesteps of the experiments",
-    )
-    parser.add_argument(
-        "--env-id",
-        type=str,
-        default="SafetyPointGoal1-v0",
-        help="the id of the environment",
-    )
-    parser.add_argument(
-        "--use-eval",
-        type=lambda x: bool(strtobool(x)),
-        default=False,
-        nargs="?",
-        const=False,
-        help="toggles evaluation",
-    )
-    parser.add_argument(
-        "--eval-episodes",
-        type=int,
-        default=3,
-        help="the number of episodes for final evaluation",
-    )
+    parser.add_argument("--device", type=str, default="cpu", help="the device (cpu or cuda) to run the code")
+    parser.add_argument("--num-envs", type=int, default=10, help="the number of parallel game environments")
+    parser.add_argument("--total-steps", type=int, default=10000000, help="total timesteps of the experiments",)
+    parser.add_argument("--env-id", type=str, default="SafetyPointGoal1-v0", help="the id of the environment",)
+    parser.add_argument("--use-eval", type=lambda x: bool(strtobool(x)), default=False, help="toggles evaluation",)
     # general algorithm parameters
-    parser.add_argument(
-        "--steps-per-epoch",
-        type=int,
-        default=20000,
-        help="the number of steps to run in each environment per policy rollout",
-    )
-    parser.add_argument(
-        "--update-iters",
-        type=int,
-        default=10,
-        help="the max iteration to update the policy",
-    )
-    parser.add_argument(
-        "--batch-size", type=int, default=128, help="the number of mini-batches"
-    )
-    parser.add_argument(
-        "--entropy_coef", type=float, default=0.0, help="coefficient of the entropy"
-    )
-    parser.add_argument(
-        "--target-kl",
-        type=float,
-        default=0.01,
-        help="the target KL divergence threshold",
-    )
-    parser.add_argument(
-        "--max-grad-norm",
-        type=float,
-        default=40.0,
-        help="the maximum norm for the gradient clipping",
-    )
-    parser.add_argument(
-        "--critic-norm-coef",
-        type=float,
-        default=0.001,
-        help="the critic norm coefficient",
-    )
-    parser.add_argument(
-        "--gamma", type=float, default=0.99, help="the discount factor gamma"
-    )
-    parser.add_argument(
-        "--lam",
-        type=float,
-        default=0.95,
-        help="the lambda for the reward general advantage estimation",
-    )
-    parser.add_argument(
-        "--lam-c",
-        type=float,
-        default=0.95,
-        help="the lambda for the cost general advantage estimation",
-    )
-    parser.add_argument(
-        "--standardized-adv-r",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
-        nargs="?",
-        const=True,
-        help="toggles reward advantages standardization",
-    )
-    parser.add_argument(
-        "--standardized-adv-c",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
-        nargs="?",
-        const=True,
-        help="toggles cost advantages standardization",
-    )
-    parser.add_argument(
-        "--critic-lr",
-        type=float,
-        default=1e-3,
-        help="the learning rate of the critic network",
-    )
+    parser.add_argument("--steps-per-epoch", type=int, default=20000, help="the number of steps to run in each environment per policy rollout",)
+    parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
     # logger parameters
-    parser.add_argument(
-        "--log-dir",
-        type=str,
-        default="../runs",
-        help="directory to save agent logs",
-    )
-    parser.add_argument(
-        "--write-terminal",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
-        help="toggles terminal logging",
-    )
-    parser.add_argument(
-        "--use-tensorboard",
-        type=lambda x: bool(strtobool(x)),
-        default=False,
-        help="toggles tensorboard logging",
-    )
+    parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
+    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
+    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
     # algorithm specific parameters
-    parser.add_argument(
-        "--fvp-sample-freq",
-        type=int,
-        default=1,
-        help="the sub-sampling rate of the observation",
-    )
-    parser.add_argument(
-        "--cg-damping",
-        type=float,
-        default=0.1,
-        help="the damping value for conjugate gradient",
-    )
-    parser.add_argument(
-        "--cg-iters",
-        type=int,
-        default=15,
-        help="the number of conjugate gradient iterations",
-    )
-    parser.add_argument(
-        "--backtrack-iters",
-        type=int,
-        default=15,
-        help="the number of backtracking line search iterations",
-    )
-    parser.add_argument(
-        "--backtrack-coef",
-        type=float,
-        default=0.8,
-        help="the coefficient for backtracking line search",
-    )
-    parser.add_argument(
-        "--cost-limit",
-        type=float,
-        default=25.0,
-        help="the cost limit for the safety constraint",
-    )
+    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
 
     args = parser.parse_args()
     return args
@@ -228,7 +71,6 @@ def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
             flat_params.append(data)
     assert flat_params, "No gradients were found in model parameters."
     return torch.cat(flat_params)
-
 
 def conjugate_gradients(
     fisher_product: Callable[[torch.Tensor], torch.Tensor],
@@ -257,7 +99,6 @@ def conjugate_gradients(
         rdotr = new_rdotr
     return vector_x
 
-
 def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> None:
     assert isinstance(vals, torch.Tensor)
     i: int = 0
@@ -272,7 +113,6 @@ def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> Non
             i += int(size)  # increment array position
     assert i == len(vals), f"Lengths do not match: {i} vs. {len(vals)}"
 
-
 def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
     grads = []
     for _, param in model.named_parameters():
@@ -281,7 +121,6 @@ def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
             grads.append(grad.view(-1))  # flatten tensor and append
     assert grads, "No gradients were found in model parameters."
     return torch.cat(grads)
-
 
 def fvp(
     params: torch.Tensor,
@@ -308,8 +147,7 @@ def fvp(
 
     flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads])
 
-    return flat_grad_grad_kl + params * args.cg_damping
-
+    return flat_grad_grad_kl + params * 0.1
 
 def main(args):
     # set the random seed, device and number of threads
@@ -317,7 +155,7 @@ def main(args):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
-    torch.set_num_threads(args.torch_threads)
+    torch.set_num_threads(4)
     device = torch.device(
         "cuda" if torch.cuda.is_available() and args.device == "cuda" else "cpu"
     )
@@ -347,16 +185,10 @@ def main(args):
     buffer = VectorizedOnPolicyBuffer(
         obs_space=obs_space,
         act_space=act_space,
-        size=args.steps_per_epoch,
-        gamma=args.gamma,
-        lam=args.lam,
-        lam_c=args.lam_c,
-        standardized_adv_r=args.standardized_adv_r,
-        standardized_adv_c=args.standardized_adv_c,
+        size=local_steps_per_epoch,
         device=device,
         num_envs=args.num_envs,
     )
-
     # set up the logger
     dict_args = vars(args)
     logger = EpochLogger(
@@ -464,7 +296,7 @@ def main(args):
 
         eval_start_time = time.time()
 
-        eval_episodes = args.eval_episodes if epoch < epochs - 1 else 10
+        eval_episodes = 1 if epoch < epochs - 1 else 10
         if args.use_eval:
             for _ in range(eval_episodes):
                 eval_done = False
@@ -473,15 +305,11 @@ def main(args):
                 eval_rew, eval_cost, eval_len = 0.0, 0.0, 0.0
                 while not eval_done:
                     with torch.no_grad():
-                        act, log_prob, value_r, value_c = policy.step(
-                            eval_obs, deterministic=True
-                        )
+                        act, log_prob, value_r, value_c = policy.step(eval_obs, deterministic=True)
                     next_obs, reward, cost, terminated, truncated, info = env.step(
                         act.detach().squeeze().cpu().numpy()
                     )
-                    next_obs = torch.as_tensor(
-                        next_obs, dtype=torch.float32, device=device
-                    )
+                    next_obs = torch.as_tensor(next_obs, dtype=torch.float32, device=device)
                     eval_rew += reward
                     eval_cost += cost
                     eval_len += 1
@@ -502,7 +330,7 @@ def main(args):
 
         # update policy
         data = buffer.get()
-        fvp_obs = data["obs"][:: args.fvp_sample_freq]
+        fvp_obs = data["obs"][:: 1]
         theta_old = get_flat_params_from(policy.actor)
         policy.actor.zero_grad()
         # compute loss_pi
@@ -516,11 +344,11 @@ def main(args):
         loss_pi_r.backward()
 
         grads = -get_flat_gradients_from(policy.actor)
-        x = conjugate_gradients(fvp, policy, fvp_obs, grads, args.cg_iters)
+        x = conjugate_gradients(fvp, policy, fvp_obs, grads, 15)
         assert torch.isfinite(x).all(), "x is not finite"
         xHx = torch.dot(x, fvp(x, policy, fvp_obs))
         assert xHx.item() >= 0, "xHx is negative"
-        alpha = torch.sqrt(2 * args.target_kl / (xHx + 1e-8))
+        alpha = torch.sqrt(2 * 0.01 / (xHx + 1e-8))
 
         policy.actor.zero_grad()
         temp_distribution = policy.actor(data["obs"])
@@ -534,13 +362,12 @@ def main(args):
         b_grads = get_flat_gradients_from(policy.actor)
         ep_costs = logger.get_stats("Metrics/EpCost") - args.cost_limit
 
-        p = conjugate_gradients(fvp, policy, fvp_obs, b_grads, args.cg_iters)
+        p = conjugate_gradients(fvp, policy, fvp_obs, b_grads, 15)
         q = xHx
         r = grads.dot(p)
         s = b_grads.dot(p)
 
         if b_grads.dot(b_grads) <= 1e-6 and ep_costs < 0:
-            # feasible step and cost grad is zero: use plain TRPO update...
             A = torch.zeros(1)
             B = torch.zeros(1)
             optim_case = 4
@@ -549,30 +376,21 @@ def main(args):
             assert torch.isfinite(s).all(), "s is not finite"
 
             A = q - r**2 / (s + 1e-8)
-            B = 2 * args.target_kl - ep_costs**2 / (s + 1e-8)
+            B = 2 * 0.01 - ep_costs**2 / (s + 1e-8)
 
             if ep_costs < 0 and B < 0:
-                # point in trust region is feasible and safety boundary doesn't intersect
-                # ==> entire trust region is feasible
                 optim_case = 3
             elif ep_costs < 0 <= B:
-                # point in trust region is feasible but safety boundary intersects
-                # ==> only part of trust region is feasible
                 optim_case = 2
             elif ep_costs >= 0 and B >= 0:
-                # point in trust region is infeasible and cost boundary doesn't intersect
-                # ==> entire trust region is infeasible
                 optim_case = 1
                 logger.log("Alert! Attempting feasible recovery!", "yellow")
             else:
-                # x = 0 infeasible, and safety half space is outside trust region
-                # ==> whole trust region is infeasible, try to fail gracefully
                 optim_case = 0
                 logger.log("Alert! Attempting infeasible recovery!", "red")
 
         if optim_case in (3, 4):
-            # under 3 and 4 cases directly use TRPO method
-            alpha = torch.sqrt(2 * args.target_kl / (xHx + 1e-8))
+            alpha = torch.sqrt(2 * 0.01 / (xHx + 1e-8))
             nu_star = torch.zeros(1)
             lambda_star = 1 / (alpha + 1e-8)
             step_direction = alpha * x
@@ -585,14 +403,8 @@ def main(args):
                 """Project data to [low, high] interval."""
                 return torch.clamp(data, low, high)
 
-            #  analytical Solution to LQCLP, employ lambda,nu to compute final solution of OLOLQC
-            #  λ=argmax(f_a(λ),f_b(λ)) = λa_star or λb_star
-            #  computing formula shown in appendix, lambda_a and lambda_b
             lambda_a = torch.sqrt(A / B)
-            lambda_b = torch.sqrt(q / (2 * args.target_kl))
-            # λa_star = Proj(lambda_a ,0 ~ r/c)  λb_star=Proj(lambda_b,r/c~ +inf)
-            # where projection(str,b,c)=max(b,min(str,c))
-            # may be regarded as a projection from effective region towards safety region
+            lambda_b = torch.sqrt(q / (2 * 0.01))
             r_num = r.item()
             eps_cost = ep_costs + 1e-8
             if ep_costs < 0:
@@ -614,7 +426,7 @@ def main(args):
                 return -0.5 * (A / (lam + 1e-8) + B * lam) - r * ep_costs / (s + 1e-8)
 
             def f_b(lam: torch.Tensor) -> torch.Tensor:
-                return -0.5 * (q / (lam + 1e-8) + 2 * args.target_kl * lam)
+                return -0.5 * (q / (lam + 1e-8) + 2 * 0.01 * lam)
 
             lambda_star = (
                 lambda_a_star
@@ -622,34 +434,23 @@ def main(args):
                 else lambda_b_star
             )
 
-            # discard all negative values with torch.clamp(x, min=0)
-            # Nu_star = (lambda_star * - r)/s
             nu_star = torch.clamp(lambda_star * ep_costs - r, min=0) / (s + 1e-8)
-            # final x_star as final direction played as policy's loss to backward and update
+
             step_direction = 1.0 / (lambda_star + 1e-8) * (x - nu_star * p)
 
-        else:  # case == 0
-            # purely decrease costs
-            # without further check
+        else:
             lambda_star = torch.zeros(1)
-            nu_star = torch.sqrt(2 * args.target_kl / (s + 1e-8))
+            nu_star = torch.sqrt(2 * 0.01 / (s + 1e-8))
             step_direction = -nu_star * p
 
-        # get distance each time theta goes towards certain direction
         step_frac = 1.0
-        # get and flatten parameters from pi-net
         theta_old = get_flat_params_from(policy.actor)
-        # reward improvement, g-flat as gradient of reward
         expected_reward_improve = grads.dot(step_direction)
 
         kl = torch.zeros(1)
-        # while not within_trust_region and not finish all steps:
-        for step in range(args.backtrack_iters):
-            # get new theta
+        for step in range(15):
             new_theta = theta_old + step_frac * step_direction
-            # set new theta as new actor parameters
             set_param_values_to_model(policy.actor, new_theta)
-            # the last acceptance steps to next step
             acceptance_step = step + 1
 
             with torch.no_grad():
@@ -659,27 +460,22 @@ def main(args):
                     ratio = torch.exp(log_prob - data["log_prob"])
                     loss_reward = -(ratio * data["adv_r"]).mean()
                 except ValueError:
-                    step_frac *= args.backtrack_coef
+                    step_frac *= 0.8
                     continue
-                # loss of cost of policy cost from real/expected reward
                 temp_distribution = policy.actor(data["obs"])
                 log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
                 ratio = torch.exp(log_prob - data["log_prob"])
                 loss_cost = (ratio * data["adv_c"]).mean()
-                # compute KL distance between new and old policy
                 current_distribution = policy.actor(data["obs"])
                 kl = torch.distributions.kl.kl_divergence(
                     old_distribution, current_distribution
                 ).mean()
-            # compute improvement of reward
             loss_reward_improve = loss_reward_before - loss_reward.item()
-            # compute difference of cost
             loss_cost_diff = loss_cost.item() - loss_cost_before
 
             logger.log(
                 f"Expected Improvement: {expected_reward_improve} Actual: {loss_reward_improve}",
             )
-            # check whether there are nan.
             if not torch.isfinite(loss_reward) and not torch.isfinite(loss_cost):
                 logger.log("WARNING: loss_pi not finite")
             if not torch.isfinite(kl):
@@ -687,20 +483,15 @@ def main(args):
                 continue
             if loss_reward_improve < 0 if optim_case > 1 else False:
                 logger.log("INFO: did not improve improve <0")
-            # change of cost's range
             elif loss_cost_diff > max(-ep_costs, 0):
                 logger.log(f"INFO: no improve {loss_cost_diff} > {max(-ep_costs, 0)}")
-            # check KL-distance to avoid too far gap
-            elif kl > args.target_kl:
+            elif kl > 0.01:
                 logger.log(f"INFO: violated KL constraint {kl} at step {step + 1}.")
             else:
-                # step only if surrogate is improved and we are
-                # within the trust region
                 logger.log(f"Accept step at i={step + 1}")
                 break
-            step_frac *= args.backtrack_coef
+            step_frac *= 0.8
         else:
-            # if didn't find a step satisfy those conditions
             logger.log("INFO: no suitable step found...")
             step_direction = torch.zeros_like(step_direction)
             acceptance_step = 0
@@ -727,39 +518,29 @@ def main(args):
                 data["target_value_r"],
                 data["target_value_c"],
             ),
-            batch_size=args.batch_size,
+            batch_size=128,
             shuffle=True,
         )
-        for _ in track(range(args.update_iters), description="Updating..."):
+        for _ in track(range(10), description="Updating..."):
             for (
                 obs_b,
                 target_value_r_b,
                 target_value_c_b,
             ) in dataloader:
                 reward_critic_optimizer.zero_grad()
-                loss_r = nn.functional.mse_loss(
-                    policy.reward_critic(obs_b), target_value_r_b
-                )
+                loss_r = nn.functional.mse_loss(policy.reward_critic(obs_b), target_value_r_b)
                 for param in policy.reward_critic.parameters():
-                    loss_r += param.pow(2).sum() * args.critic_norm_coef
+                    loss_r += param.pow(2).sum() * 0.001
                 loss_r.backward()
-                clip_grad_norm_(
-                    policy.reward_critic.parameters(),
-                    args.max_grad_norm,
-                )
+                clip_grad_norm_(policy.reward_critic.parameters(), 40.0)
                 reward_critic_optimizer.step()
 
                 cost_critic_optimizer.zero_grad()
-                loss_c = nn.functional.mse_loss(
-                    policy.cost_critic(obs_b), target_value_c_b
-                )
+                loss_c = nn.functional.mse_loss(policy.cost_critic(obs_b), target_value_c_b)
                 for param in policy.cost_critic.parameters():
-                    loss_c += param.pow(2).sum() * args.critic_norm_coef
+                    loss_c += param.pow(2).sum() * 0.001
                 loss_c.backward()
-                clip_grad_norm_(
-                    policy.cost_critic.parameters(),
-                    args.max_grad_norm,
-                )
+                clip_grad_norm_(policy.cost_critic.parameters(), 40.0)
                 cost_critic_optimizer.step()
 
                 logger.store(
@@ -805,7 +586,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = parse_args()
+    args = single_agent_args()
     relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])

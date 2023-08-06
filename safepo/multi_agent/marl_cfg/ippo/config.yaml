@@ -1,6 +1,7 @@
 env_name: ippo
 algorithm_name: ippo
 experiment_name: check
+seed: 0
 run_dir: ./runs
 use_centralized_V: False # false in IPPO
 use_obs_instead_of_state: False

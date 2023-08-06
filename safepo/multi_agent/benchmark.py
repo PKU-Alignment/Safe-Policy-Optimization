@@ -1,16 +1,33 @@
+# Copyright 2023 OmniSafeAI Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+
 import argparse
 import shlex
 import subprocess
+import torch
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--env-ids",
+        "--tasks",
         nargs="+",
-        default=[
-            "SafetyAntVelocity-v1",
-            "SafetyPointGoal1-v0",
+        default=[ 
+            "ShadowHandOver",
+            "ShadowHandCatchUnderarm",
         ],
         help="the ids of the environment to benchmark",
     )
@@ -18,19 +35,15 @@ def parse_args():
         "--algo",
         nargs="+",
         default=[
-            "cup",
-            "focops",
-            "cpo",
-            "cppo_pid",
-            "rcpo",
-            "ppo_lag",
-            "trpo_lag",
-            "pcpo",
+            "macpo",
+            "mappo",
+            "happo",
+            "mappolag",
         ],
         help="the ids of the algorithm to benchmark",
     )
     parser.add_argument(
-        "--num-seeds", type=int, default=3, help="the number of random seeds"
+        "--num-seeds", type=int, default=1, help="the number of random seeds"
     )
     parser.add_argument(
         "--start-seed", type=int, default=0, help="the number of the starting seed"
@@ -38,11 +51,11 @@ def parse_args():
     parser.add_argument(
         "--workers",
         type=int,
-        default=48,
+        default=1,
         help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--experiment", type=str, default="benchmark_single_env", help="name of the experiment"
+        "--exp-name", type=str, default="benchmark_hand", help="name of the experiment"
     )
     args = parser.parse_args()
 
@@ -61,26 +74,34 @@ if __name__ == "__main__":
     args = parse_args()
 
     commands = []
-
-    log_dir = f"../runs/{args.experiment}"
+    devices = ["0", "1", "2", "3", "4", "5", "6", "7"]
+    # Please change the device id to the one you want to use
+    available_devices = torch.cuda.device_count()
+    assert available_devices >= len(devices), f"only {available_devices} devices available"
+    idx = 0
+    log_dir = f"./runs/{args.exp_name}"
     for seed in range(0, args.num_seeds):
-        for env_id in args.env_ids:
+        for task in args.tasks:
             for algo in args.algo:
+                device = devices[idx]
                 commands += [
                     " ".join(
                         [
                             f"python {algo}.py",
-                            "--env-id",
-                            env_id,
+                            "--task",
+                            task,
                             "--seed",
-                            str(args.start_seed + 1000*seed),
+                            str(args.start_seed + seed),
                             "--write-terminal",
                             "False",
-                            "--log-dir",
-                            log_dir,
+                            "--experiment",
+                            args.exp_name,
+                            "--device-id",
+                            device,
                         ]
                     )
                 ]
+                idx = (idx + 1) % len(devices)
 
     print("======= commands to run:")
     for command in commands:

@@ -244,8 +244,16 @@ class Plotter:
                     raise FileNotFoundError(
                         f'Could not read from {progress_path}'
                     ) from error
-                performance = 'Train/Episode Reward'
-                cost_performance = 'Train/Episode Cost'
+                performance = (
+                    'Metrics/EvalEpRet'
+                    if 'Metrics/EvalEpRet' in exp_data and use_eval_result
+                    else 'Metrics/EpRet'
+                )
+                cost_performance = (
+                    'Metrics/EvalEpCost'
+                    if 'Metrics/EvalEpCost' in exp_data and use_eval_result
+                    else 'Metrics/EpCost'
+                )
                 exp_data.insert(len(exp_data.columns), 'Unit', unit)
                 exp_data.insert(len(exp_data.columns), 'Condition0', condition1)
 
@@ -263,7 +271,7 @@ class Plotter:
                     )
                 exp_data.insert(len(exp_data.columns), 'Rewards', exp_data[performance].astype(np.float32))
 
-                total_steps = exp_data['Train/Steps'].astype(np.float32)
+                total_steps = exp_data['Train/TotalSteps'].astype(np.float32)
                 exp_data.insert(
                     len(exp_data.columns),
                     'Steps',
@@ -344,7 +352,7 @@ class Plotter:
         xaxis: str = 'Steps',
         value: str = 'Rewards',
         count: bool = False,
-        cost_limit: float = 15.0,
+        cost_limit: float = 25.0,
         smooth: int = 1,
         select: str | None = None,
         exclude: str | None = None,

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+
+
 import atexit
 import csv
 import json
@@ -244,9 +246,6 @@ class Logger:
         output = json.dumps(
             config_json, separators=(",", ":\t"), indent=4, sort_keys=True
         )
-        if self.verbose and self.level > 0:
-            print(colorize("Run with config:", color="yellow", bold=True))
-            print(output)
         with open(osp.join(self.log_dir, "config.json"), "w") as out:
             out.write(output)
 
@@ -415,16 +414,22 @@ class EpochLogger(Logger):
             if len(v) > 0:
                 print(f"epoch_dict: key={k} was not logged.")
 
-    def store(self, **kwargs):
+    def store(self, add_value=False, **kwargs):
         """Save something into the epoch_logger's current state.
 
         Provide an arbitrary number of keyword arguments with numerical
         values.
         """
         for k, v in kwargs.items():
-            if k not in self.epoch_dict.keys():
-                self.epoch_dict[k] = []
-            self.epoch_dict[k].append(v)
+            if add_value:
+                if k not in self.log_current_row.keys():
+                    self.log_current_row[k] = [0]
+                self.log_current_row[k][0] += v
+            else:
+                if k not in self.epoch_dict.keys():
+                    self.epoch_dict[k] = []
+                self.epoch_dict[k].append(v)
+            
 
     def log_tabular(self, key, val=None, min_and_max=False, std=False):
         """Log a value or possibly the mean/std/min/max values of a diagnostic.
