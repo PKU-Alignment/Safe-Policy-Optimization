@@ -34,7 +34,7 @@ from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
-from safepo.common.env import make_env
+from safepo.common.env import make_sa_mujoco_env
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 from safepo.utils.config import single_agent_args
@@ -164,10 +164,10 @@ def main(args):
     local_steps_per_epoch = args.steps_per_epoch // args.num_envs
     epochs = args.total_steps // args.steps_per_epoch
 
-    env, obs_space, act_space = make_env(
+    env, obs_space, act_space = make_sa_mujoco_env(
         num_envs=args.num_envs, env_id=args.env_id, seed=args.seed
     )
-    eval_env, _, _ = make_env(num_envs=1, env_id=args.env_id, seed=None)
+    eval_env, _, _ = make_sa_mujoco_env(num_envs=1, env_id=args.env_id, seed=None)
 
     # create the actor-critic module
     policy = ActorVCritic(

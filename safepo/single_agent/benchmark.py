@@ -18,13 +18,6 @@ def parse_args():
         "--algo",
         nargs="+",
         default=[
-            "cup",
-            "focops",
-            "cpo",
-            "cppo_pid",
-            "rcpo",
-            "ppo_lag",
-            "trpo_lag",
             "pcpo",
         ],
         help="the ids of the algorithm to benchmark",

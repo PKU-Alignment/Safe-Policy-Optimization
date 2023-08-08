@@ -29,6 +29,17 @@ import pandas as pd
 import seaborn as sns
 from pandas import DataFrame
 
+algo_map = {
+    'cpo': 'CPO',
+    'ppo_lag': 'PPOLag',
+    'cppo_pid': 'CPPOPID',
+    'cup': 'CUP',
+    'trpo_lag': 'TRPOLag',
+    'pcpo': 'PCPO',
+    'rcpo': 'RCPO',
+    'focops': 'FOCOPS',
+}
+
 
 class Plotter:
     """Plotter class for plotting data from experiments.
@@ -191,7 +202,6 @@ class Plotter:
             if 'progress.csv' in files:
                 exp_name = None
                 steps_per_epoch = None
-                print(root)
                 try:
                     with open(os.path.join(root, 'config.json'), encoding='utf-8') as f:
                         config = json.load(f)
@@ -204,6 +214,7 @@ class Plotter:
                         f'Could not read from {config_path}'
                     ) from error
                 condition1 = condition or exp_name or 'exp'
+                condition1 = algo_map[condition1] if condition1 in algo_map else condition1
                 condition2 = condition1 + '-' + str(self.exp_idx)
                 self.exp_idx += 1
                 if condition1 not in self.units:
