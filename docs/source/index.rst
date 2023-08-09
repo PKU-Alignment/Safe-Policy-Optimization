@@ -1,5 +1,5 @@
-Welcome to Safe Policy Optimization's documentation!
-====================================================
+Welcome to SafePO's documentation!
+==================================
 
 Safe Policy Optimization is a comprehensive algorithm benchmark for Safe Reinforcement Learning (Safe RL).
 
