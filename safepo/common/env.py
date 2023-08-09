@@ -37,8 +37,29 @@ try :
 except ImportError:
     pass
 
-def make_env(num_envs: int, env_id: str, seed: int|None = None):
-    # create and wrap the environment
+def make_sa_mujoco_env(num_envs: int, env_id: str, seed: int|None = None):
+    """
+    Creates and wraps an environment based on the specified parameters.
+
+    Args:
+        num_envs (int): Number of parallel environments.
+        env_id (str): ID of the environment to create.
+        seed (int or None, optional): Seed for the random number generator. Default is None.
+
+    Returns:
+        env: The created and wrapped environment.
+        obs_space: The observation space of the environment.
+        act_space: The action space of the environment.
+        
+    Examples:
+        >>> from safepo.common.env import make_sa_mujoco_env
+        >>> 
+        >>> env, obs_space, act_space = make_sa_mujoco_env(
+        >>>     num_envs=1, 
+        >>>     env_id="SafetyPointGoal1-v0", 
+        >>>     seed=0
+        >>> )
+    """
     if num_envs > 1:
         def create_env() -> Callable:
             """Creates an environment that can enable or disable the environment checker."""
@@ -64,7 +85,21 @@ def make_env(num_envs: int, env_id: str, seed: int|None = None):
     return env, obs_space, act_space
 
 def make_sa_shadow_hand_env(args, cfg, cfg_train, sim_params):
+    """
+    Creates and returns a VecTaskPython environment for the single agent Shadow Hand task.
 
+    Args:
+        args: Command-line arguments.
+        cfg: Configuration for the environment.
+        cfg_train: Training configuration.
+        sim_params: Parameters for the simulation.
+
+    Returns:
+        env: VecTaskPython environment for the single agent Shadow Hand task.
+
+    Warning:
+        SafePO's single agent Shadow Hand task is not ready for use yet.
+    """
     # create native task and pass custom config
     device_id = args.device_id
     rl_device = args.device
@@ -85,8 +120,24 @@ def make_sa_shadow_hand_env(args, cfg, cfg_train, sim_params):
     return env
 
 def make_ma_mujoco_env(args, cfg_train):
+    """
+    Creates and returns a multi-agent environment using Mujoco scenarios.
+
+    Args:
+        args: Command-line arguments.
+        cfg_train: Training configuration.
+
+    Returns:
+        env: A multi-agent environment.
+    """
     def get_env_fn(rank):
         def init_env():
+            """
+            Initializes and returns a ShareEnv instance for the given rank.
+
+            Returns:
+                env: Initialized ShareEnv instance.
+            """
             env=ShareEnv(
                 scenario=args.scenario,
                 agent_conf=args.agent_conf,
@@ -102,7 +153,19 @@ def make_ma_mujoco_env(args, cfg_train):
         return ShareSubprocVecEnv([get_env_fn(i) for i in range(cfg_train['n_rollout_threads'])])
 
 def make_ma_shadow_hand_env(args, cfg, cfg_train, sim_params, agent_index):
+    """
+    Creates and returns a multi-agent environment for the Shadow Hand task.
 
+    Args:
+        args: Command-line arguments.
+        cfg: Configuration for the environment.
+        cfg_train: Training configuration.
+        sim_params: Parameters for the simulation.
+        agent_index: Index of the agent within the multi-agent environment.
+
+    Returns:
+        env: A multi-agent environment for the Shadow Hand task.
+    """
     # create native task and pass custom config
     device_id = args.device_id
     rl_device = args.device

@@ -208,40 +208,44 @@ Here we provide the list of arguments:
 
 ### Multi-Agent
 
-We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. HAPPO, IPPO, MACPO, MAPPO-Lag and MAPPO have already been implemented.
+We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. HAPPO, MACPO, MAPPO-Lag and MAPPO have already been implemented.
 
-| Argument                  	| Info                                        	| Default (for Safety DexterousHands) 	| Default (for Safety-Gymnasium multi-agent velocity) 	|
-|---------------------------	|---------------------------------------------	|-------------------------------------	|-----------------------------------------------------	|
-| --episode-length          	| Episode length                              	| 8                                   	| 200                                                 	|
-| --num-env-steps           	| The number of total steps                   	| 100000000                           	| 10000000                                            	|                              	|
-| --n-rollout-threads       	| The number of episodes to run               	| 80                                  	| 32                                                  	|
-| --hidden-size             	| The size of hidden layers of neural network 	| 512                                 	| 128                                                  	|
-| --entropy-coef            	| The coefficient of entropy                  	| 0.00                                	| 0.01                                                	|
-| --use-value-active-masks  	| Whether to use value active masks           	| False                               	| True                                                	|
-| --use-policy-active-masks 	| Whether to use policy active masks          	| False                               	| True                                                	|
 
-#### Multi-Agent Benchmark
+#### Multi-Agent Training
 
-To run a benchamrk parallelly, you can use the following command:
+To train a multi-agent algorithm:
 
 ```bash
 cd safepo/multi_agent
-# algo: macpo, mappo
-python benchmark.py --algo macpo mappo --tasks --workers 1 --exp-name benchmark
+# algo: macpo, mappo, happo, mappolag
+python macpo.py --agent-conf 4x2 --scenario Ant --experiment benchmark
 ```
 
-After running the benchmark, you can use the following command to plot the results:
+You can also train on isaac-gym based environment:
 
 ```bash
 cd safepo/multi_agent
+# algo: macpo, mappo, happo, mappolag
+python macpo.py --task ShadowHandOver --experiment benchmark
+```
+
+**Note**: The default value for ``task`` is ``MujucoVelocity``. The default scenrio is ``Ant`` while the default agent configuration is ``2x4``. You can run other agent or scenrio by:
+
+```bash
+cd safepo/multi_agent
+# algo: macpo, mappo, happo, mappolag
+python macpo.py --agent-conf 3x1 --scenario Hopper --experiment benchmark
+```
+
+### Plot the result
+
+After running the experiment, you can use the following command to plot the results:
+
+```bash
+cd safepo
 python plot.py --logdir ./runs/benchmark
 ```
 
-**Note**: To run a evaluation, you need to modify the `eval.py` file and specify the `basedir`. For example:
-  
-```python 
-basedir = './runs/benchmark'
-```
 
 ## Machine Configuration
 

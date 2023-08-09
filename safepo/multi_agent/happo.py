@@ -543,7 +543,7 @@ def train(args, cfg_train):
 
 if __name__ == '__main__':
     set_np_formatting()
-    args, cfg_env, cfg_train = multi_agent_args(algo="mappo")
+    args, cfg_env, cfg_train = multi_agent_args(algo="happo")
     set_seed(cfg_train.get("seed", -1), cfg_train.get("torch_deterministic", False))
     if args.write_terminal:
         train(args=args, cfg_train=cfg_train)

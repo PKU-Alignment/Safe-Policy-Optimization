@@ -22,7 +22,22 @@ from safepo.utils.util import get_shape_from_act_space, get_shape_from_obs_space
 
 
 class VectorizedOnPolicyBuffer:
-    def __init__(  # pylint: disable=too-many-arguments
+    """
+    A buffer for storing vectorized on-policy data for reinforcement learning.
+
+    Args:
+        obs_space (gymnasium.Space): The observation space.
+        act_space (gymnasium.Space): The action space.
+        size (int): The maximum size of the buffer.
+        gamma (float, optional): The discount factor for rewards. Defaults to 0.99.
+        lam (float, optional): The lambda parameter for GAE computation. Defaults to 0.95.
+        lam_c (float, optional): The lambda parameter for cost GAE computation. Defaults to 0.95.
+        standardized_adv_r (bool, optional): Whether to standardize advantage rewards. Defaults to True.
+        standardized_adv_c (bool, optional): Whether to standardize advantage costs. Defaults to True.
+        device (torch.device, optional): The device to store tensors on. Defaults to "cpu".
+        num_envs (int, optional): The number of parallel environments. Defaults to 1.
+    """
+    def __init__(
         self,
         obs_space,
         act_space,
@@ -67,7 +82,12 @@ class VectorizedOnPolicyBuffer:
         self.num_envs = num_envs
 
     def store(self, **data: torch.Tensor) -> None:
-        """Store vectorized data into vectorized buffer."""
+        """
+        Store vectorized data into the buffer.
+
+        Args:
+            **data: Keyword arguments specifying data tensors to be stored.
+        """
         for i, buffer in enumerate(self.buffers):
             assert self.ptr_list[i] < buffer["obs"].shape[0], "Buffer overflow"
             for key, value in data.items():
@@ -80,6 +100,14 @@ class VectorizedOnPolicyBuffer:
         last_value_c: torch.Tensor | None = None,
         idx: int = 0,
     ) -> None:
+        """
+        Finalize the trajectory path and compute advantages and value targets.
+
+        Args:
+            last_value_r (torch.Tensor, optional): The last value estimate for rewards. Defaults to None.
+            last_value_c (torch.Tensor, optional): The last value estimate for costs. Defaults to None.
+            idx (int, optional): Index of the environment. Defaults to 0.
+        """
         if last_value_r is None:
             last_value_r = torch.zeros(1, device=self._device)
         if last_value_c is None:
@@ -112,6 +140,12 @@ class VectorizedOnPolicyBuffer:
         self.path_start_idx_list[idx] = self.ptr_list[idx]
 
     def get(self) -> dict[str, torch.Tensor]:
+        """
+        Retrieve collected data from the buffer.
+
+        Returns:
+            dict[str, torch.Tensor]: A dictionary containing collected data tensors.
+        """
         data_pre = {k: [v] for k, v in self.buffers[0].items()}
         for buffer in self.buffers[1:]:
             for k, v in buffer.items():
@@ -131,6 +165,20 @@ class VectorizedOnPolicyBuffer:
 
 
 def discount_cumsum(vector_x: torch.Tensor, discount: float) -> torch.Tensor:
+    """
+    Compute the discounted cumulative sum of a tensor along its first dimension.
+
+    This function computes the discounted cumulative sum of the input tensor `vector_x` along
+    its first dimension. The discount factor `discount` is applied to compute the weighted sum
+    of future values. The resulting tensor has the same shape as the input tensor.
+
+    Args:
+        vector_x (torch.Tensor): Input tensor with shape `(length, ...)`.
+        discount (float): Discount factor for future values.
+
+    Returns:
+        torch.Tensor: Tensor containing the discounted cumulative sum of `vector_x`.
+    """
     length = vector_x.shape[0]
     vector_x = vector_x.type(torch.float64)
     cumsum = vector_x[-1]
@@ -159,6 +207,15 @@ def _cast(x):
     return x.transpose(1,0,2).reshape(-1, *x.shape[2:])
 
 class SeparatedReplayBuffer(object):
+    """Buffer for storing and managing data collected during training.
+
+    Args:
+        config (dict): Configuration parameters for the replay buffer.
+        obs_space: Observation space of the environment.
+        share_obs_space: Shared observation space of the environment (if applicable).
+        act_space: Action space of the environment.
+    """
+    
     def __init__(self, config, obs_space, share_obs_space, act_space):
         self.episode_length = config["episode_length"]
         self.n_rollout_threads = config["n_rollout_threads"]
@@ -222,6 +279,7 @@ class SeparatedReplayBuffer(object):
 
     def update_factor(self, factor):
         self.factor.copy_(factor)
+
     def return_aver_insert(self, aver_episode_costs):
         # self.aver_episode_costs = aver_episode_costs.copy()
         self.aver_episode_costs = aver_episode_costs.clone()
@@ -229,6 +287,31 @@ class SeparatedReplayBuffer(object):
     def insert(self, share_obs, obs, rnn_states, rnn_states_critic, actions, action_log_probs,
                value_preds, rewards, masks, bad_masks=None, active_masks=None, available_actions=None, costs=None,
                cost_preds=None, rnn_states_cost=None, done_episodes_costs_aver=None, aver_episode_costs = 0):
+        """
+        Inserts data from a single time step into the replay buffer.
+
+        Args:
+            share_obs: Shared observations for the time step.
+            obs: Observations for the time step.
+            rnn_states: RNN states for the main network.
+            rnn_states_critic: RNN states for the critic network.
+            actions: Actions taken at the time step.
+            action_log_probs: Log probabilities of the actions.
+            value_preds: Value predictions at the time step.
+            rewards: Rewards received at the time step.
+            masks: Masks indicating whether the episode is done.
+            bad_masks: Masks indicating bad episodes (optional).
+            active_masks: Masks indicating active episodes (optional).
+            available_actions: Available actions for discrete action spaces (optional).
+            costs: Costs associated with the time step (optional).
+            cost_preds: Cost predictions at the time step (optional).
+            rnn_states_cost: RNN states for cost prediction (optional).
+            done_episodes_costs_aver: Average costs of done episodes (optional).
+            aver_episode_costs: Average episode costs (optional).
+
+        Note:
+            This method inserts data for a single time step into the replay buffer and updates the internal step counter.
+        """
         self.share_obs[self.step + 1].copy_(share_obs)
         self.obs[self.step + 1].copy_(obs)
         self.rnn_states[self.step + 1].copy_(rnn_states)
@@ -250,13 +333,32 @@ class SeparatedReplayBuffer(object):
             self.cost_preds[self.step].copy_(cost_preds)
         if rnn_states_cost is not None:
             self.rnn_states_cost[self.step + 1].copy_(rnn_states_cost)
-        # if train_episode_costs_aver is not None:
-        #     self.train_episode_costs_aver[self.step + 1] = train_episode_costs_aver.copy()
 
         self.step = (self.step + 1) % self.episode_length
 
     def chooseinsert(self, share_obs, obs, rnn_states, rnn_states_critic, actions, action_log_probs,
                      value_preds, rewards, masks, bad_masks=None, active_masks=None, available_actions=None):
+        """
+        Inserts data from a single time step into the replay buffer, overwriting the oldest data if needed.
+
+        Args:
+            share_obs: Shared observations for the time step.
+            obs: Observations for the time step.
+            rnn_states: RNN states for the main network.
+            rnn_states_critic: RNN states for the critic network.
+            actions: Actions taken at the time step.
+            action_log_probs: Log probabilities of the actions.
+            value_preds: Value predictions at the time step.
+            rewards: Rewards received at the time step.
+            masks: Masks indicating whether the episode is done.
+            bad_masks: Masks indicating bad episodes (optional).
+            active_masks: Masks indicating active episodes (optional).
+            available_actions: Available actions for discrete action spaces (optional).
+
+        Note:
+            This method inserts data for a single time step into the replay buffer while potentially overwriting the oldest data
+            if the buffer is full. The internal step counter is also updated.
+        """
         self.share_obs[self.step] = share_obs.copy_()
         self.obs[self.step] = obs.copy_()
         self.rnn_states[self.step + 1] = rnn_states.copy_()
@@ -294,7 +396,18 @@ class SeparatedReplayBuffer(object):
 
     def compute_returns(self, next_value, value_normalizer=None):
         """
-        use proper time limits, the difference of use or not is whether use bad_mask
+        Computes the discounted cumulative returns for each time step.
+
+        Args:
+            next_value: Estimated value of the next time step.
+            value_normalizer: Normalizer for value predictions (optional).
+
+        Note:
+            This method calculates the discounted cumulative returns (GAE or regular) for each time step,
+            taking into account various buffer settings and optional value normalization.
+
+        Returns:
+            None
         """
         if self._use_proper_time_limits:
             if self._use_gae:
@@ -468,6 +581,18 @@ class SeparatedReplayBuffer(object):
                     yield share_obs_batch, obs_batch, rnn_states_batch, rnn_states_critic_batch, actions_batch, value_preds_batch, return_batch, masks_batch, active_masks_batch, old_action_log_probs_batch, adv_targ, available_actions_batch, factor_batch
 
     def naive_recurrent_generator(self, advantages, num_mini_batch):
+        """
+        A generator that yields batches of data for PPO training using naive recurrent sampling.
+
+        Args:
+            advantages: Advantage estimates for each time step.
+            num_mini_batch: Number of mini-batches to generate.
+
+        Yields:
+            tuple: A batch of training data for PPO, containing share_obs_batch, obs_batch, rnn_states_batch,
+                   rnn_states_critic_batch, actions_batch, value_preds_batch, return_batch, masks_batch,
+                   active_masks_batch, old_action_log_probs_batch, adv_targ, available_actions_batch (and factor_batch if self.factor is not None).
+        """
         n_rollout_threads = self.rewards.shape[1]
         assert n_rollout_threads >= num_mini_batch, (
             "PPO requires the number of processes ({}) "
@@ -550,6 +675,19 @@ class SeparatedReplayBuffer(object):
                 yield share_obs_batch, obs_batch, rnn_states_batch, rnn_states_critic_batch, actions_batch, value_preds_batch, return_batch, masks_batch, active_masks_batch, old_action_log_probs_batch, adv_targ, available_actions_batch
 
     def recurrent_generator(self, advantages, num_mini_batch, data_chunk_length):
+        """
+        A generator that yields batches of data for PPO training using recurrent sampling.
+
+        Args:
+            advantages: Advantage estimates for each time step.
+            num_mini_batch: Number of mini-batches to generate.
+            data_chunk_length: Length of each data chunk to sample.
+
+        Yields:
+            tuple: A batch of training data for PPO, containing share_obs_batch, obs_batch, rnn_states_batch,
+                   rnn_states_critic_batch, actions_batch, value_preds_batch, return_batch, masks_batch,
+                   active_masks_batch, old_action_log_probs_batch, adv_targ, available_actions_batch (and factor_batch if self.factor is not None).
+        """
         episode_length, n_rollout_threads = self.rewards.shape[0:2]
         batch_size = n_rollout_threads * episode_length
         data_chunks = batch_size // data_chunk_length  # [C=r*T/L]

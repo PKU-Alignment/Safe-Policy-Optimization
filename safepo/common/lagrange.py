@@ -22,47 +22,21 @@ import torch
 
 
 class Lagrange:
-    """Base class for Lagrangian-base Algorithms.
-
-    This class implements the Lagrange multiplier update and the Lagrange loss.
-
-    ..  note::
-        Any traditional policy gradient algorithm can be converted to a Lagrangian-based algorithm
-        by inheriting from this class and implementing the :meth:`_loss_pi` method.
-
-    Examples:
-        >>> from omnisafe.common.lagrange import Lagrange
-        >>> def loss_pi(self, data):
-        ...     # implement your own loss function here
-        ...     return loss
-
-    You can also inherit this class to implement your own Lagrangian-based algorithm, with any
-    policy gradient method you like in OmniSafe.
-
-    Examples:
-        >>> from omnisafe.common.lagrange import Lagrange
-        >>> class CustomAlgo:
-        ...     def __init(self) -> None:
-        ...         # initialize your own algorithm here
-        ...         super().__init__()
-        ...         # initialize the Lagrange multiplier
-        ...         self.lagrange = Lagrange(**self._cfgs.lagrange_cfgs)
-
+    """Lagrange multiplier for constrained optimization.
+    
     Args:
-        cost_limit (float): The cost limit.
-        lagrangian_multiplier_init (float): The initial value of the Lagrange multiplier.
-        lambda_lr (float): The learning rate of the Lagrange multiplier.
-        lambda_optimizer (str): The optimizer for the Lagrange multiplier.
-        lagrangian_upper_bound (float or None, optional): The upper bound of the Lagrange multiplier.
-            Defaults to None.
+        cost_limit: the cost limit
+        lagrangian_multiplier_init: the initial value of the lagrangian multiplier
+        lagrangian_multiplier_lr: the learning rate of the lagrangian multiplier
+        lagrangian_upper_bound: the upper bound of the lagrangian multiplier
 
     Attributes:
-        cost_limit (float): The cost limit.
-        lambda_lr (float): The learning rate of the Lagrange multiplier.
-        lagrangian_upper_bound (float, optional): The upper bound of the Lagrange multiplier.
-            Defaults to None.
-        lagrangian_multiplier (torch.nn.Parameter): The Lagrange multiplier.
-        lambda_range_projection (torch.nn.ReLU): The projection function for the Lagrange multiplier.
+        cost_limit: the cost limit  
+        lagrangian_multiplier_lr: the learning rate of the lagrangian multiplier
+        lagrangian_upper_bound: the upper bound of the lagrangian multiplier
+        _lagrangian_multiplier: the lagrangian multiplier
+        lambda_range_projection: the projection function of the lagrangian multiplier
+        lambda_optimizer: the optimizer of the lagrangian multiplier    
     """
 
     # pylint: disable-next=too-many-arguments
@@ -94,42 +68,32 @@ class Lagrange:
 
     @property
     def lagrangian_multiplier(self) -> torch.Tensor:
-        """Getter for Lagrange multiplier.
-
+        """The lagrangian multiplier.
+        
         Returns:
-            Lagrange multiplier.
+            the lagrangian multiplier
         """
         return self.lambda_range_projection(self._lagrangian_multiplier).detach().item()
 
     def compute_lambda_loss(self, mean_ep_cost: float) -> torch.Tensor:
-        """Penalty loss for Lagrange multiplier.
-
-        .. note::
-            ``mean_ep_cost`` is obtained from ``self.logger.get_stats('EpCosts')[0]``, which is
-            already averaged across MPI processes.
-
+        """Compute the loss of the lagrangian multiplier.
+        
         Args:
-            mean_ep_cost (float): mean episode cost.
-
+            mean_ep_cost: the mean episode cost
+            
         Returns:
-            Penalty loss for Lagrange multiplier.
+            the loss of the lagrangian multiplier
         """
         return -self._lagrangian_multiplier * (mean_ep_cost - self.cost_limit)
 
     def update_lagrange_multiplier(self, Jc: float) -> None:
-        r"""Update Lagrange multiplier (lambda).
-
-        We update the Lagrange multiplier by minimizing the penalty loss, which is defined as:
-
-        .. math::
-
-            \lambda ^{'} = \lambda + \eta \cdot (J_C - J_C^*)
-
-        where :math:`\lambda` is the Lagrange multiplier, :math:`\eta` is the learning rate,
-        :math:`J_C` is the mean episode cost, and :math:`J_C^*` is the cost limit.
-
+        """Update the lagrangian multiplier.
+        
         Args:
-            Jc (float): mean episode cost.
+            Jc: the mean episode cost
+            
+        Returns:
+            the loss of the lagrangian multiplier
         """
         self.lambda_optimizer.zero_grad()
         lambda_loss = self.compute_lambda_loss(Jc)
@@ -142,35 +106,41 @@ class Lagrange:
 
 
 class PIDLagrangian:
-    """PID version of Lagrangian.
 
-    Similar to the :class:`Lagrange` module, this module implements the PID version of the
-    lagrangian method.
-
-    .. note::
-        The PID-Lagrange is more general than the Lagrange, and can be used in any policy gradient
-        algorithm. As PID_Lagrange use the PID controller to control the lagrangian multiplier, it
-        is more stable than the naive Lagrange.
+    """PID Lagrangian multiplier for constrained optimization.
 
     Args:
-        pid_kp (float): The proportional gain of the PID controller.
-        pid_ki (float): The integral gain of the PID controller.
-        pid_kd (float): The derivative gain of the PID controller.
-        pid_d_delay (int): The delay of the derivative term.
-        pid_delta_p_ema_alpha (float): The exponential moving average alpha of the delta_p.
-        pid_delta_d_ema_alpha (float): The exponential moving average alpha of the delta_d.
-        sum_norm (bool): Whether to use the sum norm.
-        diff_norm (bool): Whether to use the diff norm.
-        penalty_max (int): The maximum penalty.
-        lagrangian_multiplier_init (float): The initial value of the lagrangian multiplier.
-        cost_limit (float): The cost limit.
+        cost_limit: the cost limit
+        lagrangian_multiplier_init: the initial value of the lagrangian multiplier
+        pid_kp: the proportional gain of the PID controller
+        pid_ki: the integral gain of the PID controller
+        pid_kd: the derivative gain of the PID controller
+        pid_d_delay: the delay of the derivative term
+        pid_delta_p_ema_alpha: the exponential moving average alpha of the delta_p
+        pid_delta_d_ema_alpha: the exponential moving average alpha of the delta_d
+        sum_norm: whether to normalize the sum of the PID output
+        diff_norm: whether to normalize the difference of the PID output
+        penalty_max: the maximum value of the penalty
+
+    Attributes:
+        cost_limit: the cost limit
+        lagrangian_multiplier_init: the initial value of the lagrangian multiplier
+        pid_kp: the proportional gain of the PID controller
+        pid_ki: the integral gain of the PID controller
+        pid_kd: the derivative gain of the PID controller
+        pid_d_delay: the delay of the derivative term
+        pid_delta_p_ema_alpha: the exponential moving average alpha of the delta_p
+        pid_delta_d_ema_alpha: the exponential moving average alpha of the delta_d
+        sum_norm: whether to normalize the sum of the PID output
+        diff_norm: whether to normalize the difference of the PID output
+        penalty_max: the maximum value of the penalty
 
     References:
         - Title: Responsive Safety in Reinforcement Learning by PID Lagrangian Methods
-        - Authors: Joshua Achiam, David Held, Aviv Tamar, Pieter Abbeel.
-        - URL: `PID Lagrange <https://arxiv.org/abs/2007.03964>`_
+        - Authors: Adam Stooke, Joshua Achiam, Pieter Abbeel.
+        - URL: `CPPOPID <https://arxiv.org/abs/2007.03964>`_
     """
-
+    
     # pylint: disable-next=too-many-arguments
     def __init__(
         self,
@@ -210,21 +180,6 @@ class PIDLagrangian:
         return self._cost_penalty
 
     def update_lagrange_multiplier(self, ep_cost_avg: float) -> None:
-        r"""Update the PID controller.
-
-        PID controller update the lagrangian multiplier following the next equation:
-
-        .. math::
-
-            \lambda_{t+1} = \lambda_t + (K_p e_p + K_i \int e_p dt + K_d \frac{d e_p}{d t}) \eta
-
-        where :math:`e_p` is the error between the current episode cost and the cost limit,
-        :math:`K_p`, :math:`K_i`, :math:`K_d` are the PID parameters, and :math:`\eta` is the
-        learning rate.
-
-        Args:
-            ep_cost_avg (float): The average cost of the current episode.
-        """
         delta = float(ep_cost_avg - self._cost_limit)
         self._pid_i = max(0.0, self._pid_i + delta * self._pid_ki)
         if self._diff_norm:

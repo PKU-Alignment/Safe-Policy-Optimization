@@ -30,10 +30,7 @@ from typing import Optional
 
 
 class ShareEnv(SafeMAEnv):
-    """
-    A environment wrapper to provide shared observation for multi-agent environment.
-    """
-
+    
     def __init__(
         self,
         scenario: str,
@@ -45,35 +42,6 @@ class ShareEnv(SafeMAEnv):
         render_mode: str | None = None,
         **kwargs,
     ):
-        """Init.
-
-        Args:
-            scenario: The Task/Environment, valid values:
-                "Ant", "HalfCheetah", "Hopper", "HumanoidStandup", "Humanoid", "Reacher", "Swimmer", "Pusher", "Walker2d", "InvertedPendulum", "InvertedDoublePendulum", "ManySegmentSwimmer", "ManySegmentAnt", "CoupledHalfCheetah"
-            agent_conf: '${Number Of Agents}x${Number Of Segments per Agent}${Optionally Additional options}', eg '1x6', '2x4', '2x4d',
-                If it set to None the task becomes single agent (the agent observes the entire environment, and performs all the actions)
-            agent_obsk: Number of nearest joints to observe,
-                If set to 0 it only observes local state,
-                If set to 1 it observes local state + 1 joint over,
-                If set to 2 it observes local state + 2 joints over,
-                If it set to None the task becomes single agent (the agent observes the entire environment, and performs all the actions)
-                The Default value is: 1
-            agent_factorization: A custom factorization of the MuJoCo environment (overwrites agent_conf),
-                see DOC [how to create new agent factorizations](https://robotics.farama.org/envs/MaMuJoCo/index.html#how-to-create-new-agent-factorizations).
-            local_categories: The categories of local observations for each observation depth,
-                It takes the form of a list where the k-th element is the list of observable items observable at the k-th depth
-                For example: if it is set to `[["qpos, qvel"], ["qvel"]]` then means each agent observes its own position and velocity elements, and it's neighbors velocity elements.
-                The default is: Check each environment's page on the "observation space" section.
-            global_categories: The categories of observations extracted from the global observable space,
-                For example: if it is set to `("qpos")` out of the globally observable items of the environment, only the position items will be observed.
-                The default is: Check each environment's page on the "observation space" section.
-            render_mode: see [Gymansium/MuJoCo](https://gymnasium.farama.org/environments/mujoco/),
-                valid values: 'human', 'rgb_array', 'depth_array'
-            kwargs: Additional arguments passed to the [Gymansium/MuJoCo](https://gymnasium.farama.org/environments/mujoco/) environment,
-                Note: arguments that change the observation space will not work.
-
-            Raises: NotImplementedError: When the scenario is not supported (not part of of the valid values)
-        """
         super().__init__(
             scenario=scenario,
             agent_conf=agent_conf,
@@ -95,7 +63,6 @@ class ShareEnv(SafeMAEnv):
             self.observation_spaces[f"agent_{agent}"] = Box(low=-10, high=10, shape=(self.obs_size,)) 
 
     def _get_obs(self):
-        """Returns all agent observat3ions in a list"""
         state = self.env.state()
         obs_n = []
         for a in range(self.num_agents):
@@ -107,11 +74,9 @@ class ShareEnv(SafeMAEnv):
         return obs_n
 
     def _get_obs_size(self):
-        """Returns the shape of the observation"""
         return len(self._get_obs()[0])
 
     def _get_share_obs(self):
-        # TODO: May want global states for different teams (so cannot see what the other team is communicating e.g.)
         state = self.env.state()
         state_normed = (state - np.mean(state)) / (np.std(state)+1e-8)
         share_obs = []
@@ -120,11 +85,9 @@ class ShareEnv(SafeMAEnv):
         return share_obs
 
     def _get_share_obs_size(self):
-        """Returns the shape of the share observation"""
         return len(self._get_share_obs()[0])
 
     def _get_avail_actions(self):
-        """All actions are always available"""
         return np.ones(
             shape=(
                 self.num_agents,
@@ -133,7 +96,6 @@ class ShareEnv(SafeMAEnv):
         )
 
     def reset(self, seed=None):
-        """Reset the environment."""
         super().reset(seed=seed)
         return self._get_obs(), self._get_share_obs(), self._get_avail_actions()
 
@@ -147,16 +109,6 @@ class ShareEnv(SafeMAEnv):
         dict[str, np.ndarray],
         dict[str, str],
     ]:
-        """Runs one timestep of the environment using the agents's actions.
-
-        Note: if step is called after the agents have terminated/truncated the envrioment will continue to work as normal
-        Args:
-            actions:
-                the actions of all agents
-
-        Returns:
-            see pettingzoo.utils.env.ParallelEnv.step() doc
-        """
         dict_actions={}
         for agent_id, agent in enumerate(self.possible_agents):
             dict_actions[agent]=actions[agent_id].cpu().numpy()
@@ -171,9 +123,6 @@ class ShareEnv(SafeMAEnv):
 
 
 class CloudpickleWrapper:
-    """
-    Uses cloudpickle to serialize contents (otherwise multiprocessing tries to use pickle)
-    """
 
     def __init__(self, x):
         self.x = x
@@ -190,12 +139,6 @@ class CloudpickleWrapper:
 
 
 class ShareVecEnv(ABC):
-    """
-    An abstract asynchronous, vectorized environment.
-    Used to batch data from multiple copies of an environment, so that
-    each observation becomes an batch of observations, and expected action is a batch of actions to
-    be applied per-environment.
-    """
 
     closed = False
     viewer = None
@@ -366,9 +309,6 @@ def shareworker(remote, parent_remote, env_fn_wrapper):
 
 class ShareSubprocVecEnv(ShareVecEnv):
     def __init__(self, env_fns, device=torch.device("cpu")):
-        """
-        envs: list of gym environments to run in subprocesses
-        """
         self.waiting = False
         self.closed = False
         self.device = device

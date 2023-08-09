@@ -30,6 +30,17 @@ from safepo.utils.util import get_shape_from_obs_space
 
 
 def build_mlp_network(sizes):
+    """
+    Build a multi-layer perceptron (MLP) neural network.
+
+    This function constructs an MLP network with the specified layer sizes and activation functions.
+
+    Args:
+        sizes (list of int): List of integers representing the sizes of each layer in the network.
+
+    Returns:
+        nn.Sequential: An instance of PyTorch's Sequential module representing the constructed MLP.
+    """
     layers = list()
     for j in range(len(sizes) - 1):
         act = nn.Tanh if j < len(sizes) - 2 else nn.Identity
@@ -40,7 +51,26 @@ def build_mlp_network(sizes):
 
 
 class Actor(nn.Module):
-    """Actor network."""
+    """
+    Actor network for policy-based reinforcement learning.
+
+    This class represents an actor network that outputs a distribution over actions given observations.
+
+    Args:
+        obs_dim (int): Dimensionality of the observation space.
+        act_dim (int): Dimensionality of the action space.
+
+    Attributes:
+        mean (nn.Sequential): MLP network representing the mean of the action distribution.
+        log_std (nn.Parameter): Learnable parameter representing the log standard deviation of the action distribution.
+
+    Example:
+        obs_dim = 10
+        act_dim = 2
+        actor = Actor(obs_dim, act_dim)
+        observation = torch.randn(1, obs_dim)
+        action_distribution = actor(observation)
+    """
 
     def __init__(self, obs_dim: int, act_dim: int):
         super().__init__()
@@ -54,7 +84,23 @@ class Actor(nn.Module):
 
 
 class VCritic(nn.Module):
-    """Critic network."""
+    """
+    Critic network for value-based reinforcement learning.
+
+    This class represents a critic network that estimates the value function for input observations.
+
+    Args:
+        obs_dim (int): Dimensionality of the observation space.
+
+    Attributes:
+        critic (nn.Sequential): MLP network representing the critic function.
+
+    Example:
+        obs_dim = 10
+        critic = VCritic(obs_dim)
+        observation = torch.randn(1, obs_dim)
+        value_estimate = critic(observation)
+    """
 
     def __init__(self, obs_dim):
         super().__init__()
@@ -65,7 +111,24 @@ class VCritic(nn.Module):
 
 
 class ActorVCritic(nn.Module):
-    """Actor critic policy."""
+    """
+    Actor-critic policy for reinforcement learning.
+
+    This class represents an actor-critic policy that includes an actor network, two critic networks for reward
+    and cost estimation, and provides methods for taking policy steps and estimating values.
+
+    Args:
+        obs_dim (int): Dimensionality of the observation space.
+        act_dim (int): Dimensionality of the action space.
+
+    Example:
+        obs_dim = 10
+        act_dim = 2
+        actor_critic = ActorVCritic(obs_dim, act_dim)
+        observation = torch.randn(1, obs_dim)
+        action, log_prob, reward_value, cost_value = actor_critic.step(observation)
+        value_estimate = actor_critic.get_value(observation)
+    """
 
     def __init__(self, obs_dim, act_dim):
         super().__init__()
@@ -74,9 +137,30 @@ class ActorVCritic(nn.Module):
         self.actor = Actor(obs_dim, act_dim)
 
     def get_value(self, obs):
+        """
+        Estimate the value of observations using the critic network.
+
+        Args:
+            obs (torch.Tensor): Input observation tensor.
+
+        Returns:
+            torch.Tensor: Estimated value for the input observation.
+        """
         return self.critic(obs)
 
     def step(self, obs, deterministic=False):
+        """
+        Take a policy step based on observations.
+
+        Args:
+            obs (torch.Tensor): Input observation tensor.
+            deterministic (bool): Flag indicating whether to take a deterministic action.
+
+        Returns:
+            tuple: Tuple containing action tensor, log probabilities of the action, reward value estimate,
+                   and cost value estimate.
+        """
+
         dist = self.actor(obs)
         if deterministic:
             action = dist.mean
@@ -88,6 +172,42 @@ class ActorVCritic(nn.Module):
         return action, log_prob, value_r, value_c
 
 class MultiAgentActor(nn.Module):
+    """
+    Multi-agent actor network for reinforcement learning.
+
+    This class represents a multi-agent actor network that takes observations as input and produces actions and
+    action probabilities as outputs. It includes options for using recurrent layers and policy active masks.
+
+    Args:
+        config (dict): Configuration parameters for the actor network.
+        obs_space: Observation space of the environment.
+        action_space: Action space of the environment.
+        device (torch.device): Device to run the network on (default is "cpu").
+
+    Attributes:
+        hidden_size (int): Size of the hidden layers.
+        config (dict): Configuration parameters for the actor network.
+        _gain (float): Gain factor for action scaling.
+        _use_orthogonal (bool): Flag indicating whether to use orthogonal initialization.
+        _use_policy_active_masks (bool): Flag indicating whether to use policy active masks.
+        _use_naive_recurrent_policy (bool): Flag indicating whether to use naive recurrent policy.
+        _use_recurrent_policy (bool): Flag indicating whether to use recurrent policy.
+        _recurrent_N (int): Number of recurrent layers.
+        tpdv (dict): Dictionary with data type and device for tensor conversion.
+        
+    Example:
+        config = {"hidden_size": 64, "gain": 0.1, ...}
+        obs_space = gym.spaces.Box(low=0, high=1, shape=(4,))
+        action_space = gym.spaces.Discrete(2)
+        actor = MultiAgentActor(config, obs_space, action_space)
+        observation = torch.randn(1, 4)
+        rnn_states = torch.zeros(1, 64)
+        masks = torch.ones(1, 1)
+        actions, action_log_probs, new_rnn_states = actor(observation, rnn_states, masks)
+        action = torch.tensor([0])
+        action_log_probs, dist_entropy = actor.evaluate_actions(observation, rnn_states, action, masks)
+    """
+
     def __init__(self, config, obs_space, action_space, device=torch.device("cpu")):
         super(MultiAgentActor, self).__init__()
         self.hidden_size = config["hidden_size"]
@@ -112,6 +232,20 @@ class MultiAgentActor(nn.Module):
         self.to(device)
 
     def forward(self, obs, rnn_states, masks, available_actions=None, deterministic=False):
+        """
+        Perform a forward pass through the network to generate actions and log probabilities.
+
+        Args:
+            obs (torch.Tensor): Input observation tensor.
+            rnn_states (torch.Tensor): Recurrent states tensor.
+            masks (torch.Tensor): Mask tensor.
+            available_actions (torch.Tensor, optional): Available actions tensor (default: None).
+            deterministic (bool, optional): Flag indicating whether to take deterministic actions (default: False).
+
+        Returns:
+            tuple: Tuple containing action tensor, log probability tensor, and new recurrent states tensor.
+        """
+
         obs = check(obs).to(**self.tpdv)
         rnn_states = check(rnn_states).to(**self.tpdv)
         masks = check(masks).to(**self.tpdv)
@@ -128,6 +262,21 @@ class MultiAgentActor(nn.Module):
         return actions, action_log_probs, rnn_states
 
     def evaluate_actions(self, obs, rnn_states, action, masks, available_actions=None, active_masks=None):
+        """
+        Evaluate the actions based on the network's policy.
+
+        Args:
+            obs (torch.Tensor): Input observation tensor.
+            rnn_states (torch.Tensor): Recurrent states tensor.
+            action (torch.Tensor): Action tensor.
+            masks (torch.Tensor): Mask tensor.
+            available_actions (torch.Tensor, optional): Available actions tensor (default: None).
+            active_masks (torch.Tensor, optional): Active masks tensor (default: None).
+
+        Returns:
+            tuple: Tuple containing action log probabilities tensor, distribution entropy tensor,
+                   action mean tensor, action standard deviation tensor, and other optional tensors.
+        """
         obs = check(obs).to(**self.tpdv)
         rnn_states = check(rnn_states).to(**self.tpdv)
         action = check(action).to(**self.tpdv)
@@ -172,6 +321,26 @@ class MultiAgentActor(nn.Module):
 
 
 class MultiAgentCritic(nn.Module):
+    """
+    Multi-agent critic network.
+
+    This class represents a multi-agent critic network used in reinforcement learning algorithms.
+    It consists of a base network (CNN or MLP), recurrent layers (if applicable), and a value output layer.
+
+    Args:
+        config (dict): Configuration dictionary.
+        cent_obs_space (gym.spaces.Space): Centralized observation space.
+        device (torch.device): Device to use for computations (default: cuda:0).
+
+    Attributes:
+        hidden_size (int): Size of the hidden layer.
+        _use_orthogonal (bool): Flag indicating whether to use orthogonal initialization.
+        _use_naive_recurrent_policy (bool): Flag indicating whether to use naive recurrent policy.
+        _use_recurrent_policy (bool): Flag indicating whether to use recurrent policy.
+        _recurrent_N (int): Number of recurrent layers.
+        tpdv (dict): Dictionary for tensor properties.
+    """
+    
     def __init__(self, config, cent_obs_space, device=torch.device("cuda:0")):
         super(MultiAgentCritic, self).__init__()
         self.hidden_size = config["hidden_size"]
@@ -197,6 +366,18 @@ class MultiAgentCritic(nn.Module):
         self.to(device)
 
     def forward(self, cent_obs, rnn_states, masks):
+        """
+        Perform a forward pass through the network to compute value estimates.
+
+        Args:
+            cent_obs (torch.Tensor): Centralized observation tensor.
+            rnn_states (torch.Tensor): Recurrent states tensor.
+            masks (torch.Tensor): Mask tensor.
+
+        Returns:
+            tuple: Tuple containing value estimates tensor and new recurrent states tensor.
+        """
+
         cent_obs = check(cent_obs).to(**self.tpdv)
         rnn_states = check(rnn_states).to(**self.tpdv)
         masks = check(masks).to(**self.tpdv)

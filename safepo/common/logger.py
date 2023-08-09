@@ -120,10 +120,16 @@ def colorize(string, color, bold=False, highlight=False):
 
 class Logger:
     """
-    A general-purpose logger.
-
-    Makes it easy to save diagnostics, hyper-parameter configurations, the
-    state of a training run, and the trained model.
+    A class for logging experimental data and managing logging-related functionalities.
+    
+    Args:
+        log_dir (str): The directory path for storing log files.
+        seed (int or None): The seed for reproducibility. Default is None.
+        output_fname (str): The name of the output file. Default is "progress.csv".
+        debug (bool): Toggle for debugging mode. Default is False.
+        level (int): The logging level. Default is 1.
+        use_tensorboard (bool): Toggle for using TensorBoard logging. Default is True.
+        verbose (bool): Toggle for verbose output. Default is True.
     """
 
     def __init__(
@@ -136,25 +142,6 @@ class Logger:
         use_tensorboard=True,
         verbose=True,
     ):
-        """
-        Initialize a Logger.
-
-        Args:
-            log_dir (string): A directory for saving results to. If
-                ``None``, defaults to a temp directory of the form
-                ``/tmp/experiments/somerandomnumber``.
-
-            output_fname (string): Name for the tab-separated-value file
-                containing metrics logged throughout a training run.
-                Defaults to ``progress.txt``.
-
-            exp_name (string): Experiment name. If you run multiple training
-                runs and give them all the same ``exp_name``, the plotter
-                will know to group them. (Use case: if you run the same
-                hyperparameter configuration with multiple random seeds, you
-                should give them all the same ``exp_name``.)
-        """
-
         self.log_dir = log_dir
         self.debug = debug
         self.level = level
@@ -185,9 +172,7 @@ class Logger:
             self.summary_writer = SummaryWriter(os.path.join(self.log_dir, "tb"))
 
     def close(self):
-        """Close opened output files immediately after training in order to
-        avoid number of open files overflow. Avoids the following error:
-        OSError: [Errno 24] Too many open files
+        """Close the output file.
         """
         self.output_file.close()
 
@@ -203,12 +188,15 @@ class Logger:
 
     def log_tabular(self, key, val):
         """
-        Log a value of some diagnostic.
+        Log a key-value pair in a tabular format for subsequent output.
 
-        Call this only once for each diagnostic quantity, each iteration.
-        After using ``log_tabular`` to store values for each diagnostic,
-        make sure to call ``dump_tabular`` to write them out to file and
-        stdout (otherwise they will not get saved anywhere).
+        Args:
+            key (str): The key to log.
+            val: The corresponding value to log.
+
+        Raises:
+            AssertionError: If attempting to introduce a new key that was not included
+                in the first iteration, or if the key has already been set in the current iteration.
         """
         if self.first_row:
             self.log_headers.append(key)
@@ -225,19 +213,16 @@ class Logger:
 
     def save_config(self, config):
         """
-        Log an experiment configuration.
+        Save the experiment configuration as a JSON file.
 
-        Call this once at the top of your experiment, passing in all important
-        config vars as a dict. This will serialize the config to JSON, while
-        handling anything which can't be serialized in a graceful way (writing
-        as informative a string as possible).
+        Args:
+            config (dict): The experiment configuration to be saved.
 
-        Example use:
+        Notes:
+            If `exp_name` is specified, it will be added to the configuration.
 
-        .. code-block:: python
-
-            logger = EpochLogger(**logger_kwargs)
-            logger.save_config(locals())
+        Returns:
+            None
         """
         config_json = convert_json(config)
         if self.exp_name is not None:
@@ -251,24 +236,17 @@ class Logger:
 
     def save_state(self, state_dict, itr=None):
         """
-        Saves the state of an experiment.
-
-        To be clear: this is about saving *state*, not logging diagnostics.
-        All diagnostic logging is separate from this function. This function
-        will save whatever is in ``state_dict``---usually just a copy of the
-        environment---and the most recent parameters for the model you
-        previously set up saving for with ``setup_tf_saver``.
-
-        Call with any frequency you prefer. If you only want to maintain a
-        single state and overwrite it at each call with the most recent
-        version, leave ``itr=None``. If you want to keep all of the states you
-        save, provide unique (increasing) values for 'itr'.
+        Save the state dictionary using joblib's pickling mechanism.
 
         Args:
-            state_dict (dict): Dictionary containing essential elements to
-                describe the current state of training.
+            state_dict: The state dictionary to be saved.
+            itr (int or None): The iteration number. If provided, it's used in the filename.
 
-            itr: An int, or None. Current iteration of training.
+        Notes:
+            If `itr` is None, the default filename is "state.pkl".
+
+        Returns:
+            None
         """
         fname = "state.pkl" if itr is None else "state%d.pkl" % itr
         try:
@@ -308,14 +286,6 @@ class Logger:
         os.makedirs(fpath, exist_ok=True)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            # We are using a non-recommended way of saving PyTorch models,
-            # by pickling whole objects (which are dependent on the exact
-            # directory structure at the time of saving) as opposed to
-            # just saving network weights. This works sufficiently well
-            # for the purposes of Spinning Up, but you may want to do
-            # something different for your personal PyTorch project.
-            # We use a catch_warnings() context to avoid the warnings about
-            # not being able to save the source code.
             torch.save(self.torch_saver_elements, fname)
         torch.save(self.torch_saver_elements.state_dict(), fname)
         self.log("Done.")
@@ -362,30 +332,7 @@ class Logger:
 
 
 class EpochLogger(Logger):
-    """
-    A variant of Logger tailored for tracking average values over epochs.
-
-    Typical use case: there is some quantity which is calculated many times
-    throughout an epoch, and at the end of the epoch, you would like to
-    report the average / std / min / max value of that quantity.
-
-    With an EpochLogger, each time the quantity is calculated, you would
-    use
-
-    .. code-block:: python
-
-        epoch_logger.store(NameOfQuantity=quantity_value)
-
-    to load it into the EpochLogger's state. Then at the end of the epoch, you
-    would use
-
-    .. code-block:: python
-
-        epoch_logger.log_tabular(NameOfQuantity, **options)
-
-    to record the desired values.
-    """
-
+    
     def __init__(
         self,
         log_dir,
@@ -409,17 +356,11 @@ class EpochLogger(Logger):
 
     def dump_tabular(self):
         super().dump_tabular()
-        # Check if all values from dict are dumped -> prevent memory overflow
         for k, v in self.epoch_dict.items():
             if len(v) > 0:
                 print(f"epoch_dict: key={k} was not logged.")
 
     def store(self, add_value=False, **kwargs):
-        """Save something into the epoch_logger's current state.
-
-        Provide an arbitrary number of keyword arguments with numerical
-        values.
-        """
         for k, v in kwargs.items():
             if add_value:
                 if k not in self.log_current_row.keys():
@@ -432,23 +373,6 @@ class EpochLogger(Logger):
             
 
     def log_tabular(self, key, val=None, min_and_max=False, std=False):
-        """Log a value or possibly the mean/std/min/max values of a diagnostic.
-
-        Args:
-            key (string): The name of the diagnostic. If you are logging a
-                diagnostic whose state has previously been saved with
-                ``store``, the key here has to match the key you used there.
-
-            val: A value for the diagnostic. If you have previously saved
-                values for this key via ``store``, do *not* provide a ``val``
-                here.
-
-            min_and_max (bool): If true, log min and max values of the
-                diagnostic over the epoch.
-
-            std (bool): If true, do log the standard deviation
-                of the diagnostic over the epoch.
-        """
         if val is not None:
             super().log_tabular(key, val)
         else:

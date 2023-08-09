@@ -37,45 +37,6 @@ algo_map = {
 }
 
 class Plotter:
-    """Plotter class for plotting data from experiments.
-
-    Suppose you have run several experiments, with the aim of comparing performance between
-    different algorithms, resulting in a log directory structure of:
-
-    .. code-block:: text
-
-        runs/
-            SafetyAntVelocity-v1/
-                CPO/
-                    seed0/
-                    seed5/
-                    seed10/
-                PCPO/
-                    seed0/
-                    seed5/
-                    seed10/
-            SafetyHalfCheetahVelocity-v1/
-                CPO/
-                    seed0/
-                    seed5/
-                    seed10/
-                PCPO/
-                    seed0/
-                    seed5/
-                    seed10/
-
-    Examples:
-        You can easily produce a graph comparing CPO and PCPO in 'SafetyAntVelocity-v1' with:
-
-        .. code-block:: bash
-
-            python plot.py './runs/SafetyAntVelocity-v1/'
-
-    Attributes:
-        div_line_width (int): The width of the dividing line between subplots.
-        exp_idx (int): The index of the experiment.
-        units (dict[str, Any]): The units of the data.
-    """
 
     def __init__(self) -> None:
         """Initialize an instance of :class:`Plotter`."""
@@ -93,27 +54,6 @@ class Plotter:
         smooth: int = 1,
         **kwargs: Any,
     ) -> None:
-        """Plot data from a pandas dataframe.
-
-        .. note::
-            The ``smooth`` means smoothing the data with moving window average.
-
-        Example:
-            >>> smoothed_y[t] = average(y[t-k], y[t-k+1], ..., y[t+k-1], y[t+k])
-
-        where the "smooth" param is width of that window (2k+1)
-
-        Args:
-            sub_figures (np.ndarray): The subplots.
-            data (list of DataFrame): The data to plot.
-            xaxis (str, optional): The x-axis label. Defaults to 'Steps'.
-            value (str, optional): The y-axis label. Defaults to 'Rewards'.
-            condition (str, optional): The condition label. Defaults to 'Condition1'.
-            smooth (int, optional): The smoothing window size. Defaults to 1.
-
-        Keyword Args:
-            kwargs: Other keyword arguments for ``sns.lineplot``.
-        """
         if smooth > 1:
             y = np.ones(smooth)
             for datum in data:
@@ -202,22 +142,6 @@ class Plotter:
     def get_datasets(
         self, logdir: str, condition: str | None = None, use_eval_result: bool = False
     ) -> list[DataFrame]:
-        """Recursively look through logdir for files named "progress.txt".
-
-        Assumes that any file "progress.txt" is a valid hit.
-
-        Args:
-            logdir (str): The directory to search for progress.txt files
-            condition (str or None, optional): The condition label. Defaults to None.
-
-        Returns:
-            The datasets.
-
-        Raise:
-            FileNotFoundError: If the config file is not found.
-            FileNotFoundError: If could not read from ``progress.csv`` file.
-            ValueError: If no Train/Epoch column in progress.csv.
-        """
         datasets: list[DataFrame] = []
         for root,_, files in os.walk(logdir):
             if 'progress.csv' in files:
@@ -288,21 +212,6 @@ class Plotter:
         exclude: str | None = None,
         use_eval_result: bool = False,
     ) -> list[DataFrame]:
-        """Get all the data from all the log directories.
-
-        For every entry in all_logdirs.
-            1) check if the entry is a real directory and if it is, pull data from it;
-            2) if not, check to see if the entry is a prefix for a real directory, and pull data from that.
-
-        Args:
-            all_logdirs (list of str): List of log directories.
-            legend (list of str or None, optional): List of legend names. Defaults to None.
-            select (str or None, optional): Select logdirs that contain this string. Defaults to None.
-            exclude (str or None, optional): Exclude logdirs that contain this string. Defaults to None.
-
-        Returns:
-            All the data stored in a list of DataFrames.
-        """
         logdirs = []
         for logdir in all_logdirs:
             if osp.isdir(logdir) and logdir[-1] == os.sep:
@@ -314,10 +223,6 @@ class Plotter:
                 logdirs += sorted(
                     [osp.join(basedir, x) for x in listdir if prefix in x]
                 )
-
-        # Enforce selection rules, which check logdirs for certain sub strings.
-        # Makes it easier to look at graphs from particular ablations, if you
-        # launch many jobs at once with similar names.
         if select is not None:
             logdirs = [log for log in logdirs if all(x in log for x in select)]
         if exclude is not None:
@@ -363,53 +268,6 @@ class Plotter:
         show_image: bool = False,
         use_eval_result: bool = False,
     ) -> None:
-        """Make plots from the data in the specified log directories.
-
-        Args:
-            all_logdirs (list of str): As many log directories (or prefixes to log directories,
-                which the plotter will automatically complete internally) as you'd like to plot from.
-            legend (list of str or None, optional): Optional way to specify legend for the plot. The
-                plotter legend will automatically use the ``algo_name`` from the config.json file,
-                unless you tell it otherwise through this flag. This only works if you provide a
-                name for each directory that will get plotted. (Note: this may not be the same as
-                the number of logdir args you provide! Recall that the plotter looks for
-                autocompletes of the logdir args: there may be more than one match for a given
-                logdir prefix, and you will need to provide a legend string for each one of those
-                matches--unless you have removed some of them as candidates via selection or
-                exclusion rules (below).)
-            xaxis (str, optional): Pick what column from data is used for the x-axis. Defaults to
-                ``TotalEnvInteracts``.
-            value (str, optional): Pick what columns from data to graph on the y-axis. Submitting
-                multiple values will produce multiple graphs. Defaults to ``Performance``, which is
-                not an actual output of any algorithm. Instead, ``Performance`` refers to either
-                ``AverageEpRet``, the correct performance measure for the on-policy algorithms, or
-                ``AverageEvalEpRet``, the correct performance measure for the off-policy algorithms.
-                The plotter will automatically figure out which of ``AverageEpRet`` or
-                ``AverageEvalEpRet`` to report for each separate logdir.
-            count (bool, optional): Optional flag. By default, the plotter shows y-values which are
-                averaged across all results that share an ``algo_name``, which is typically a set of
-                identical experiments that only vary in random seed. But if you'd like to see all of
-                those curves separately, use the ``--count`` flag.
-            cost_limit (float or None, optional): Optional way to specify the cost limit of the plot.
-                Defaults to ``None``, which means the plot will not have a cost limit.
-            smooth (int, optional): Smooth data by averaging it over a fixed window. This parameter
-                says how wide the averaging window will be.
-            select (str or None, optional): Optional selection rule: the plotter will only show
-                curves from logdirs that contain all of these sub strings.
-            exclude (str or None, optional): Optional exclusion rule: plotter will only show curves
-                from logdirs that do not contain these sub strings.
-            estimator (str, optional): Optional way to specify how to aggregate data across multiple
-                runs. Defaults to ``mean``.
-            save_dir (str, optional): Optional way to specify where to save the plot. Defaults to
-                ``./``.
-            save_name (str or None, optional): Optional way to specify the name of the plot.
-                Defaults to ``None``, which means the plot will be saved with the name of the first
-                logdir.
-            save_format (str, optional): Optional way to specify the format of the plot. Defaults
-                to ``png``.
-            show_image (bool, optional): Optional flag. If set, the plot will be displayed on screen.
-                Defaults to ``False``.
-        """
         assert xaxis is not None, 'Must specify xaxis'
         data = self.get_all_datasets(
             all_logdirs, legend, select, exclude, use_eval_result

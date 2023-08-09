@@ -38,43 +38,15 @@ algo_map = {
     'pcpo': 'PCPO',
     'rcpo': 'RCPO',
     'focops': 'FOCOPS',
+    'happo': 'HAPPO',
+    'mappo': 'MAPPO',
+    'mappolag': 'MAPPOLag',
+    'macpo': 'MACPO',
 }
 
 
 class Plotter:
     """Plotter class for plotting data from experiments.
-
-    Suppose you have run several experiments, with the aim of comparing performance between
-    different algorithms, resulting in a log directory structure of:
-
-    .. code-block:: text
-
-        runs/
-            SafetyAntVelocity-v1/
-                CPO/
-                    seed0/
-                    seed5/
-                    seed10/
-                PCPO/
-                    seed0/
-                    seed5/
-                    seed10/
-            SafetyHalfCheetahVelocity-v1/
-                CPO/
-                    seed0/
-                    seed5/
-                    seed10/
-                PCPO/
-                    seed0/
-                    seed5/
-                    seed10/
-
-    Examples:
-        You can easily produce a graph comparing CPO and PCPO in 'SafetyAntVelocity-v1' with:
-
-        .. code-block:: bash
-
-            python plot.py './runs/SafetyAntVelocity-v1/'
 
     Attributes:
         div_line_width (int): The width of the dividing line between subplots.
@@ -99,14 +71,6 @@ class Plotter:
         **kwargs: Any,
     ) -> None:
         """Plot data from a pandas dataframe.
-
-        .. note::
-            The ``smooth`` means smoothing the data with moving window average.
-
-        Example:
-            >>> smoothed_y[t] = average(y[t-k], y[t-k+1], ..., y[t+k-1], y[t+k])
-
-        where the "smooth" param is width of that window (2k+1)
 
         Args:
             sub_figures (np.ndarray): The subplots.
@@ -151,9 +115,6 @@ class Plotter:
             ax=sub_figures[1],
             **kwargs,
         )
-        # plt.legend(loc='best').set_draggable(True)
-        # plt.legend(loc='upper center', ncol=3, handlelength=1,
-        #           borderaxespad=0., prop={'size': 13})
         sub_figures[0].legend(
             loc='upper center',
             ncol=6,
@@ -201,13 +162,11 @@ class Plotter:
         for root, _, files in os.walk(logdir):
             if 'progress.csv' in files:
                 exp_name = None
-                steps_per_epoch = None
                 try:
                     with open(os.path.join(root, 'config.json'), encoding='utf-8') as f:
                         config = json.load(f)
                         if 'exp_name' in config:
                             exp_name = config['exp_name'].split('-')[-3]
-                            steps_per_epoch = config['steps_per_epoch']
                 except FileNotFoundError as error:
                     config_path = os.path.join(root, 'config.json')
                     raise FileNotFoundError(
@@ -246,13 +205,10 @@ class Plotter:
                 exp_data.insert(
                     len(exp_data.columns), 'Costs', exp_data[cost_performance]
                 )
-                epoch = exp_data.get('Train/Epoch')
-                if epoch is None or steps_per_epoch is None:
-                    raise ValueError('No Train/Epoch column in progress.csv')
                 exp_data.insert(
                     len(exp_data.columns),
                     'Steps',
-                    epoch * steps_per_epoch,
+                    exp_data['Train/TotalSteps'],
                 )
                 datasets.append(exp_data)
         return datasets
