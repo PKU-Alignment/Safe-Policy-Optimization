@@ -1,5 +1,5 @@
-SafePO Logger
-=============
+Logger
+======
 
 Simple usage
 ------------

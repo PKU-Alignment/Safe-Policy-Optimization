@@ -1,5 +1,5 @@
-SafePO Buffer
-=============
+Buffer
+======
 
 .. currentmodule:: safepo.common.buffer
 

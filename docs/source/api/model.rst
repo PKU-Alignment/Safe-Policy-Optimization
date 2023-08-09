@@ -1,5 +1,5 @@
-SafePO Model
-============
+Model
+=====
 
 .. currentmodule:: safepo.common.model
 

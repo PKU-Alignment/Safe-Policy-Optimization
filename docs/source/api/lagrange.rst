@@ -1,5 +1,5 @@
-SafePO Lagrangian Multiplier
-============================
+Lagrangian Multiplier
+=====================
 
 .. currentmodule:: safepo.common.lagrange
 

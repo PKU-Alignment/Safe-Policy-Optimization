@@ -1,5 +1,5 @@
-SafePO Environment Maker
-========================
+Environment Maker
+=================
 
 .. currentmodule:: safepo.common.env
 
