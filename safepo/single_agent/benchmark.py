@@ -19,6 +19,13 @@ def parse_args():
         nargs="+",
         default=[
             "pcpo",
+            "ppo_lag",
+            "cpo",
+            "trpo_lag",
+            "cppo_pid",
+            "rcpo",
+            "focops",
+            "cup",
         ],
         help="the ids of the algorithm to benchmark",
     )

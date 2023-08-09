@@ -1,19 +1,39 @@
-PPO-Lagrangian
-==============
+Lagrangian Method
+=================
 
 Experiment Results
 ------------------
 
-.. raw:: html
+.. tab-set::
 
-   <iframe src="https://wandb.ai/pku_rl/SafePO/reports/PPO-Lagrangian--Vmlldzo1MDc1MTYx" style="border:none;width:100%; height:1000px" title="Performance-PPO-Lag">
+    .. tab-item:: PPOLag
 
-.. raw:: html
+      .. raw:: html
 
-   </iframe>
+         <iframe src="https://wandb.ai/pku_rl/SafePO5/reports/Performance-PPO-Lag--Vmlldzo1MDgyNTcx" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+
+      .. raw:: html
+
+         </iframe>
+
+    .. tab-item:: TRPOLag
+
+      .. raw:: html
+
+         <iframe src="https://wandb.ai/pku_rl/SafePO5/reports/TRPO-Lag-Training-Curve--Vmlldzo1MDk2NjA4" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+
+      .. raw:: html
+
+         </iframe>
+
 
 Implement Details
 -----------------
+
+.. note::
+
+   All experiemnts are ran under total 1e7 steps, while in the `Doggo <https://www.safety-gymnasium.com/en/latest/components_of_environments/agents.html>`_ agent, 1e8 steps are used.
+   This setting is the same as `Safety-Gym <https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&ved=2ahUKEwjevqzswM-AAxXZtlYBHVFlDOAQFnoECBIQAQ&url=https%3A%2F%2Fopenai.com%2Fresearch%2Fsafety-gym&usg=AOvVaw2bTv-b9BBuC-4eDmkFZPr3&opi=89978449>`_
 
 Environment Wrapper
 ~~~~~~~~~~~~~~~~~~~
@@ -61,7 +81,7 @@ of observations, rewards and costs:
 Lagrangian Multiplier
 ~~~~~~~~~~~~~~~~~~~~~
 
-``PPOLag`` use ``Lagrangian Multiplier`` to control the safety
+Lagreangian-based alforithms use ``Lagrangian Multiplier`` to control the safety
 constraint. The ``Lagrangian Multiplier`` is an intergrated part of
 SafePO.
 
@@ -103,21 +123,32 @@ details.
 Configuration Analysis
 ----------------------
 
-PPO Related
-~~~~~~~~~~~
-
-The implementation of ``PPO-Lagrangian`` is based on ``PPO``. 
-And the ``PPO`` hyperparameters is basically the same as community version.
+The implementation of Lagrangian multiplier based algorithms is based on classic reinforcement learning algorithms, e.g. ``PPO`` and ``TRPO``. 
+And the ``PPO`` and ``TRPO`` hyperparameters is basically the same as community version.
 We listed the key hyperparameters as follows:
 
-- ``batch_size``: 64
-- ``gamma``: 0.99
-- ``lam``: 0.95
-- ``lam_c``: 0.95
-- ``clip``: 0.2
-- ``actor_lr``: 3e-4
-- ``critic_lr``: 3e-4
-- ``hidden_size``: 64 for all agents while 256 for ``Doggo`` and ``Ant``
+.. tab-set::
+
+    .. tab-item:: PPO
+
+      - ``batch_size``: 64
+      - ``gamma``: 0.99
+      - ``lam``: 0.95
+      - ``lam_c``: 0.95
+      - ``clip``: 0.2
+      - ``actor_lr``: 3e-4
+      - ``critic_lr``: 3e-4
+      - ``hidden_size``: 64 for all agents while 256 for ``Doggo`` and ``Ant``
+
+    .. tab-item:: TRPO
+
+      - ``batch_size``: 128
+      - ``gamma``: 0.99
+      - ``lam``: 0.95
+      - ``lam_c``: 0.95
+      - ``critic_lr``: 1e-3
+      - ``hidden_size``: 64 for all agents while 256 for ``Doggo`` and ``Ant``
+
 
 Lagrangian Multiplier Related
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

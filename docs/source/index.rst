@@ -81,13 +81,6 @@ To run a single agent benchmark based on default configuration, run:
    cd safepo/single_agent
    python benchmark.py
 
-Similarly, to run a multi-agent benchmark based on default configuration, run:
-
-.. code-block:: bash
-
-   cd safepo/multi_agent
-   python benchmark.py
-
 You can also customize the benchmark configuration by modifying the python file in ``benchamrk.py``.
 
 Plot training curves
@@ -99,14 +92,7 @@ you can plot the training curves by running:
 
 .. code-block:: bash
 
-      cd safepo/single_agent
-      python plot.py --logdir ../runs/Base
-
-If you want to plot the training curves of multi-agent algorithms, run:
-
-.. code-block:: bash
-   
-      cd safepo/multi_agent
+      cd safepo
       python plot.py --logdir ../runs/Base
 
 .. toctree::
@@ -123,8 +109,14 @@ If you want to plot the training curves of multi-agent algorithms, run:
    :hidden:
    :caption: ALGORITHM
 
-   algorithms/ppo_lag
-   algorithms/trpo_lag
+   algorithms/general
+   algorithms/lag
 
-`Github <https://github.com/PKU-Alignment/Safe-Policy-Optimization>`__
+Related Projects
+-----------------
 
+`Github <https://github.com/PKU-Alignment/Safe-Policy-Optimization>`_
+
+`Safety Gymnasisum <https://github.com/PKU-Alignment/safety-gymnasium>`_
+
+`OmniSafe <https://github.com/PKU-Alignment/omnisafe>`_

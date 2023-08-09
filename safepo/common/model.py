@@ -95,9 +95,6 @@ class VCritic(nn.Module):
     Attributes:
         critic (nn.Sequential): MLP network representing the critic function.
 
-    Methods:
-        forward(obs): Forward pass of the critic network.
-
     Example:
         obs_dim = 10
         critic = VCritic(obs_dim)
@@ -342,19 +339,6 @@ class MultiAgentCritic(nn.Module):
         _use_recurrent_policy (bool): Flag indicating whether to use recurrent policy.
         _recurrent_N (int): Number of recurrent layers.
         tpdv (dict): Dictionary for tensor properties.
-
-    Example:
-        config = {
-            "hidden_size": 64,
-            "use_orthogonal": True,
-            # ... other configuration parameters ...
-        }
-        cent_obs_space = gym.spaces.Box(low=0, high=1, shape=(4, 84, 84))
-        critic = MultiAgentCritic(config, cent_obs_space)
-        centralized_observation = torch.randn(1, 4, 84, 84)
-        rnn_states = torch.zeros(1, 64)
-        masks = torch.ones(1, 1)
-        values, new_rnn_states = critic(centralized_observation, rnn_states, masks)
     """
     
     def __init__(self, config, cent_obs_space, device=torch.device("cuda:0")):
