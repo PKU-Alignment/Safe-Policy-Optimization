@@ -22,6 +22,22 @@ import torch
 
 
 class Lagrange:
+    """Lagrange multiplier for constrained optimization.
+    
+    Args:
+        cost_limit: the cost limit
+        lagrangian_multiplier_init: the initial value of the lagrangian multiplier
+        lagrangian_multiplier_lr: the learning rate of the lagrangian multiplier
+        lagrangian_upper_bound: the upper bound of the lagrangian multiplier
+
+    Attributes:
+        cost_limit: the cost limit  
+        lagrangian_multiplier_lr: the learning rate of the lagrangian multiplier
+        lagrangian_upper_bound: the upper bound of the lagrangian multiplier
+        _lagrangian_multiplier: the lagrangian multiplier
+        lambda_range_projection: the projection function of the lagrangian multiplier
+        lambda_optimizer: the optimizer of the lagrangian multiplier    
+    """
 
     # pylint: disable-next=too-many-arguments
     def __init__(
@@ -52,12 +68,33 @@ class Lagrange:
 
     @property
     def lagrangian_multiplier(self) -> torch.Tensor:
+        """The lagrangian multiplier.
+        
+        Returns:
+            the lagrangian multiplier
+        """
         return self.lambda_range_projection(self._lagrangian_multiplier).detach().item()
 
     def compute_lambda_loss(self, mean_ep_cost: float) -> torch.Tensor:
+        """Compute the loss of the lagrangian multiplier.
+        
+        Args:
+            mean_ep_cost: the mean episode cost
+            
+        Returns:
+            the loss of the lagrangian multiplier
+        """
         return -self._lagrangian_multiplier * (mean_ep_cost - self.cost_limit)
 
     def update_lagrange_multiplier(self, Jc: float) -> None:
+        """Update the lagrangian multiplier.
+        
+        Args:
+            Jc: the mean episode cost
+            
+        Returns:
+            the loss of the lagrangian multiplier
+        """
         self.lambda_optimizer.zero_grad()
         lambda_loss = self.compute_lambda_loss(Jc)
         lambda_loss.backward()
@@ -70,6 +107,40 @@ class Lagrange:
 
 class PIDLagrangian:
 
+    """PID Lagrangian multiplier for constrained optimization.
+
+    Args:
+        cost_limit: the cost limit
+        lagrangian_multiplier_init: the initial value of the lagrangian multiplier
+        pid_kp: the proportional gain of the PID controller
+        pid_ki: the integral gain of the PID controller
+        pid_kd: the derivative gain of the PID controller
+        pid_d_delay: the delay of the derivative term
+        pid_delta_p_ema_alpha: the exponential moving average alpha of the delta_p
+        pid_delta_d_ema_alpha: the exponential moving average alpha of the delta_d
+        sum_norm: whether to normalize the sum of the PID output
+        diff_norm: whether to normalize the difference of the PID output
+        penalty_max: the maximum value of the penalty
+
+    Attributes:
+        cost_limit: the cost limit
+        lagrangian_multiplier_init: the initial value of the lagrangian multiplier
+        pid_kp: the proportional gain of the PID controller
+        pid_ki: the integral gain of the PID controller
+        pid_kd: the derivative gain of the PID controller
+        pid_d_delay: the delay of the derivative term
+        pid_delta_p_ema_alpha: the exponential moving average alpha of the delta_p
+        pid_delta_d_ema_alpha: the exponential moving average alpha of the delta_d
+        sum_norm: whether to normalize the sum of the PID output
+        diff_norm: whether to normalize the difference of the PID output
+        penalty_max: the maximum value of the penalty
+
+    References:
+        - Title: Responsive Safety in Reinforcement Learning by PID Lagrangian Methods
+        - Authors: Adam Stooke, Joshua Achiam, Pieter Abbeel.
+        - URL: `CPPOPID <https://arxiv.org/abs/2007.03964>`_
+    """
+    
     # pylint: disable-next=too-many-arguments
     def __init__(
         self,
