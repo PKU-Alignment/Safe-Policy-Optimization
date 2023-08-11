@@ -366,7 +366,7 @@ class Runner:
             action_log_prob_collector.append(action_log_prob.detach())
             rnn_state_collector.append(rnn_state.detach())
             rnn_state_critic_collector.append(rnn_state_critic.detach())
-        if self.config["env_id"] == "Safety9|8HumanoidVelocity-v0":
+        if self.config["env_name"] == "Safety9|8HumanoidVelocity-v0":
             zeros = torch.zeros(action_collector[-1].shape[0], 1)
             action_collector[-1]=torch.cat((action_collector[-1], zeros), dim=1)
         values = torch.transpose(torch.stack(value_collector), 1, 0)
@@ -393,7 +393,7 @@ class Runner:
         active_masks[dones == True] = torch.zeros((dones == True).sum(), 1, device=self.config["device"])
         active_masks[dones_env == True] = torch.ones((dones_env == True).sum(), self.num_agents, 1, device=self.config["device"])
 
-        if self.config["env_id"] == "Safety9|8HumanoidVelocity-v0":
+        if self.config["env_name"] == "Safety9|8HumanoidVelocity-v0":
             actions[1]=actions[1][:, :8]
         for agent_id in range(self.num_agents):
             self.buffer[agent_id].insert(share_obs[:, agent_id], obs[:, agent_id], rnn_states[:, agent_id],

@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument(
         "--workers",
         type=int,
-        default=48,
+        default=8,
         help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(

@@ -17,9 +17,9 @@ from __future__ import annotations
 
 from typing import Callable
 import safety_gymnasium
-from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeNormalizeObservation, SafeRescaleAction, SafeUnsqueeze
+from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeRescaleAction, SafeUnsqueeze
 from safety_gymnasium.vector.async_vector_env import SafetyAsyncVectorEnv
-from safepo.common.wrappers import ShareSubprocVecEnv, ShareDummyVecEnv, ShareEnv
+from safepo.common.wrappers import ShareSubprocVecEnv, ShareDummyVecEnv, ShareEnv, SafeNormalizeObservation
 try :
     from safepo.envs.safe_dexteroushands.tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
     from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_abreast import ShadowHandCatchAbreast

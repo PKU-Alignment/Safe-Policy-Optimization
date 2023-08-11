@@ -23,11 +23,23 @@ import torch
 import numpy as np
 from gymnasium.vector.vector_env import VectorEnv
 from gymnasium.spaces import Box
+from gymnasium.wrappers.normalize import NormalizeObservation
 
 from safety_gymnasium.vector.utils.tile_images import tile_images
 from safety_gymnasium.tasks.safe_multi_agent.safe_mujoco_multi import SafeMAEnv
 from typing import Optional
 
+
+
+class SafeNormalizeObservation(NormalizeObservation):
+    """This wrapper will normalize observations as Gymnasium's NormalizeObservation wrapper does."""
+
+    def step(self, action):
+        """Steps through the environment and normalizes the observation."""
+        obs, rews, costs, terminateds, truncateds, infos = self.env.step(action)
+        obs = self.normalize(obs) if self.is_vector_env else self.normalize(np.array([obs]))[0]
+        return obs, rews, costs, terminateds, truncateds, infos
+    
 
 class ShareEnv(SafeMAEnv):
     

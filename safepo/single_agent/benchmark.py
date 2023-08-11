@@ -16,7 +16,7 @@ navi_envs = [
 ]
 
 vel_envs = [
-    f"Safety{robot}{task}-v0"
+    f"Safety{robot}{task}-v1"
     for robot in vel_robots
     for task in vel_tasks
 ]
