@@ -26,6 +26,41 @@ import yaml
 import argparse
 
 
+multi_agent_velocity_map = {
+    'Safety2x4AntVelocity-v0': {
+        'agent_conf': '2x4',
+        'scenario': 'Ant',
+    },
+    'Safety4x2AntVelocity-v0': {
+        'agent_conf': '4x2',
+        'scenario': 'Ant',
+    },
+    'Safety2x3HalfCheetahVelocity-v0': {
+        'agent_conf': '2x3',
+        'scenario': 'HalfCheetah',
+    },
+    'Safety6x1HalfCheetahVelocity-v0': {
+        'agent_conf': '6x1',
+        'scenario': 'HalfCheetah',
+    },
+    'Safety3x1HopperVelocity-v0': {
+        'agent_conf': '3x1',
+        'scenario': 'Hopper',
+    },
+    'Safety2x3Walker2dVelocity-v0': {
+        'agent_conf': '2x3',
+        'scenario': 'Walker2d',
+    },
+    'Safety2x1SwimmerVelocity-v0': {
+        'agent_conf': '2x1',
+        'scenario': 'Swimmer',
+    },
+    'Safety9|8HumanoidVelocity-v0': {
+        'agent_conf': '9|8',
+        'scenario': 'Humanoid',
+    },
+}
+
 def set_np_formatting():
     np.set_printoptions(edgeitems=30, infstr='inf',
                         linewidth=4000, nanstr='nan', precision=2,
@@ -101,8 +136,8 @@ def multi_agent_args(algo):
     custom_parameters = [
         {"name": "--use-eval", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Use evaluation environment for testing"},
         {"name": "--task", "type": str, "default": "MujocoVelocity", "help": "The task to run"},
-        {"name": "--agent-conf", "type": str, "default": "2x4", "help": "The agent configuration"},
-        {"name": "--scenario", "type": str, "default": "Ant", "help": "The scenario"},
+        {"name": "--agent-conf", "type": str, "default": "2x1", "help": "The agent configuration"},
+        {"name": "--scenario", "type": str, "default": "Swimmer", "help": "The scenario"},
         {"name": "--experiment", "type": str, "default": "Base", "help": "Experiment name. If used with --metadata flag an additional information about physics engine, sim device, pipeline and domain randomization will be added to the name"},
         {"name": "--seed", "type": int, "default":0, "help": "Random seed"},
         {"name": "--model-dir", "type": str, "default": "", "help": "Choose a model dir"},

@@ -154,7 +154,6 @@ class Logger:
             mode="w",
         )
         atexit.register(self.output_file.close)
-        print(colorize(f"Logging data to {self.output_file.name}", "cyan", bold=True))
         self._csv_writer = csv.writer(self.output_file)
 
         self.epoch = 0

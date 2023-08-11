@@ -70,8 +70,8 @@ std_y_coef: 0.5
 
 mamujoco: 
   num_env_steps: 10000000
-  episode_length: 200
-  n_rollout_threads: 32
+  episode_length: 1000
+  n_rollout_threads: 10
   n_eval_rollout_threads: 10
   hidden_size: 128
   gamma: 0.99

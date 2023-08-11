@@ -70,9 +70,7 @@ def main(args):
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.set_num_threads(4)
-    device = torch.device(
-        "cuda" if torch.cuda.is_available() and args.device == "cuda" else "cpu"
-    )
+    device = torch.device(args.device)
 
     # set training steps
     local_steps_per_epoch = args.steps_per_epoch // args.num_envs
@@ -369,8 +367,14 @@ def main(args):
         logger.log_tabular("Value/CostAdv", data["adv_c"].mean().item())
 
         logger.dump_tabular()
-        if epoch % 100 == 0:
+        if (epoch+1) % 100 == 0:
             logger.torch_save(itr=epoch)
+            logger.save_state(
+                state_dict={
+                    "Normalizer": env.obs_rms,
+                },
+                itr = epoch
+            )
     logger.close()
 
 
