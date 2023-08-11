@@ -39,7 +39,7 @@ from safepo.common.env import make_sa_mujoco_env
 from safepo.common.lagrange import Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
-from safepo.utils.config import single_agent_args
+
 
 
 def parse_args():
@@ -400,7 +400,7 @@ def main(args):
         logger.log_tabular("Value/CostAdv", data["adv_c"].mean().item())
 
         logger.dump_tabular()
-        if (epoch+1) % 100 == 0:
+        if (epoch+1) % 100 == 0 or epoch == 0:
             logger.torch_save(itr=epoch)
             logger.save_state(
                 state_dict={

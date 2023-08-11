@@ -427,7 +427,7 @@ def main(args):
         logger.log_tabular("Value/CostAdv", data["adv_c"].mean().item())
 
         logger.dump_tabular()
-        if (epoch+1) % 100 == 0:
+        if (epoch+1) % 100 == 0 or epoch == 0:
             logger.torch_save(itr=epoch)
             logger.save_state(
                 state_dict={

@@ -22,9 +22,7 @@ import torch.nn as nn
 import torch.optim
 from torch.distributions import Normal
 from safepo.utils.act import ACTLayer
-from safepo.utils.cnn import CNNBase
 from safepo.utils.mlp import MLPBase
-from safepo.utils.rnn import RNNLayer
 from safepo.utils.util import check, init
 from safepo.utils.util import get_shape_from_obs_space
 
@@ -221,12 +219,8 @@ class MultiAgentActor(nn.Module):
         self.tpdv = dict(dtype=torch.float32, device=device)
 
         obs_shape = get_shape_from_obs_space(obs_space)
-        base = CNNBase if len(obs_shape) == 3 else MLPBase
+        base =  MLPBase
         self.base = base(self.config, obs_shape)
-
-        if self._use_naive_recurrent_policy or self._use_recurrent_policy:
-            self.rnn = RNNLayer(self.hidden_size, self.hidden_size, self._recurrent_N, self._use_orthogonal)
-
         self.act = ACTLayer(action_space, self.hidden_size, self._use_orthogonal, self._gain, self.config)
 
         self.to(device)
@@ -253,10 +247,6 @@ class MultiAgentActor(nn.Module):
             available_actions = check(available_actions).to(**self.tpdv)
 
         actor_features = self.base(obs)
-
-        if self._use_naive_recurrent_policy or self._use_recurrent_policy:
-            actor_features, rnn_states = self.rnn(actor_features, rnn_states, masks)
-
         actions, action_log_probs = self.act(actor_features, available_actions, deterministic)
 
         return actions, action_log_probs, rnn_states
@@ -288,18 +278,6 @@ class MultiAgentActor(nn.Module):
             active_masks = check(active_masks).to(**self.tpdv)
 
         actor_features = self.base(obs)
-
-        if self._use_naive_recurrent_policy or self._use_recurrent_policy:
-            actor_features, rnn_states = self.rnn(actor_features, rnn_states, masks)
-
-        if self.config["algorithm_name"]=="hatrpo":
-            action_log_probs, dist_entropy ,action_mu, action_std, all_probs= self.act.evaluate_actions_trpo(actor_features,
-                                                                    action, available_actions,
-                                                                    active_masks=
-                                                                    active_masks if self._use_policy_active_masks
-                                                                    else None)
-
-            return action_log_probs, dist_entropy, action_mu, action_std, all_probs
 
         if self.config["algorithm_name"]== "macpo":
             action_log_probs, dist_entropy, action_mu, action_std, _ = self.act.evaluate_actions_trpo(actor_features,
@@ -352,11 +330,8 @@ class MultiAgentCritic(nn.Module):
         init_method = [nn.init.xavier_uniform_, nn.init.orthogonal_][self._use_orthogonal]
 
         cent_obs_shape = get_shape_from_obs_space(cent_obs_space)
-        base = CNNBase if len(cent_obs_shape) == 3 else MLPBase
+        base =  MLPBase
         self.base = base(config, cent_obs_shape)
-
-        if self._use_naive_recurrent_policy or self._use_recurrent_policy:
-            self.rnn = RNNLayer(self.hidden_size, self.hidden_size, self._recurrent_N, self._use_orthogonal)
 
         def init_(m):
             return init(m, init_method, lambda x: nn.init.constant_(x, 0), gain=0)
@@ -383,8 +358,6 @@ class MultiAgentCritic(nn.Module):
         masks = check(masks).to(**self.tpdv)
 
         critic_features = self.base(cent_obs)
-        if self._use_naive_recurrent_policy or self._use_recurrent_policy:
-            critic_features, rnn_states = self.rnn(critic_features, rnn_states, masks)
         values = self.v_out(critic_features)
 
         return values, rnn_states

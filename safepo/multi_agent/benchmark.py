@@ -75,6 +75,10 @@ if __name__ == "__main__":
                             "False",
                             "--experiment",
                             args.experiment,
+                            "--total-steps",
+                            "1000",
+                            "--num-envs",
+                            "1",
                         ]
                     )
                 ]

@@ -37,7 +37,7 @@ from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_sa_mujoco_env
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
-from safepo.utils.config import single_agent_args
+
 
 def single_agent_args():
     # training parameters
@@ -578,7 +578,7 @@ def main(args):
         logger.log_tabular("Misc/AcceptanceStep")
 
         logger.dump_tabular()
-        if (epoch+1) % 100 == 0:
+        if (epoch+1) % 100 == 0 or epoch == 0:
             logger.torch_save(itr=epoch)
             logger.save_state(
                 state_dict={

@@ -3,16 +3,16 @@ import shlex
 import subprocess
 
 navi_robots = ['Ant', 'Car', 'Doggo', 'Point', 'Racecar']
-navi_tasks = ['Button', 'Circle', 'Goal', 'Push']
-diffculies = ['1', '2']
+navi_tasks = ['Button']
+diffculies = ['1']
 vel_robots = ['Ant', 'HalfCheetah', 'Hopper', 'Walker2d', 'Swimmer', 'Humanoid']
 vel_tasks = ['Velocity']
 
 navi_envs = [
     f"Safety{robot}{task}{diffculty}-v0"
     for diffculty in diffculies
-    for robot in vel_robots
-    for task in vel_tasks
+    for robot in navi_robots
+    for task in navi_tasks
 ]
 
 vel_envs = [
@@ -35,12 +35,6 @@ def parse_args():
         default=[
             "pcpo",
             "ppo_lag",
-            "cpo",
-            "trpo_lag",
-            "cppo_pid",
-            "rcpo",
-            "focops",
-            "cup",
         ],
         help="the ids of the algorithm to benchmark",
     )
@@ -53,7 +47,7 @@ def parse_args():
     parser.add_argument(
         "--workers",
         type=int,
-        default=48,
+        default=18,
         help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
@@ -93,6 +87,12 @@ if __name__ == "__main__":
                             "False",
                             "--log-dir",
                             log_dir,
+                            "--total-steps",
+                            "1000",
+                            "--num-envs",
+                            "1",
+                            "--steps-per-epoch",
+                            "1000",
                         ]
                     )
                 ]

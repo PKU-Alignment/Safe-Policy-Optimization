@@ -1,0 +1,10 @@
+[run]
+omit =
+    ../safepo/envs/*
+    ../docs/*
+    ../safepo/common/wrappers.py
+    ../safepo/plot.py
+    ../safepo/eval.py
+    ../safepo/multi_agent/benchmark.py
+    ../safepo/single_agent/benchmark.py
+

@@ -80,14 +80,8 @@ def set_seed(seed, torch_deterministic=False):
     torch.cuda.manual_seed_all(seed)
     torch.autograd.set_detect_anomaly(True)
     
-    if torch_deterministic:
-        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.deterministic = True
-        torch.set_deterministic(True)
-    else:
-        torch.backends.cudnn.benchmark = True
-        torch.backends.cudnn.deterministic = False
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.deterministic = False
 
     return seed
 
@@ -172,7 +166,8 @@ def multi_agent_args(algo):
         "ShadowHandCatchUnderarm": "shadow_hand_catch_underarm",
     }
     cfg_train_path = "marl_cfg/{}/config.yaml".format(algo)
-    with open(os.path.join(os.getcwd(), cfg_train_path), 'r') as f:
+    base_path = os.path.dirname(os.path.abspath(__file__)).replace("utils", "multi_agent")
+    with open(os.path.join(base_path, cfg_train_path), 'r') as f:
         cfg_train = yaml.load(f, Loader=yaml.SafeLoader)
         if args.task == "MujocoVelocity":
             cfg_train.update(cfg_train.get("mamujoco"))
@@ -191,6 +186,7 @@ def multi_agent_args(algo):
         cfg_train["num_env_steps"] = args.total_steps
     if args.num_envs:
         cfg_train["n_rollout_threads"] = args.num_envs
+        cfg_train["n_eval_rollout_threads"] = args.num_envs
     relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])
@@ -215,24 +211,3 @@ def multi_agent_args(algo):
 
     return args, cfg_env, cfg_train
 
-def single_agent_args():
-    # training parameters
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
-    parser.add_argument("--device", type=str, default="cpu", help="the device (cpu or cuda) to run the code")
-    parser.add_argument("--num-envs", type=int, default=10, help="the number of parallel game environments")
-    parser.add_argument("--total-steps", type=int, default=10000000, help="total timesteps of the experiments",)
-    parser.add_argument("--env-id", type=str, default="SafetyPointGoal1-v0", help="the id of the environment",)
-    parser.add_argument("--use-eval", type=lambda x: bool(strtobool(x)), default=False, help="toggles evaluation",)
-    # general algorithm parameters
-    parser.add_argument("--steps-per-epoch", type=int, default=20000, help="the number of steps to run in each environment per policy rollout",)
-    parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
-    # logger parameters
-    parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
-    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
-    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
-    # algorithm specific parameters
-    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
-
-    args = parser.parse_args()
-    return args

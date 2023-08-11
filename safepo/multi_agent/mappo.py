@@ -318,8 +318,8 @@ class Runner:
                     }
                 )
                 
-            self.logger.log_tabular("Metrics/EpRet")
-            self.logger.log_tabular("Metrics/EpCost")
+            self.logger.log_tabular("Metrics/EpRet", min_and_max=True, std=True)
+            self.logger.log_tabular("Metrics/EpCost", min_and_max=True, std=True)
             self.logger.log_tabular("Eval/EpRet")
             self.logger.log_tabular("Eval/EpCost")
             self.logger.log_tabular("Train/Epoch", episode)
@@ -474,6 +474,9 @@ class Runner:
                 eval_rnn_states[:, agent_id] = temp_rnn_state
                 eval_actions_collector.append(eval_actions)
 
+            if self.config["env_name"] == "Safety9|8HumanoidVelocity-v0":
+                zeros = torch.zeros(eval_actions_collector[-1].shape[0], 1)
+                eval_actions_collector[-1]=torch.cat((eval_actions_collector[-1], zeros), dim=1)
             eval_obs, _, eval_rewards, eval_costs, eval_dones, _, _ = self.eval_envs.step(
                 eval_actions_collector
             )
@@ -541,7 +544,6 @@ def train(args, cfg_train):
         eval_env = env
     torch.set_num_threads(4)
     runner = Runner(env, eval_env, cfg_train, args.model_dir)
-    exit()
 
     if args.model_dir != "":
         runner.eval(100000)
