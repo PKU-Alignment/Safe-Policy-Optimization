@@ -37,8 +37,8 @@ plot:
 	cd safepo && $(PYTHON) plot.py --logdir ./runs/benchmark_single_env
 
 eval:
-	cd safepo && $(PYTHON) eval.py --benchmark-dir ./runs/benchmark_multi_env
-	cd safepo && $(PYTHON) eval.py --benchmark-dir ./runs/benchmark_single_env
+	cd safepo && $(PYTHON) evaluate.py --benchmark-dir ./runs/benchmark_multi_env
+	cd safepo && $(PYTHON) evaluate.py --benchmark-dir ./runs/benchmark_single_env
 
 benchmark: install-editable multi-benchmark single-benchmark plot eval
 
@@ -48,7 +48,7 @@ pytest-install:
 	$(call check_pip_install,pytest-xdist)
 
 pytest: pytest-install
-	cd tests && $(PYTHON) -c 'import $(PROJECT_PATH)' && \
+	cd tests &&  \
 	$(PYTHON) -m pytest --verbose --color=yes --durations=0 \
-		--cov="$(PROJECT_PATH)" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
+		--cov="../safepo" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) . 

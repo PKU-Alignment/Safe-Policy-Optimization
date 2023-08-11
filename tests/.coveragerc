@@ -4,7 +4,17 @@ omit =
     ../docs/*
     ../safepo/common/wrappers.py
     ../safepo/plot.py
-    ../safepo/eval.py
+    ../safepo/evaluate.py
     ../safepo/multi_agent/benchmark.py
+    ../safepo/multi_agent/plot_for_benchmark.py
     ../safepo/single_agent/benchmark.py
 
+[report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    raise FileNotFoundError
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod
+    if TYPE_CHECKING:
+    if __name__ == ('__main__'|"__main__"):

@@ -2,7 +2,7 @@ import subprocess
 
 def test_happo():
     subprocess.run(
-        "python ../safepo/multi_agent/happo.py --total-steps 1000 --num-envs 1",
+        "python ../safepo/multi_agent/happo.py --total-steps 1000 --num-envs 1 --use-eval True",
         shell=True,
         check=True,
     )
@@ -14,7 +14,7 @@ def test_happo():
 
 def test_mappo():
     subprocess.run(
-        "python ../safepo/multi_agent/mappo.py --total-steps 1000 --num-envs 1",
+        "python ../safepo/multi_agent/mappo.py --total-steps 1000 --num-envs 1 --use-eval True",
         shell=True,
         check=True,
     )
@@ -26,7 +26,7 @@ def test_mappo():
 
 def test_mappolag():
     subprocess.run(
-        "python ../safepo/multi_agent/mappolag.py --total-steps 1000 --num-envs 1",
+        "python ../safepo/multi_agent/mappolag.py --total-steps 1000 --num-envs 1 --use-eval True",
         shell=True,
         check=True,
     )
@@ -38,7 +38,7 @@ def test_mappolag():
 
 def test_macpo():
     subprocess.run(
-        "python ../safepo/multi_agent/macpo.py --total-steps 1000 --num-envs 1",
+        "python ../safepo/multi_agent/macpo.py --total-steps 1000 --num-envs 1 --use-eval True",
         shell=True,
         check=True,
     )

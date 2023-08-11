@@ -70,11 +70,8 @@ class MACPO_Policy():
         actions, action_log_probs, rnn_states_actor = self.actor(obs, rnn_states_actor, masks, available_actions, deterministic)
 
         values, rnn_states_critic = self.critic(cent_obs, rnn_states_critic, masks)
-        if rnn_states_cost is None:
-            return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic
-        else:
-            cost_preds, rnn_states_cost = self.cost_critic(cent_obs, rnn_states_cost, masks)
-            return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic, cost_preds, rnn_states_cost
+        cost_preds, rnn_states_cost = self.cost_critic(cent_obs, rnn_states_cost, masks)
+        return values, actions, action_log_probs, rnn_states_actor, rnn_states_critic, cost_preds, rnn_states_cost
 
     def get_values(self, cent_obs, rnn_states_critic, masks):
         values, _ = self.critic(cent_obs, rnn_states_critic, masks)
@@ -700,7 +697,7 @@ class Runner:
             self.policy[agent_id].critic.load_state_dict(policy_critic_state_dict)
 
     @torch.no_grad()
-    def eval(self, eval_episodes):
+    def eval(self, eval_episodes=1):
         eval_episode = 0
         eval_episode_rewards = []
         eval_episode_costs = []

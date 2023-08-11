@@ -512,7 +512,7 @@ class Runner:
             self.policy[agent_id].critic.load_state_dict(policy_critic_state_dict)
 
     @torch.no_grad()
-    def eval(self, eval_episodes):
+    def eval(self, eval_episodes=1):
         eval_episode = 0
         eval_episode_rewards = []
         eval_episode_costs = []
