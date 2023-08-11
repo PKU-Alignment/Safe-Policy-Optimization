@@ -111,6 +111,7 @@ you can plot the training curves by running:
 
    algorithms/general
    algorithms/lag
+   algorithms/first_order
 
 Related Projects
 -----------------

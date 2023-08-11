@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from .util import get_clones, init
+from .util import init
 
 """MLP modules."""
 
@@ -9,7 +9,6 @@ class MLPLayer(nn.Module):
         super(MLPLayer, self).__init__()
         self._layer_N = layer_N
 
-        # active_func = [nn.Tanh(), nn.ReLU()][use_ReLU]
         active_func = [nn.ELU(), nn.ELU()][use_ReLU]
         init_method = [nn.init.xavier_uniform_, nn.init.orthogonal_][use_orthogonal]
         gain = nn.init.calculate_gain(['tanh', 'relu'][use_ReLU])
@@ -19,15 +18,8 @@ class MLPLayer(nn.Module):
 
         self.fc1 = nn.Sequential(
             init_(nn.Linear(input_dim, hidden_size)), active_func, nn.LayerNorm(hidden_size))
-        # self.fc1 = nn.Sequential(
-        #     init_(nn.Linear(input_dim, hidden_size)), active_func)
-        # self.fc_h = nn.Sequential(init_(
-        #     nn.Linear(hidden_size, hidden_size)), active_func, nn.LayerNorm(hidden_size))
-        # self.fc2 = get_clones(self.fc_h, self._layer_N)
         self.fc2 = nn.ModuleList([nn.Sequential(init_(
             nn.Linear(hidden_size, hidden_size)), active_func, nn.LayerNorm(hidden_size)) for i in range(self._layer_N)])
-        # self.fc2 = nn.ModuleList([nn.Sequential(init_(
-        #     nn.Linear(hidden_size, hidden_size)), active_func) for i in range(self._layer_N)])
 
     def forward(self, x):
         x = self.fc1(x)
@@ -54,14 +46,11 @@ class MLPBase(nn.Module):
 
         self.mlp = MLPLayer(obs_dim, self.hidden_size,
                               self._layer_N, self._use_orthogonal, self._use_ReLU)
-        # self.mlp_middle_layer = MLPLayer(self.hidden_size, self.hidden_size,
-        #                       self._layer_N, self._use_orthogonal, self._use_ReLU)
-
+        
     def forward(self, x):
         if self._use_feature_normalization:
             x = self.feature_norm(x)
 
         x = self.mlp(x)
-        # x = self.mlp_middle_layer(x)
 
         return x

@@ -37,7 +37,7 @@ from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_sa_mujoco_env
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
-from safepo.utils.config import single_agent_args
+
 
 def single_agent_args():
     # training parameters
@@ -156,9 +156,7 @@ def main(args):
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.set_num_threads(4)
-    device = torch.device(
-        "cuda" if torch.cuda.is_available() and args.device == "cuda" else "cpu"
-    )
+    device = torch.device(args.device)
 
     # set training steps
     local_steps_per_epoch = args.steps_per_epoch // args.num_envs
@@ -508,7 +506,7 @@ def main(args):
                 "Misc/H_inv_g": x.norm().item(),
                 "Misc/AcceptanceStep": acceptance_step,
                 "Loss/Loss_actor": (loss_pi_r + loss_pi_c).mean().item(),
-                "Train/KL": kl,
+                "Train/KL": kl.cpu(),
             },
         )
 
@@ -580,8 +578,14 @@ def main(args):
         logger.log_tabular("Misc/AcceptanceStep")
 
         logger.dump_tabular()
-        if epoch % 100 == 0:
+        if (epoch+1) % 100 == 0 or epoch == 0:
             logger.torch_save(itr=epoch)
+            logger.save_state(
+                state_dict={
+                    "Normalizer": env.obs_rms,
+                },
+                itr = epoch
+            )
     logger.close()
 
 

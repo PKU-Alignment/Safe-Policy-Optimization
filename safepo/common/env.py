@@ -17,9 +17,9 @@ from __future__ import annotations
 
 from typing import Callable
 import safety_gymnasium
-from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeNormalizeObservation, SafeRescaleAction, SafeUnsqueeze
+from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeRescaleAction, SafeUnsqueeze
 from safety_gymnasium.vector.async_vector_env import SafetyAsyncVectorEnv
-from safepo.common.wrappers import ShareSubprocVecEnv, ShareDummyVecEnv, ShareEnv
+from safepo.common.wrappers import ShareSubprocVecEnv, ShareDummyVecEnv, ShareEnv, SafeNormalizeObservation
 try :
     from safepo.envs.safe_dexteroushands.tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
     from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_abreast import ShadowHandCatchAbreast
@@ -65,10 +65,10 @@ def make_sa_mujoco_env(num_envs: int, env_id: str, seed: int|None = None):
             """Creates an environment that can enable or disable the environment checker."""
             env = safety_gymnasium.make(env_id)
             env = SafeRescaleAction(env, -1.0, 1.0)
-            env = SafeNormalizeObservation(env)
             return env
         env_fns = [create_env for _ in range(num_envs)]
         env = SafetyAsyncVectorEnv(env_fns)
+        env = SafeNormalizeObservation(env)
         env.reset(seed=seed)
         obs_space = env.single_observation_space
         act_space = env.single_action_space
@@ -119,7 +119,7 @@ def make_sa_shadow_hand_env(args, cfg, cfg_train, sim_params):
 
     return env
 
-def make_ma_mujoco_env(args, cfg_train):
+def make_ma_mujoco_env(scenario, agent_conf, seed, cfg_train):
     """
     Creates and returns a multi-agent environment using Mujoco scenarios.
 
@@ -139,10 +139,10 @@ def make_ma_mujoco_env(args, cfg_train):
                 env: Initialized ShareEnv instance.
             """
             env=ShareEnv(
-                scenario=args.scenario,
-                agent_conf=args.agent_conf,
+                scenario=scenario,
+                agent_conf=agent_conf,
             )
-            env.reset(seed=args.seed + rank * 1000)
+            env.reset(seed=seed + rank * 1000)
             return env
 
         return init_env

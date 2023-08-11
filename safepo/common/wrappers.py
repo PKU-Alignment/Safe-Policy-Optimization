@@ -23,11 +23,23 @@ import torch
 import numpy as np
 from gymnasium.vector.vector_env import VectorEnv
 from gymnasium.spaces import Box
+from gymnasium.wrappers.normalize import NormalizeObservation
 
 from safety_gymnasium.vector.utils.tile_images import tile_images
 from safety_gymnasium.tasks.safe_multi_agent.safe_mujoco_multi import SafeMAEnv
 from typing import Optional
 
+
+
+class SafeNormalizeObservation(NormalizeObservation):
+    """This wrapper will normalize observations as Gymnasium's NormalizeObservation wrapper does."""
+
+    def step(self, action):
+        """Steps through the environment and normalizes the observation."""
+        obs, rews, costs, terminateds, truncateds, infos = self.env.step(action)
+        obs = self.normalize(obs) if self.is_vector_env else self.normalize(np.array([obs]))[0]
+        return obs, rews, costs, terminateds, truncateds, infos
+    
 
 class ShareEnv(SafeMAEnv):
     
@@ -355,23 +367,7 @@ class ShareSubprocVecEnv(ShareVecEnv):
         )
         return obs, share_obs, available_actions
 
-
-    def reset_task(self):
-        for remote in self.remotes:
-            remote.send(('reset_task', None))
-        return np.stack([remote.recv() for remote in self.remotes])
-
-    def close(self):
-        if self.closed:
-            return
-        if self.waiting:
-            for remote in self.remotes:
-                remote.recv()
-        for remote in self.remotes:
-            remote.send(('close', None))
-        for p in self.ps:
-            p.join()
-        self.closed = True
+    
 
 class ShareDummyVecEnv(ShareVecEnv):
     def __init__(self, env_fns, device=torch.device("cpu")):
@@ -393,12 +389,8 @@ class ShareDummyVecEnv(ShareVecEnv):
         obs, share_obs, rews, cos, dones, infos, available_actions = map(np.array, zip(*results))
 
         for i, done in enumerate(dones):
-            if 'bool' in done.__class__.__name__:
-                if done:
-                    obs[i], share_obs[i], available_actions[i] = self.envs[i].reset()
-            else:
-                if np.all(done):
-                    obs[i], share_obs[i], available_actions[i] = self.envs[i].reset()
+            if np.all(done):
+                obs[i], share_obs[i], available_actions[i] = self.envs[i].reset()
         self.actions = None
 
         obs, share_obs, rews, cos, dones, available_actions = map(
@@ -413,10 +405,6 @@ class ShareDummyVecEnv(ShareVecEnv):
             lambda x: torch.tensor(np.stack(x), device=self.device), zip(*results)
         )
         return obs, share_obs, available_actions
-    
-    def close(self):
-        for env in self.envs:
-            env.close()
 
     def render(self):
         return self.envs[0].render()

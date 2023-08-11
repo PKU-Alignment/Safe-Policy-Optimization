@@ -6,7 +6,7 @@ run_dir: ./runs
 use_centralized_V: True
 use_obs_instead_of_state: False
 num_env_steps: 100000000
-episode_length: 75
+episode_length: 8
 n_rollout_threads: 1
 n_eval_rollout_threads: 1
 use_linear_lr_decay: False
@@ -75,8 +75,8 @@ mamujoco:
   use_valuenorm: True
   layer_N: 1
   num_env_steps: 10000000
-  episode_length: 200
-  n_rollout_threads: 32
+  episode_length: 1000
+  n_rollout_threads: 10
   n_eval_rollout_threads: 10
   hidden_size: 128
   gamma: 0.99

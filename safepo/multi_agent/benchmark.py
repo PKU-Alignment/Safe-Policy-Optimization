@@ -1,40 +1,25 @@
 import argparse
 import shlex
 import subprocess
+from safepo.utils.config import multi_agent_velocity_map
 
-navi_robots = ['Ant', 'Car', 'Doggo', 'Point', 'Racecar']
-navi_tasks = ['Button']
-diffculies = ['1']
-vel_robots = ['Ant', 'HalfCheetah', 'Hopper', 'Walker2d', 'Swimmer', 'Humanoid']
-vel_tasks = ['Velocity']
-
-navi_envs = [
-    f"Safety{robot}{task}{diffculty}-v0"
-    for diffculty in diffculies
-    for robot in navi_robots
-    for task in navi_tasks
-]
-
-vel_envs = [
-    f"Safety{robot}{task}-v1"
-    for robot in vel_robots
-    for task in vel_tasks
-]
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--env-ids",
+        "--tasks",
         nargs="+",
-        default=navi_envs+vel_envs,
+        default=list(multi_agent_velocity_map.keys()),
         help="the ids of the environment to benchmark",
     )
     parser.add_argument(
         "--algo",
         nargs="+",
         default=[
-            "pcpo",
-            "ppo_lag",
+            "mappo",
+            "mappolag",
+            "macpo",
+            "happo",
         ],
         help="the ids of the algorithm to benchmark",
     )
@@ -47,11 +32,11 @@ def parse_args():
     parser.add_argument(
         "--workers",
         type=int,
-        default=18,
+        default=8,
         help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--experiment", type=str, default="benchmark_single_env", help="name of the experiment"
+        "--experiment", type=str, default="benchmark_multi_env", help="name of the experiment"
     )
     args = parser.parse_args()
 
@@ -71,28 +56,29 @@ if __name__ == "__main__":
 
     commands = []
 
-    log_dir = f"../runs/{args.experiment}"
     for seed in range(0, args.num_seeds):
-        for env_id in args.env_ids:
+        for task in args.tasks:
             for algo in args.algo:
+                agen_conf = multi_agent_velocity_map[task]['agent_conf']
+                scenario = multi_agent_velocity_map[task]['scenario']
                 commands += [
                     " ".join(
                         [
                             f"python {algo}.py",
-                            "--env-id",
-                            env_id,
+                            "--agent-conf",
+                            agen_conf,
+                            "--scenario",
+                            scenario,
                             "--seed",
                             str(args.start_seed + 1000*seed),
                             "--write-terminal",
                             "False",
-                            "--log-dir",
-                            log_dir,
+                            "--experiment",
+                            args.experiment,
                             "--total-steps",
                             "1000",
                             "--num-envs",
                             "1",
-                            "--steps-per-epoch",
-                            "1000",
                         ]
                     )
                 ]

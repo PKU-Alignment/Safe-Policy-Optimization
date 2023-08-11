@@ -229,7 +229,6 @@ class Runner:
             os.makedirs(self.save_dir)
 
         self.logger.save_config(config)
-        self.logger.log("Start with training.")
         self.policy = []
         for agent_id in range(self.num_agents):
             share_observation_space = self.envs.share_observation_space[agent_id]
@@ -322,8 +321,8 @@ class Runner:
                     }
                 )
                 
-            self.logger.log_tabular("Metrics/EpRet")
-            self.logger.log_tabular("Metrics/EpCost")
+            self.logger.log_tabular("Metrics/EpRet", min_and_max=True, std=True)
+            self.logger.log_tabular("Metrics/EpCost", min_and_max=True, std=True)
             self.logger.log_tabular("Eval/EpRet")
             self.logger.log_tabular("Eval/EpCost")
             self.logger.log_tabular("Train/Epoch", episode)
@@ -452,7 +451,7 @@ class Runner:
             self.policy[agent_id].critic.load_state_dict(policy_critic_state_dict)
 
     @torch.no_grad()
-    def eval(self):
+    def eval(self, eval_episodes=1):
         eval_episode = 0
         eval_episode_rewards = []
         eval_episode_costs = []
@@ -477,6 +476,11 @@ class Runner:
                                                       deterministic=True)
                 eval_rnn_states[:, agent_id] = temp_rnn_state
                 eval_actions_collector.append(eval_actions)
+
+            if self.config["env_name"] == "Safety9|8HumanoidVelocity-v0":
+                zeros = torch.zeros(eval_actions_collector[-1].shape[0], 1)
+                eval_actions_collector[-1]=torch.cat((eval_actions_collector[-1], zeros), dim=1)
+
 
             eval_obs, _, eval_rewards, eval_costs, eval_dones, _, _ = self.eval_envs.step(
                 eval_actions_collector
@@ -505,7 +509,7 @@ class Runner:
                     eval_episode_costs.append(one_episode_costs[:, eval_i].mean().item())
                     one_episode_costs[:, eval_i] = 0
 
-            if eval_episode >= 2:
+            if eval_episode >= eval_episodes:
                 return np.mean(eval_episode_rewards), np.mean(eval_episode_costs)
 
     @torch.no_grad()
@@ -522,11 +526,21 @@ def train(args, cfg_train):
     agent_index = [[[0, 1, 2, 3, 4, 5]],
                    [[0, 1, 2, 3, 4, 5]]]
     if args.task == "MujocoVelocity":
-        env = make_ma_mujoco_env(args, cfg_train)
+        env = make_ma_mujoco_env(
+        scenario=args.scenario,
+        agent_conf=args.agent_conf,
+        seed=cfg_train['seed'],
+        cfg_train=cfg_train,
+    )
         cfg_eval = copy.deepcopy(cfg_train)
         cfg_eval["seed"] = cfg_train["seed"] + 10000
         cfg_eval["n_rollout_threads"] = cfg_eval["n_eval_rollout_threads"]
-        eval_env = make_ma_mujoco_env(args, cfg_eval)
+        eval_env = make_ma_mujoco_env(
+        scenario=args.scenario,
+        agent_conf=args.agent_conf,
+        seed=cfg_eval['seed'],
+        cfg_train=cfg_eval,
+    )
     else: 
         sim_params = parse_sim_params(args, cfg_env, cfg_train)
         env = make_ma_shadow_hand_env(args, cfg_env, cfg_train, sim_params, agent_index)

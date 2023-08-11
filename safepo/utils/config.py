@@ -26,6 +26,41 @@ import yaml
 import argparse
 
 
+multi_agent_velocity_map = {
+    'Safety2x4AntVelocity-v0': {
+        'agent_conf': '2x4',
+        'scenario': 'Ant',
+    },
+    'Safety4x2AntVelocity-v0': {
+        'agent_conf': '4x2',
+        'scenario': 'Ant',
+    },
+    'Safety2x3HalfCheetahVelocity-v0': {
+        'agent_conf': '2x3',
+        'scenario': 'HalfCheetah',
+    },
+    'Safety6x1HalfCheetahVelocity-v0': {
+        'agent_conf': '6x1',
+        'scenario': 'HalfCheetah',
+    },
+    'Safety3x1HopperVelocity-v0': {
+        'agent_conf': '3x1',
+        'scenario': 'Hopper',
+    },
+    'Safety2x3Walker2dVelocity-v0': {
+        'agent_conf': '2x3',
+        'scenario': 'Walker2d',
+    },
+    'Safety2x1SwimmerVelocity-v0': {
+        'agent_conf': '2x1',
+        'scenario': 'Swimmer',
+    },
+    'Safety9|8HumanoidVelocity-v0': {
+        'agent_conf': '9|8',
+        'scenario': 'Humanoid',
+    },
+}
+
 def set_np_formatting():
     np.set_printoptions(edgeitems=30, infstr='inf',
                         linewidth=4000, nanstr='nan', precision=2,
@@ -45,14 +80,8 @@ def set_seed(seed, torch_deterministic=False):
     torch.cuda.manual_seed_all(seed)
     torch.autograd.set_detect_anomaly(True)
     
-    if torch_deterministic:
-        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.deterministic = True
-        torch.set_deterministic(True)
-    else:
-        torch.backends.cudnn.benchmark = True
-        torch.backends.cudnn.deterministic = False
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.deterministic = False
 
     return seed
 
@@ -101,8 +130,8 @@ def multi_agent_args(algo):
     custom_parameters = [
         {"name": "--use-eval", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Use evaluation environment for testing"},
         {"name": "--task", "type": str, "default": "MujocoVelocity", "help": "The task to run"},
-        {"name": "--agent-conf", "type": str, "default": "2x4", "help": "The agent configuration"},
-        {"name": "--scenario", "type": str, "default": "Ant", "help": "The scenario"},
+        {"name": "--agent-conf", "type": str, "default": "2x1", "help": "The agent configuration"},
+        {"name": "--scenario", "type": str, "default": "Swimmer", "help": "The scenario"},
         {"name": "--experiment", "type": str, "default": "Base", "help": "Experiment name. If used with --metadata flag an additional information about physics engine, sim device, pipeline and domain randomization will be added to the name"},
         {"name": "--seed", "type": int, "default":0, "help": "Random seed"},
         {"name": "--model-dir", "type": str, "default": "", "help": "Choose a model dir"},
@@ -111,6 +140,8 @@ def multi_agent_args(algo):
         {"name": "--device-id", "type": int, "default": 0, "help": "The device id to run the model on"},
         {"name": "--write-terminal", "type": lambda x: bool(strtobool(x)), "default": True, "help": "Toggles terminal logging"},
         {"name": "--headless", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Toggles headless mode"},
+        {"name": "--total-steps", "type": int, "default": None, "help": "Total timesteps of the experiments"},
+        {"name": "--num-envs", "type": int, "default": None, "help": "The number of parallel game environments"},
     ]
     # Create argument parser
     parser = argparse.ArgumentParser(description="RL Policy")
@@ -135,7 +166,8 @@ def multi_agent_args(algo):
         "ShadowHandCatchUnderarm": "shadow_hand_catch_underarm",
     }
     cfg_train_path = "marl_cfg/{}/config.yaml".format(algo)
-    with open(os.path.join(os.getcwd(), cfg_train_path), 'r') as f:
+    base_path = os.path.dirname(os.path.abspath(__file__)).replace("utils", "multi_agent")
+    with open(os.path.join(base_path, cfg_train_path), 'r') as f:
         cfg_train = yaml.load(f, Loader=yaml.SafeLoader)
         if args.task == "MujocoVelocity":
             cfg_train.update(cfg_train.get("mamujoco"))
@@ -149,6 +181,12 @@ def multi_agent_args(algo):
     else:
         env_name = args.task
     cfg_train["env_name"] = env_name
+
+    if args.total_steps:
+        cfg_train["num_env_steps"] = args.total_steps
+    if args.num_envs:
+        cfg_train["n_rollout_threads"] = args.num_envs
+        cfg_train["n_eval_rollout_threads"] = args.num_envs
     relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])
@@ -173,24 +211,3 @@ def multi_agent_args(algo):
 
     return args, cfg_env, cfg_train
 
-def single_agent_args():
-    # training parameters
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
-    parser.add_argument("--device", type=str, default="cpu", help="the device (cpu or cuda) to run the code")
-    parser.add_argument("--num-envs", type=int, default=10, help="the number of parallel game environments")
-    parser.add_argument("--total-steps", type=int, default=10000000, help="total timesteps of the experiments",)
-    parser.add_argument("--env-id", type=str, default="SafetyPointGoal1-v0", help="the id of the environment",)
-    parser.add_argument("--use-eval", type=lambda x: bool(strtobool(x)), default=False, help="toggles evaluation",)
-    # general algorithm parameters
-    parser.add_argument("--steps-per-epoch", type=int, default=20000, help="the number of steps to run in each environment per policy rollout",)
-    parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
-    # logger parameters
-    parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
-    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
-    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
-    # algorithm specific parameters
-    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
-
-    args = parser.parse_args()
-    return args

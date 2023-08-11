@@ -82,26 +82,6 @@ def convert_json(obj):
 
         return str(obj)
 
-
-def filter_values_in_dict(dic):
-    """Drop keys from dictionary which are not int, float, bool or str."""
-    cleared_dict = dict()
-    for k, v in dic.items():
-        if (
-            isinstance(v, int)
-            or isinstance(v, float)
-            or isinstance(v, str)
-            or isinstance(v, bool)
-        ):
-            cleared_dict[k] = v
-        if isinstance(v, dict):
-            filter_values_in_dict(v)
-            # cleared_dict.update(**filtered)
-    print(cleared_dict)
-    # raise NotImplementedError
-    return cleared_dict
-
-
 def colorize(string, color, bold=False, highlight=False):
     """
     Colorize a string.
@@ -154,7 +134,6 @@ class Logger:
             mode="w",
         )
         atexit.register(self.output_file.close)
-        print(colorize(f"Logging data to {self.output_file.name}", "cyan", bold=True))
         self._csv_writer = csv.writer(self.output_file)
 
         self.epoch = 0

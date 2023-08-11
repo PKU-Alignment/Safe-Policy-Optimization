@@ -31,7 +31,7 @@ import torch.optim
 from rich.progress import track
 from torch.distributions import Normal
 from torch.nn.utils.clip_grad import clip_grad_norm_
-from torch.optim.lr_scheduler import ConstantLR, LinearLR
+from torch.optim.lr_scheduler import LinearLR
 from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
@@ -39,7 +39,7 @@ from safepo.common.env import make_sa_mujoco_env
 from safepo.common.lagrange import Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
-from safepo.utils.config import single_agent_args
+
 
 
 def parse_args():
@@ -76,6 +76,7 @@ def single_agent_args():
     parser.add_argument("--focops-lam", type=float, default=1.5, help="the lambda of the focops")
     args = parser.parse_args()
     return args
+
 def main(args):
     # set the random seed, device and number of threads
     random.seed(args.seed)
@@ -83,9 +84,7 @@ def main(args):
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.set_num_threads(4)
-    device = torch.device(
-        "cuda" if torch.cuda.is_available() and args.device == "cuda" else "cpu"
-    )
+    device = torch.device(args.device)
 
     # set training steps
     local_steps_per_epoch = args.steps_per_epoch // args.num_envs
@@ -401,8 +400,14 @@ def main(args):
         logger.log_tabular("Value/CostAdv", data["adv_c"].mean().item())
 
         logger.dump_tabular()
-        if epoch % 100 == 0:
+        if (epoch+1) % 100 == 0 or epoch == 0:
             logger.torch_save(itr=epoch)
+            logger.save_state(
+                state_dict={
+                    "Normalizer": env.obs_rms,
+                },
+                itr = epoch
+            )
     logger.close()
 
 

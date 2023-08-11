@@ -153,7 +153,6 @@ class Plotter:
                 except FileNotFoundError as error:
                     algo_name=root.split('/')[-2]
                 algo_name=algo_map[algo_name]
-                print(algo_name)
                 condition1 = condition or algo_name or 'exp'
                 self.exp_idx += 1
                 if condition1 not in self.units:
