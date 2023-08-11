@@ -111,6 +111,8 @@ def multi_agent_args(algo):
         {"name": "--device-id", "type": int, "default": 0, "help": "The device id to run the model on"},
         {"name": "--write-terminal", "type": lambda x: bool(strtobool(x)), "default": True, "help": "Toggles terminal logging"},
         {"name": "--headless", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Toggles headless mode"},
+        {"name": "--total-steps", "type": int, "default": None, "help": "Total timesteps of the experiments"},
+        {"name": "--num-envs", "type": int, "default": None, "help": "The number of parallel game environments"},
     ]
     # Create argument parser
     parser = argparse.ArgumentParser(description="RL Policy")
@@ -149,6 +151,11 @@ def multi_agent_args(algo):
     else:
         env_name = args.task
     cfg_train["env_name"] = env_name
+
+    if args.total_steps:
+        cfg_train["num_env_steps"] = args.total_steps
+    if args.num_envs:
+        cfg_train["n_rollout_threads"] = args.num_envs
     relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])
