@@ -35,7 +35,6 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_sa_mujoco_env
-from safepo.common.lagrange import Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 
@@ -58,11 +57,6 @@ def single_agent_args():
     parser.add_argument("--experiment", type=str, default="single_agent_experiment", help="the name of the experiment")
     parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
     parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
-    # algorithm specific parameters
-    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
-    parser.add_argument("--lagrangian-multiplier-init", type=float, default=0.001, help="the initial value of the lagrangian multiplier")
-    parser.add_argument("--lagrangian-multiplier-lr", type=float, default=0.035, help="the learning rate of the lagrangian multiplier")
-
     args = parser.parse_args()
     return args
 
@@ -196,13 +190,6 @@ def main(args):
         size=local_steps_per_epoch,
         device=device,
         num_envs=args.num_envs,
-    )
-
-    # setup lagrangian multiplier
-    lagrange = Lagrange(
-        cost_limit=args.cost_limit,
-        lagrangian_multiplier_init=args.lagrangian_multiplier_init,
-        lagrangian_multiplier_lr=args.lagrangian_multiplier_lr,
     )
 
     # set up the logger
@@ -348,7 +335,6 @@ def main(args):
 
         # update lagrange multiplier
         ep_costs = logger.get_stats("Metrics/EpCost")
-        lagrange.update_lagrange_multiplier(ep_costs)
 
         # update policy
         data = buffer.get()
@@ -357,14 +343,15 @@ def main(args):
         policy.actor.zero_grad()
 
         # comnpute advantage
-        advantage = data["adv_r"] - lagrange.lagrangian_multiplier * data["adv_c"]
-        advantage /= (lagrange.lagrangian_multiplier + 1)
+        advantage = data["adv_r"]
 
         # compute loss_pi
-        distribution = policy.actor(data["obs"])
-        log_prob = distribution.log_prob(data["act"]).sum(dim=-1)
+        temp_distribution = policy.actor(data["obs"])
+        log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
         ratio = torch.exp(log_prob - data["log_prob"])
         loss_pi = -(ratio * advantage).mean()
+        loss_before = loss_pi.item()
+        old_distribution = policy.actor(data["obs"])
 
         loss_pi.backward()
 
@@ -377,15 +364,58 @@ def main(args):
         step_direction = x * alpha
         assert torch.isfinite(step_direction).all(), "step_direction is not finite"
 
-        theta_new = theta_old + step_direction
-        set_param_values_to_model(policy.actor, theta_new)
-        with torch.no_grad():
-            new_distribution = policy.actor(data["obs"])
-            final_kl = (
-                torch.distributions.kl.kl_divergence(distribution, new_distribution)
-                .mean()
-                .item()
+        step_frac = 1.0
+        # Change expected objective function gradient = expected_imrpove best this moment
+        expected_improve = grads.dot(step_direction)
+
+        final_kl = 0.0
+
+        # While not within_trust_region and not out of total_steps:
+        for step in range(15):
+            # update theta params
+            new_theta = theta_old + step_frac * step_direction
+            # set new params as params of net
+            set_param_values_to_model(policy.actor, new_theta)
+
+            with torch.no_grad():
+                temp_distribution = policy.actor(data["obs"])
+                log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
+                ratio = torch.exp(log_prob - data["log_prob"])
+                loss_pi = -(ratio * advantage).mean()
+                # compute KL distance between new and old policy
+                current_distribution = policy.actor(data["obs"])
+                kl = (
+                    torch.distributions.kl.kl_divergence(
+                        old_distribution, current_distribution
+                    )
+                    .mean()
+                    .item()
+                )
+            # real loss improve: old policy loss - new policy loss
+            loss_improve = loss_before - loss_pi.item()
+            logger.log(
+                f"Expected Improvement: {expected_improve} Actual: {loss_improve}"
             )
+            if not torch.isfinite(loss_pi):
+                logger.log("WARNING: loss_pi not finite")
+            elif loss_improve < 0:
+                logger.log("INFO: did not improve improve <0")
+            elif kl > 0.01:
+                logger.log("INFO: violated KL constraint.")
+            else:
+                # step only if surrogate is improved and when within trust reg.
+                acceptance_step = step + 1
+                logger.log(f"Accept step at i={acceptance_step}")
+                final_kl = kl
+                break
+            step_frac *= 0.8
+        else:
+            logger.log("INFO: no suitable step found...")
+            step_direction = torch.zeros_like(step_direction)
+            acceptance_step = 0
+
+        theta_new = theta_old + step_frac * step_direction
+        set_param_values_to_model(policy.actor, theta_new)
 
         logger.store(
             **{
@@ -394,6 +424,7 @@ def main(args):
                 "Misc/xHx": xHx.item(),
                 "Misc/gradient_norm": torch.norm(grads).mean().item(),
                 "Misc/H_inv_g": x.norm().item(),
+                "Misc/AcceptanceStep": acceptance_step,
                 "Loss/Loss_actor": loss_pi.mean().item(),
                 "Train/KL": final_kl,
             },
@@ -451,7 +482,6 @@ def main(args):
         logger.log_tabular("Train/Epoch", epoch + 1)
         logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
         logger.log_tabular("Train/KL")
-        logger.log_tabular("Train/LagragianMultiplier", lagrange.lagrangian_multiplier)
         logger.log_tabular("Loss/Loss_reward_critic")
         logger.log_tabular("Loss/Loss_cost_critic")
         logger.log_tabular("Loss/Loss_actor")
@@ -467,6 +497,7 @@ def main(args):
         logger.log_tabular("Misc/xHx")
         logger.log_tabular("Misc/gradient_norm")
         logger.log_tabular("Misc/H_inv_g")
+        logger.log_tabular("Misc/AcceptanceStep")
 
         logger.dump_tabular()
         if (epoch+1) % 100 == 0 or epoch == 0:

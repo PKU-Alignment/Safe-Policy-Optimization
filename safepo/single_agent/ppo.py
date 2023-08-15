@@ -23,7 +23,6 @@ import sys
 import time
 from collections import deque
 from distutils.util import strtobool
-from typing import Callable
 
 import numpy as np
 import torch
@@ -31,14 +30,13 @@ import torch.nn as nn
 import torch.optim
 from rich.progress import track
 from torch.nn.utils.clip_grad import clip_grad_norm_
+from torch.optim.lr_scheduler import LinearLR
 from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_sa_mujoco_env
-from safepo.common.lagrange import Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
-
 
 
 def single_agent_args():
@@ -58,106 +56,8 @@ def single_agent_args():
     parser.add_argument("--experiment", type=str, default="single_agent_experiment", help="the name of the experiment")
     parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
     parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
-    # algorithm specific parameters
-    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
-    parser.add_argument("--lagrangian-multiplier-init", type=float, default=0.001, help="the initial value of the lagrangian multiplier")
-    parser.add_argument("--lagrangian-multiplier-lr", type=float, default=0.035, help="the learning rate of the lagrangian multiplier")
-
     args = parser.parse_args()
     return args
-
-
-def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
-    flat_params = []
-    for _, param in model.named_parameters():
-        if param.requires_grad:
-            data = param.data
-            data = data.view(-1)  # flatten tensor
-            flat_params.append(data)
-    assert flat_params, "No gradients were found in model parameters."
-    return torch.cat(flat_params)
-
-
-def conjugate_gradients(
-    fisher_product: Callable[[torch.Tensor], torch.Tensor],
-    policy: ActorVCritic,
-    fvp_obs: torch.Tensor,
-    vector_b: torch.Tensor,
-    num_steps: int = 10,
-    residual_tol: float = 1e-10,
-    eps: float = 1e-6,
-) -> torch.Tensor:
-    vector_x = torch.zeros_like(vector_b)
-    vector_r = vector_b - fisher_product(vector_x, policy, fvp_obs)
-    vector_p = vector_r.clone()
-    rdotr = torch.dot(vector_r, vector_r)
-
-    for _ in range(num_steps):
-        vector_z = fisher_product(vector_p, policy, fvp_obs)
-        alpha = rdotr / (torch.dot(vector_p, vector_z) + eps)
-        vector_x += alpha * vector_p
-        vector_r -= alpha * vector_z
-        new_rdotr = torch.dot(vector_r, vector_r)
-        if torch.sqrt(new_rdotr) < residual_tol:
-            break
-        vector_mu = new_rdotr / (rdotr + eps)
-        vector_p = vector_r + vector_mu * vector_p
-        rdotr = new_rdotr
-    return vector_x
-
-
-def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> None:
-    assert isinstance(vals, torch.Tensor)
-    i: int = 0
-    for _, param in model.named_parameters():
-        if param.requires_grad:  # param has grad and, hence, must be set
-            orig_size = param.size()
-            size = np.prod(list(param.size()))
-            new_values = vals[i : int(i + size)]
-            # set new param values
-            new_values = new_values.view(orig_size)
-            param.data = new_values
-            i += int(size)  # increment array position
-    assert i == len(vals), f"Lengths do not match: {i} vs. {len(vals)}"
-
-
-def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
-    grads = []
-    for _, param in model.named_parameters():
-        if param.requires_grad and param.grad is not None:
-            grad = param.grad
-            grads.append(grad.view(-1))  # flatten tensor and append
-    assert grads, "No gradients were found in model parameters."
-    return torch.cat(grads)
-
-
-def fvp(
-    params: torch.Tensor,
-    policy: ActorVCritic,
-    fvp_obs: torch.Tensor,
-) -> torch.Tensor:
-    policy.actor.zero_grad()
-    current_distribution = policy.actor(fvp_obs)
-    with torch.no_grad():
-        old_distribution = policy.actor(fvp_obs)
-    kl = torch.distributions.kl.kl_divergence(
-        old_distribution, current_distribution
-    ).mean()
-
-    grads = torch.autograd.grad(kl, tuple(policy.actor.parameters()), create_graph=True)
-    flat_grad_kl = torch.cat([grad.view(-1) for grad in grads])
-
-    kl_p = (flat_grad_kl * params).sum()
-    grads = torch.autograd.grad(
-        kl_p,
-        tuple(policy.actor.parameters()),
-        retain_graph=False,
-    )
-
-    flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads])
-
-    return flat_grad_grad_kl + params * 0.1
-
 
 def main(args):
     # set the random seed, device and number of threads
@@ -182,11 +82,19 @@ def main(args):
         obs_dim=obs_space.shape[0],
         act_dim=act_space.shape[0],
     ).to(device)
+    actor_optimizer = torch.optim.Adam(policy.actor.parameters(), lr=3e-4)
+    actor_scheduler = LinearLR(
+        actor_optimizer,
+        start_factor=1.0,
+        end_factor=0.0,
+        total_iters=epochs,
+        verbose=True,
+    )
     reward_critic_optimizer = torch.optim.Adam(
-        policy.reward_critic.parameters(), lr=args.critic_lr
+        policy.reward_critic.parameters(), lr=3e-4
     )
     cost_critic_optimizer = torch.optim.Adam(
-        policy.cost_critic.parameters(), lr=args.critic_lr
+        policy.cost_critic.parameters(), lr=3e-4
     )
 
     # create the vectorized on-policy buffer
@@ -196,13 +104,6 @@ def main(args):
         size=local_steps_per_epoch,
         device=device,
         num_envs=args.num_envs,
-    )
-
-    # setup lagrangian multiplier
-    lagrange = Lagrange(
-        cost_limit=args.cost_limit,
-        lagrangian_multiplier_init=args.lagrangian_multiplier_init,
-        lagrangian_multiplier_lr=args.lagrangian_multiplier_lr,
     )
 
     # set up the logger
@@ -348,71 +249,36 @@ def main(args):
 
         # update lagrange multiplier
         ep_costs = logger.get_stats("Metrics/EpCost")
-        lagrange.update_lagrange_multiplier(ep_costs)
 
         # update policy
         data = buffer.get()
-        fvp_obs = data["obs"][:: 1]
-        theta_old = get_flat_params_from(policy.actor)
-        policy.actor.zero_grad()
+        old_distribution = policy.actor(data["obs"])
 
         # comnpute advantage
-        advantage = data["adv_r"] - lagrange.lagrangian_multiplier * data["adv_c"]
-        advantage /= (lagrange.lagrangian_multiplier + 1)
-
-        # compute loss_pi
-        distribution = policy.actor(data["obs"])
-        log_prob = distribution.log_prob(data["act"]).sum(dim=-1)
-        ratio = torch.exp(log_prob - data["log_prob"])
-        loss_pi = -(ratio * advantage).mean()
-
-        loss_pi.backward()
-
-        grads = -get_flat_gradients_from(policy.actor)
-        x = conjugate_gradients(fvp, policy, fvp_obs, grads, 15)
-        assert torch.isfinite(x).all(), "x is not finite"
-        xHx = torch.dot(x, fvp(x, policy, fvp_obs))
-        assert xHx.item() >= 0, "xHx is negative"
-        alpha = torch.sqrt(2 * 0.01 / (xHx + 1e-8))
-        step_direction = x * alpha
-        assert torch.isfinite(step_direction).all(), "step_direction is not finite"
-
-        theta_new = theta_old + step_direction
-        set_param_values_to_model(policy.actor, theta_new)
-        with torch.no_grad():
-            new_distribution = policy.actor(data["obs"])
-            final_kl = (
-                torch.distributions.kl.kl_divergence(distribution, new_distribution)
-                .mean()
-                .item()
-            )
-
-        logger.store(
-            **{
-                "Misc/Alpha": alpha.item(),
-                "Misc/FinalStepNorm": torch.norm(step_direction).mean().item(),
-                "Misc/xHx": xHx.item(),
-                "Misc/gradient_norm": torch.norm(grads).mean().item(),
-                "Misc/H_inv_g": x.norm().item(),
-                "Loss/Loss_actor": loss_pi.mean().item(),
-                "Train/KL": final_kl,
-            },
-        )
+        advantage = data["adv_r"]
 
         dataloader = DataLoader(
             dataset=TensorDataset(
                 data["obs"],
+                data["act"],
+                data["log_prob"],
                 data["target_value_r"],
                 data["target_value_c"],
+                advantage,
             ),
-            batch_size=128,
+            batch_size=64,
             shuffle=True,
         )
-        for _ in track(range(10), description="Updating..."):
+        update_counts = 0
+        final_kl = torch.ones_like(old_distribution.loc)
+        for i in track(range(40), description="Updating..."):
             for (
                 obs_b,
+                act_b,
+                log_prob_b,
                 target_value_r_b,
                 target_value_c_b,
+                adv_b,
             ) in dataloader:
                 reward_critic_optimizer.zero_grad()
                 loss_r = nn.functional.mse_loss(
@@ -432,13 +298,37 @@ def main(args):
                 clip_grad_norm_(policy.cost_critic.parameters(), 40.0)
                 cost_critic_optimizer.step()
 
+                distribution = policy.actor(obs_b)
+                log_prob = distribution.log_prob(act_b).sum(dim=-1)
+                ratio = torch.exp(log_prob - log_prob_b)
+                ratio_cliped = torch.clamp(ratio, 0.8, 1.2)
+                loss_pi = -torch.min(ratio * adv_b, ratio_cliped * adv_b).mean()
+                actor_optimizer.zero_grad()
+                loss_pi.backward()
+                clip_grad_norm_(policy.actor.parameters(), 40.0)
+                actor_optimizer.step()
+
                 logger.store(
                     **{
                         "Loss/Loss_reward_critic": loss_r.mean().item(),
                         "Loss/Loss_cost_critic": loss_c.mean().item(),
+                        "Loss/Loss_actor": loss_pi.mean().item(),
                     }
                 )
+            new_distribution = policy.actor(data["obs"])
+            kl = (
+                torch.distributions.kl.kl_divergence(old_distribution, new_distribution)
+                .sum(-1, keepdim=True)
+                .mean()
+                .item()
+            )
+            final_kl = kl
+            update_counts += 1
+            if kl > 0.02:
+                logger.log(f"Early stopping at iter {i + 1} due to reaching max kl")
+                break
         update_end_time = time.time()
+        actor_scheduler.step()
 
         # log data
         logger.log_tabular("Metrics/EpRet")
@@ -450,8 +340,9 @@ def main(args):
             logger.log_tabular("Metrics/EvalEpLen")
         logger.log_tabular("Train/Epoch", epoch + 1)
         logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
-        logger.log_tabular("Train/KL")
-        logger.log_tabular("Train/LagragianMultiplier", lagrange.lagrangian_multiplier)
+        logger.log_tabular("Train/StopIter", update_counts)
+        logger.log_tabular("Train/KL", final_kl)
+        logger.log_tabular("Train/LR", actor_scheduler.get_last_lr()[0])
         logger.log_tabular("Loss/Loss_reward_critic")
         logger.log_tabular("Loss/Loss_cost_critic")
         logger.log_tabular("Loss/Loss_actor")
@@ -462,11 +353,6 @@ def main(args):
         logger.log_tabular("Time/Total", update_end_time - rollout_start_time)
         logger.log_tabular("Value/RewardAdv", data["adv_r"].mean().item())
         logger.log_tabular("Value/CostAdv", data["adv_c"].mean().item())
-        logger.log_tabular("Misc/Alpha")
-        logger.log_tabular("Misc/FinalStepNorm")
-        logger.log_tabular("Misc/xHx")
-        logger.log_tabular("Misc/gradient_norm")
-        logger.log_tabular("Misc/H_inv_g")
 
         logger.dump_tabular()
         if (epoch+1) % 100 == 0 or epoch == 0:

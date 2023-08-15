@@ -41,17 +41,6 @@ from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 
 
-
-def parse_args():
-    # training parameters
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
-    parser.add_argument("--focops-eta", type=float, default=0.02, help="the eta of the focops")
-    parser.add_argument("--focops-lam", type=float, default=1.5, help="the lambda of the focops")
-
-    args = parser.parse_args()
-    return args
-
 def single_agent_args():
     # training parameters
     parser = argparse.ArgumentParser()
@@ -66,6 +55,7 @@ def single_agent_args():
     parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
     # logger parameters
     parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
+    parser.add_argument("--experiment", type=str, default="single_agent_experiment", help="the name of the experiment")
     parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
     parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
     # algorithm specific parameters
@@ -417,7 +407,7 @@ if __name__ == "__main__":
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])
     algo = os.path.basename(__file__).split(".")[0]
-    args.log_dir = os.path.join(args.log_dir, args.env_id, algo, relpath)
+    args.log_dir = os.path.join(args.log_dir, args.experiment, args.env_id, algo, relpath)
     if not args.write_terminal:
         terminal_log_name = "terminal.log"
         error_log_name = "error.log"

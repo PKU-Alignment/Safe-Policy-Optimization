@@ -54,6 +54,7 @@ def single_agent_args():
     parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
     # logger parameters
     parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
+    parser.add_argument("--experiment", type=str, default="single_agent_experiment", help="the name of the experiment")
     parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
     parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
     # algorithm specific parameters
@@ -384,7 +385,7 @@ if __name__ == "__main__":
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])
     algo = os.path.basename(__file__).split(".")[0]
-    args.log_dir = os.path.join(args.log_dir, args.env_id, algo, relpath)
+    args.log_dir = os.path.join(args.log_dir, args.experiment, args.env_id, algo, relpath)
     if not args.write_terminal:
         terminal_log_name = "terminal.log"
         error_log_name = "error.log"
