@@ -39,7 +39,7 @@ The results are shown as follows.
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO5/reports/PPOLag-Comparison--Vmlldzo1MTM3NDY4" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/PPOLag-Comparison--Vmlldzo1MTM3NDY4" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
 
       .. raw:: html
 
@@ -49,7 +49,7 @@ The results are shown as follows.
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO5/reports/TRPOLag-Comparison--Vmlldzo1MTM2NTE1" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/TRPOLag-Comparison--Vmlldzo1MTM2NTE1" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
 
       .. raw:: html
 
@@ -59,7 +59,7 @@ The results are shown as follows.
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO5/reports/CPO-Comparison--Vmlldzo1MTMzNjIx" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/CPO-Comparison--Vmlldzo1MTMzNjIx" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
 
       .. raw:: html
 
@@ -69,7 +69,7 @@ The results are shown as follows.
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO5/reports/-FOCOPS-Comparison--Vmlldzo1MTI4OTI0" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/-FOCOPS-Comparison--Vmlldzo1MTI4OTI0" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
 
       .. raw:: html
 
