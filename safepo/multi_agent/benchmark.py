@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument(
         "--workers",
         type=int,
-        default=8,
+        default=48,
         help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
@@ -75,10 +75,6 @@ if __name__ == "__main__":
                             "False",
                             "--experiment",
                             args.experiment,
-                            "--total-steps",
-                            "1000",
-                            "--num-envs",
-                            "1",
                         ]
                     )
                 ]

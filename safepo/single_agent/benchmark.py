@@ -2,9 +2,9 @@ import argparse
 import shlex
 import subprocess
 
-navi_robots = ['Ant', 'Car', 'Doggo', 'Point', 'Racecar']
-navi_tasks = ['Button']
-diffculies = ['1']
+navi_robots = ['Car', 'Point', 'Racecar']
+navi_tasks = ['Button', 'Circle', 'Goal', 'Push']
+diffculies = ['1', '2']
 vel_robots = ['Ant', 'HalfCheetah', 'Hopper', 'Walker2d', 'Swimmer', 'Humanoid']
 vel_tasks = ['Velocity']
 
@@ -35,6 +35,12 @@ def parse_args():
         default=[
             "pcpo",
             "ppo_lag",
+            "cup",
+            "focops",
+            "rcpo",
+            "trpo_lag",
+            "cpo",
+            "cppo_pid"
         ],
         help="the ids of the algorithm to benchmark",
     )
@@ -47,11 +53,11 @@ def parse_args():
     parser.add_argument(
         "--workers",
         type=int,
-        default=18,
+        default=48,
         help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--experiment", type=str, default="benchmark_single_env", help="name of the experiment"
+        "--experiment", type=str, default="benchmark_single_env_8_14", help="name of the experiment"
     )
     args = parser.parse_args()
 
@@ -71,7 +77,7 @@ if __name__ == "__main__":
 
     commands = []
 
-    log_dir = f"../runs/{args.experiment}"
+    log_dir = f"../runs"
     for seed in range(0, args.num_seeds):
         for env_id in args.env_ids:
             for algo in args.algo:
@@ -87,12 +93,8 @@ if __name__ == "__main__":
                             "False",
                             "--log-dir",
                             log_dir,
-                            "--total-steps",
-                            "1000",
-                            "--num-envs",
-                            "1",
-                            "--steps-per-epoch",
-                            "1000",
+                            "--experiment",
+                            args.experiment,
                         ]
                     )
                 ]

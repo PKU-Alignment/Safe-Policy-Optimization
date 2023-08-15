@@ -35,7 +35,6 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_sa_mujoco_env
-from safepo.common.lagrange import Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 
@@ -58,10 +57,6 @@ def single_agent_args():
     parser.add_argument("--experiment", type=str, default="single_agent_experiment", help="the name of the experiment")
     parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
     parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
-    # algorithm specific parameters
-    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
-    parser.add_argument("--lagrangian-multiplier-init", type=float, default=0.001, help="the initial value of the lagrangian multiplier")
-    parser.add_argument("--lagrangian-multiplier-lr", type=float, default=0.035, help="the learning rate of the lagrangian multiplier")
 
     args = parser.parse_args()
     return args
@@ -198,12 +193,6 @@ def main(args):
         num_envs=args.num_envs,
     )
 
-    # setup lagrangian multiplier
-    lagrange = Lagrange(
-        cost_limit=args.cost_limit,
-        lagrangian_multiplier_init=args.lagrangian_multiplier_init,
-        lagrangian_multiplier_lr=args.lagrangian_multiplier_lr,
-    )
 
     # set up the logger
     dict_args = vars(args)
@@ -346,9 +335,6 @@ def main(args):
 
         eval_end_time = time.time()
 
-        # update lagrange multiplier
-        ep_costs = logger.get_stats("Metrics/EpCost")
-        lagrange.update_lagrange_multiplier(ep_costs)
 
         # update policy
         data = buffer.get()
@@ -357,8 +343,7 @@ def main(args):
         policy.actor.zero_grad()
 
         # comnpute advantage
-        advantage = data["adv_r"] - lagrange.lagrangian_multiplier * data["adv_c"]
-        advantage /= (lagrange.lagrangian_multiplier + 1)
+        advantage = data["adv_r"]
 
         # compute loss_pi
         distribution = policy.actor(data["obs"])
@@ -451,7 +436,6 @@ def main(args):
         logger.log_tabular("Train/Epoch", epoch + 1)
         logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
         logger.log_tabular("Train/KL")
-        logger.log_tabular("Train/LagragianMultiplier", lagrange.lagrangian_multiplier)
         logger.log_tabular("Loss/Loss_reward_critic")
         logger.log_tabular("Loss/Loss_cost_critic")
         logger.log_tabular("Loss/Loss_actor")

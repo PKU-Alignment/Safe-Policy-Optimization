@@ -55,3 +55,24 @@ def test_cppo_pid():
         shell=True,
         check=True,
     )
+    
+def test_ppo():
+    subprocess.run(
+        "python ../safepo/single_agent/ppo.py --total-steps 1000 --num-envs 1 --steps-per-epoch 1000 --use-eval True",
+        shell=True,
+        check=True,
+    )
+
+def test_trpo():
+    subprocess.run(
+        "python ../safepo/single_agent/trpo.py --total-steps 1000 --num-envs 1 --steps-per-epoch 1000 --use-eval True",
+        shell=True,
+        check=True,
+    )
+    
+def test_natural_pg():
+    subprocess.run(
+        "python ../safepo/single_agent/natural_pg.py --total-steps 1000 --num-envs 1 --steps-per-epoch 1000 --use-eval True",
+        shell=True,
+        check=True,
+    )

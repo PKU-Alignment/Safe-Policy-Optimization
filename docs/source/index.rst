@@ -97,6 +97,15 @@ you can plot the training curves by running:
 
 .. toctree::
    :hidden:
+   :caption: Usage
+   
+   usage/train
+   usage/eval
+   usage/benchmark
+   usage/implement
+
+.. toctree::
+   :hidden:
    :caption: API
 
    api/logger
@@ -112,6 +121,7 @@ you can plot the training curves by running:
    algorithms/general
    algorithms/lag
    algorithms/first_order
+   algorithms/comparision
 
 Related Projects
 -----------------
