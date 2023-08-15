@@ -13,7 +13,7 @@ Overall Algorithms Performance Analysis
 
 .. raw:: html
 
-   <iframe src="https://wandb.ai/pku_rl/SafePO5/reports/Overview--Vmlldzo1MDgyNTU3" style="border:none;width:100%; height:500px" title="Performance-PPO-Lag">
+   <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Overview--Vmlldzo1MDgyNTU3" style="border:none;width:100%; height:500px" title="Performance-PPO-Lag">
 
 .. raw:: html
 
@@ -34,66 +34,15 @@ Upon scrutiny of this graphical representation, several observations emerge:
 Easy Start
 ----------
 
-Installation
-~~~~~~~~~~~~
-
-To install ``safepo`` from source, run:
+One line to run SafePO benchmark:
 
 .. code-block:: bash
 
-   git clone https://github.com/PKU-Alignment/Safe-Policy-Optimization.git
-   cd Safe-Policy-Optimization
-   pip install -e .
+   make benchmark
 
-Training
-~~~~~~~~
+Then you can check the runs in ``safepo/runs``. After that, you can check the 
+results (eavluation outcomes, training curves) in ``safepo/results``.
 
-To train single agent algorithms, e.g. ``PPOLag`` in ``SafetyPointGoal1-v0``, run:
-
-.. code-block:: bash
-   
-   cd safepo/single_agent
-   python ppo_lag.py --env-id SafetyPointGoal1-v0
-
-To train multi-agent alforithms, e.g. ``MAPPOLag`` in ``Safety2x4AntVelocity-v0``, run:
-
-.. code-block:: bash
-
-   cd safepo/multi_agent
-   python mappolag.py --scenario Ant --agent-conf 2x4
-
-.. warning::
-
-   We also support isaacgym environment. Please install isaacgym manually before running the code.
-
-   .. code-block:: bash
-
-      cd safepo/multi_agent
-      python mappolag.py --task ShadowHandOver
-
-Benchmark running
-~~~~~~~~~~~~~~~~~
-
-To run a single agent benchmark based on default configuration, run:
-
-.. code-block:: bash
-
-   cd safepo/single_agent
-   python benchmark.py
-
-You can also customize the benchmark configuration by modifying the python file in ``benchamrk.py``.
-
-Plot training curves
-~~~~~~~~~~~~~~~~~~~~
-
-Each experiemnt would be assigned an experiment name, default to be ``Base`` and stored in ``safepo/runs``.
-
-you can plot the training curves by running:
-
-.. code-block:: bash
-
-      cd safepo
-      python plot.py --logdir ../runs/Base
 
 .. toctree::
    :hidden:

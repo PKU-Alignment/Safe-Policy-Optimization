@@ -9,6 +9,11 @@
 
 </div>
 
+**What's New**: 
+
+- We have release documentation for [Safe Policy Optimization](https://safe-policy-optimization.readthedocs.io).
+- The **benchmark results** of SafePO can be viewed at [Benchmark](https://safe-policy-optimization.readthedocs.io/en/latest/algorithms/general.html).
+
 **Safe Policy Optimization (SafePO)**  is a comprehensive algorithm benchmark for Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, SafePO is developed with the following key features:
 
 - **Comprehensive Safe RL benchmark**: We offer high-quality implementation of both single-agent safe reinforcement learning algorithms (CPO, PCPO, FOCOPS, PPO-Lag, TRPO-Lag, CUP, CPPO-PID, and RCPO) and multi-agent safe reinforcement learning algorithms (HAPPO, MAPPO-Lag, IPPO, MACPO, and MAPPO).

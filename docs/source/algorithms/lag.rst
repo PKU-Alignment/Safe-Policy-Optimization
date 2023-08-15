@@ -10,7 +10,7 @@ Experiment Results
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO5/reports/Performance-PPO-Lag--Vmlldzo1MDgyNTcx" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Performance-PPO-Lag--Vmlldzo1MDgyNTcx" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
 
       .. raw:: html
 
@@ -20,7 +20,7 @@ Experiment Results
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO5/reports/TRPO-Lag-Training-Curve--Vmlldzo1MDk2NjA4" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/TRPO-Lag-Training-Curve--Vmlldzo1MDk2NjA4" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
 
       .. raw:: html
 
