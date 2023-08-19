@@ -42,7 +42,7 @@ First order
 
          </iframe>
 
-    .. tab-item:: PPOLag
+    .. tab-item:: PPO-Lag
 
       .. raw:: html
 

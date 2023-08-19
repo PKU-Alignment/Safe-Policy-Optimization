@@ -66,7 +66,7 @@ results (eavluation outcomes, training curves) in ``safepo/results``.
 
 .. toctree::
    :hidden:
-   :caption: ALGORITHM
+   :caption: ALGORITHMS
 
    algorithms/curve
    algorithms/lag

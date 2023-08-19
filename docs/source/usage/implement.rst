@@ -33,9 +33,9 @@ Breifly, the ``PPO`` in SafePO has the following characteristics, which are also
 Beyond the above characteristics, the ``PPO`` in SafePO also provides a training pipeline for data collection and training.
 You can customize new alforithms based on it.
 
-Next we will provide a detailed example to show how to customize the ``PPO`` algorithm to ``PPOLag`` algorithm.
+Next we will provide a detailed example to show how to customize the ``PPO`` algorithm to ``PPO-Lag`` algorithm.
 
-Example: PPOLag
+Example: PPO-Lag
 ---------------
 
 The Lagrangian multiplier is a useful tool to control the constraint violation in the Safe RL algorithms.

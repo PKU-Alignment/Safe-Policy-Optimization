@@ -1,12 +1,12 @@
-Lagrangian Method
-=================
+Lagrangian Methods
+==================
 
 Experiment Results
 ------------------
 
 .. tab-set::
 
-    .. tab-item:: PPOLag
+    .. tab-item:: PPO-Lag
 
       .. raw:: html
 
