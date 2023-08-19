@@ -4,12 +4,12 @@ Trustworthy Implementation
 To ensure that SafePO's implementation is trustworthy, we have compared 
 our algorithms' performance with open source implementations of the same algorithms.
 As some of the algorithms can not be found in open source, we selected
-``PPO-Lag``, ``TRPOLag``, ``CPO`` and ``FOCOPS`` for comparison. 
+``PPO-Lag``, ``TRPO-Lag``, ``CPO`` and ``FOCOPS`` for comparison. 
 
 We have compared the following algorithms:
 
 - ``PPO-Lag``: `OpenAI Baselines: Safety Starter Agents <https://github.com/openai/safety-starter-agents>`_
-- ``TRPOLag``: `OpenAI Baselines: Safety Starter Agents <https://github.com/openai/safety-starter-agents>`_, `RL Safety Algorithms <https://github.com/SvenGronauer/RL-Safety-Algorithms>`_
+- ``TRPO-Lag``: `OpenAI Baselines: Safety Starter Agents <https://github.com/openai/safety-starter-agents>`_, `RL Safety Algorithms <https://github.com/SvenGronauer/RL-Safety-Algorithms>`_
 - ``CPO``: `OpenAI Baselines: Safety Starter Agents <https://github.com/openai/safety-starter-agents>`_, `RL Safety Algorithms <https://github.com/SvenGronauer/RL-Safety-Algorithms>`_
 - ``FOCOPS``: `Original Implementation <https://github.com/ymzhang01/focops>`_
 
@@ -43,7 +43,7 @@ The results are shown as follows.
 
          </iframe>
 
-    .. tab-item:: TRPOLag
+    .. tab-item:: TRPO-Lag
 
       .. raw:: html
 
