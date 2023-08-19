@@ -1,0 +1,78 @@
+Efficient Command
+=================
+
+To help users quickly reporduce our results,
+we provide a command line tool for easy installation, benchmarking, and evaluation.
+
+One line benchmark running
+--------------------------
+
+First, create a conda environment with Python 3.8.
+
+Then, run the following command to install SafePO and run the full benchmark:
+
+.. code-block:: bash
+    
+    make benchmark
+
+This command will install SafePO in editable mode and excute the training process parallelly.
+After the training process is finished, it will evaluate the trained policies and generate the benchmark results,
+including training curves and evaluation rewards and costs.
+
+Simple benchmark running
+------------------------
+
+The full benchamrk is time-consuming.
+To verify the performance of SafePO, we provide a simple benchmark command,
+which runs all alforithms on sampled environments and evaluate the trained policies.
+
+.. code-block:: bash
+    
+    make benchmark-simple
+
+The training logs would be saved in ``safepo/runs/benchmark``, while the evaluation results and learning curves would be saved in ``safepo/results/benchmark``.
+
+The terminal output would be like:
+
+.. code-block:: bash
+    
+    ======= commands to run:
+    running python macpo.py --agent-conf 2x4 --scenario Ant --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 2000 --num-envs 1
+    running python mappo.py --agent-conf 2x4 --scenario Ant --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 2000 --num-envs 1
+    running python mappolag.py --agent-conf 2x4 --scenario Ant --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 2000 --num-envs 1
+    running python happo.py --agent-conf 2x4 --scenario Ant --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 2000 --num-envs 1
+    ...
+    running python pcpo.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 2000 --num-envs 1 --steps-per-epoch 1000
+    running python ppo_lag.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 2000 --num-envs 1 --steps-per-epoch 1000
+    running python cup.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 2000 --num-envs 1 --steps-per-epoch 1000
+    running python focops.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 2000 --num-envs 1 --steps-per-epoch 1000
+    running python rcpo.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 2000 --num-envs 1 --steps-per-epoch 1000
+    running python trpo_lag.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 2000 --num-envs 1 --steps-per-epoch 1000
+    running python cpo.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 2000 --num-envs 1 --steps-per-epoch 1000
+    running python cppo_pid.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 2000 --num-envs 1 --steps-per-epoch 1000
+    ...
+    Plotting from...
+    ==================================================
+
+    ./runs/benchmark/SafetyAntVelocity-v1
+
+    ==================================================
+    Plotting from...
+    ==================================================
+
+    ./runs/benchmark/Safety2x3HalfCheetahVelocity-v0
+
+    ==================================================
+    Plotting from...
+    ==================================================
+
+    ./runs/benchmark/SafetyHumanoidVelocity-v1
+
+    ==================================================
+    Plotting from...
+    ==================================================
+    ...
+    Start evaluating focops in SafetyPointGoal1-v0
+    After 1 episodes evaluation, the focops in SafetyPointGoal1-v0 evaluation reward: 12.21±2.18, cost: 26.0±19.51, the reuslt is saved in ./results/benchmark/eval_result.txt
+    Start evaluating cppo_pid in SafetyPointGoal1-v0
+    After 1 episodes evaluation, the cppo_pid in SafetyPointGoal1-v0 evaluation reward: 13.42±0.44, cost: 18.79±2.1, the reuslt is saved in ./results/benchmark/eval_result.txt

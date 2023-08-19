@@ -16,15 +16,17 @@
 
 from __future__ import annotations
 
-import argparse
 import os
 import random
 import sys
 import time
 from collections import deque
-from distutils.util import strtobool
 
 import numpy as np
+try: 
+    from isaacgym import gymutil
+except ImportError:
+    pass
 import torch
 import torch.nn as nn
 import torch.optim
@@ -34,32 +36,14 @@ from torch.optim.lr_scheduler import LinearLR
 from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
-from safepo.common.env import make_sa_mujoco_env
+from safepo.common.env import make_sa_mujoco_env, make_sa_isaac_env
+from safepo.common.lagrange import Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
+from safepo.utils.config import single_agent_args, isaac_gym_map, parse_sim_params
 
 
-def single_agent_args():
-    # training parameters
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
-    parser.add_argument("--device", type=str, default="cpu", help="the device (cpu or cuda) to run the code")
-    parser.add_argument("--num-envs", type=int, default=10, help="the number of parallel game environments")
-    parser.add_argument("--total-steps", type=int, default=10000000, help="total timesteps of the experiments",)
-    parser.add_argument("--env-id", type=str, default="SafetyPointGoal1-v0", help="the id of the environment",)
-    parser.add_argument("--use-eval", type=lambda x: bool(strtobool(x)), default=False, help="toggles evaluation",)
-    # general algorithm parameters
-    parser.add_argument("--steps-per-epoch", type=int, default=20000, help="the number of steps to run in each environment per policy rollout",)
-    parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
-    # logger parameters
-    parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
-    parser.add_argument("--experiment", type=str, default="single_agent_experiment", help="the name of the experiment")
-    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
-    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
-    args = parser.parse_args()
-    return args
-
-def main(args):
+def main(args, cfg_env=None):
     # set the random seed, device and number of threads
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -68,15 +52,24 @@ def main(args):
     torch.set_num_threads(4)
     device = torch.device(args.device)
 
+
+    if args.task not in isaac_gym_map.keys():
+        env, obs_space, act_space = make_sa_mujoco_env(
+            num_envs=args.num_envs, env_id=args.task, seed=args.seed
+        )
+        eval_env, _, _ = make_sa_mujoco_env(num_envs=1, env_id=args.task, seed=None)
+
+    else:
+        sim_params = parse_sim_params(args, cfg_env, None)
+        env = make_sa_isaac_env(args=args, cfg=cfg_env, sim_params=sim_params)
+        eval_env = env
+        obs_space = env.observation_space
+        act_space = env.action_space
+        args.num_envs = env.num_envs
+
     # set training steps
     local_steps_per_epoch = args.steps_per_epoch // args.num_envs
     epochs = args.total_steps // args.steps_per_epoch
-
-    env, obs_space, act_space = make_sa_mujoco_env(
-        num_envs=args.num_envs, env_id=args.env_id, seed=args.seed
-    )
-    eval_env, _, _ = make_sa_mujoco_env(num_envs=1, env_id=args.env_id, seed=None)
-
     # create the actor-critic module
     policy = ActorVCritic(
         obs_dim=obs_space.shape[0],
@@ -88,7 +81,7 @@ def main(args):
         start_factor=1.0,
         end_factor=0.0,
         total_iters=epochs,
-        verbose=True,
+        verbose=False,
     )
     reward_critic_optimizer = torch.optim.Adam(
         policy.reward_critic.parameters(), lr=3e-4
@@ -111,7 +104,6 @@ def main(args):
     logger = EpochLogger(
         log_dir=args.log_dir,
         seed=str(args.seed),
-        use_tensorboard=args.use_tensorboard,
     )
     rew_deque = deque(maxlen=50)
     cost_deque = deque(maxlen=50)
@@ -133,7 +125,6 @@ def main(args):
             np.zeros(args.num_envs),
             np.zeros(args.num_envs),
         )
-
         # collect samples until we have enough to update
         for steps in range(local_steps_per_epoch):
             with torch.no_grad():
@@ -141,8 +132,8 @@ def main(args):
             next_obs, reward, cost, terminated, truncated, info = env.step(
                 act.detach().squeeze().cpu().numpy()
             )
-            ep_ret += reward
-            ep_cost += cost
+            ep_ret += reward.cpu().numpy() if args.task in isaac_gym_map.keys() else reward
+            ep_cost += cost.cpu().numpy() if args.task in isaac_gym_map.keys() else cost
             ep_len += 1
             next_obs, reward, cost, terminated, truncated = (
                 torch.as_tensor(x, dtype=torch.float32, device=device)
@@ -203,6 +194,7 @@ def main(args):
                         ep_ret[idx] = 0.0
                         ep_cost[idx] = 0.0
                         ep_len[idx] = 0.0
+                        logger.logged = False
 
                     buffer.finish_path(
                         last_value_r=last_value_r, last_value_c=last_value_c, idx=idx
@@ -271,7 +263,7 @@ def main(args):
         )
         update_counts = 0
         final_kl = torch.ones_like(old_distribution.loc)
-        for i in track(range(40), description="Updating..."):
+        for i in range(40):
             for (
                 obs_b,
                 act_b,
@@ -281,9 +273,7 @@ def main(args):
                 adv_b,
             ) in dataloader:
                 reward_critic_optimizer.zero_grad()
-                loss_r = nn.functional.mse_loss(
-                    policy.reward_critic(obs_b), target_value_r_b
-                )
+                loss_r = nn.functional.mse_loss(policy.reward_critic(obs_b), target_value_r_b)
                 for param in policy.reward_critic.parameters():
                     loss_r += param.pow(2).sum() * 0.001
                 loss_r.backward()
@@ -315,6 +305,7 @@ def main(args):
                         "Loss/Loss_actor": loss_pi.mean().item(),
                     }
                 )
+
             new_distribution = policy.actor(data["obs"])
             kl = (
                 torch.distributions.kl.kl_divergence(old_distribution, new_distribution)
@@ -325,54 +316,55 @@ def main(args):
             final_kl = kl
             update_counts += 1
             if kl > 0.02:
-                logger.log(f"Early stopping at iter {i + 1} due to reaching max kl")
                 break
         update_end_time = time.time()
         actor_scheduler.step()
 
-        # log data
-        logger.log_tabular("Metrics/EpRet")
-        logger.log_tabular("Metrics/EpCost")
-        logger.log_tabular("Metrics/EpLen")
-        if args.use_eval:
-            logger.log_tabular("Metrics/EvalEpRet")
-            logger.log_tabular("Metrics/EvalEpCost")
-            logger.log_tabular("Metrics/EvalEpLen")
-        logger.log_tabular("Train/Epoch", epoch + 1)
-        logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
-        logger.log_tabular("Train/StopIter", update_counts)
-        logger.log_tabular("Train/KL", final_kl)
-        logger.log_tabular("Train/LR", actor_scheduler.get_last_lr()[0])
-        logger.log_tabular("Loss/Loss_reward_critic")
-        logger.log_tabular("Loss/Loss_cost_critic")
-        logger.log_tabular("Loss/Loss_actor")
-        logger.log_tabular("Time/Rollout", rollout_end_time - rollout_start_time)
-        if args.use_eval:
-            logger.log_tabular("Time/Eval", eval_end_time - eval_start_time)
-        logger.log_tabular("Time/Update", update_end_time - eval_end_time)
-        logger.log_tabular("Time/Total", update_end_time - rollout_start_time)
-        logger.log_tabular("Value/RewardAdv", data["adv_r"].mean().item())
-        logger.log_tabular("Value/CostAdv", data["adv_c"].mean().item())
+        if not logger.logged:
+            # log data
+            logger.log_tabular("Metrics/EpRet")
+            logger.log_tabular("Metrics/EpCost")
+            logger.log_tabular("Metrics/EpLen")
+            if args.use_eval:
+                logger.log_tabular("Metrics/EvalEpRet")
+                logger.log_tabular("Metrics/EvalEpCost")
+                logger.log_tabular("Metrics/EvalEpLen")
+            logger.log_tabular("Train/Epoch", epoch + 1)
+            logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
+            logger.log_tabular("Train/StopIter", update_counts)
+            logger.log_tabular("Train/KL", final_kl)
+            logger.log_tabular("Train/LR", actor_scheduler.get_last_lr()[0])
+            logger.log_tabular("Loss/Loss_reward_critic")
+            logger.log_tabular("Loss/Loss_cost_critic")
+            logger.log_tabular("Loss/Loss_actor")
+            logger.log_tabular("Time/Rollout", rollout_end_time - rollout_start_time)
+            if args.use_eval:
+                logger.log_tabular("Time/Eval", eval_end_time - eval_start_time)
+            logger.log_tabular("Time/Update", update_end_time - eval_end_time)
+            logger.log_tabular("Time/Total", update_end_time - rollout_start_time)
+            logger.log_tabular("Value/RewardAdv", data["adv_r"].mean().item())
+            logger.log_tabular("Value/CostAdv", data["adv_c"].mean().item())
 
-        logger.dump_tabular()
-        if (epoch+1) % 100 == 0 or epoch == 0:
-            logger.torch_save(itr=epoch)
-            logger.save_state(
-                state_dict={
-                    "Normalizer": env.obs_rms,
-                },
-                itr = epoch
-            )
+            logger.dump_tabular()
+            if (epoch+1) % 100 == 0 or epoch == 0:
+                logger.torch_save(itr=epoch)
+                if args.task not in isaac_gym_map.keys():
+                    logger.save_state(
+                        state_dict={
+                            "Normalizer": env.obs_rms,
+                        },
+                        itr = epoch
+                    )
     logger.close()
 
 
 if __name__ == "__main__":
-    args = single_agent_args()
+    args, cfg_env = single_agent_args()
     relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])
     algo = os.path.basename(__file__).split(".")[0]
-    args.log_dir = os.path.join(args.log_dir, args.experiment, args.env_id, algo, relpath)
+    args.log_dir = os.path.join(args.log_dir, args.experiment, args.task, algo, relpath)
     if not args.write_terminal:
         terminal_log_name = "terminal.log"
         error_log_name = "error.log"
@@ -400,6 +392,6 @@ if __name__ == "__main__":
                 encoding="utf-8",
             ) as f_error:
                 sys.stderr = f_error
-                main(args)
+                main(args, cfg_env)
     else:
-        main(args)
+        main(args, cfg_env)

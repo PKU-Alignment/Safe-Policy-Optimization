@@ -26,7 +26,7 @@ import os
 import sys
 import time
 
-from safepo.common.env import make_ma_mujoco_env, make_ma_shadow_hand_env
+from safepo.common.env import make_ma_mujoco_env, make_ma_isaac_env
 from safepo.common.popart import PopArt
 from safepo.common.model import MultiAgentActor as Actor, MultiAgentCritic as Critic
 from safepo.common.buffer import SeparatedReplayBuffer
@@ -366,28 +366,27 @@ class Runner:
                     }
                 )
                 
-            self.logger.log_tabular("Metrics/EpRet", min_and_max=True, std=True)
-            self.logger.log_tabular("Metrics/EpCost", min_and_max=True, std=True)
-            self.logger.log_tabular("Eval/EpRet")
-            self.logger.log_tabular("Eval/EpCost")
-            self.logger.log_tabular("Train/Epoch", episode)
-            self.logger.log_tabular("Train/TotalSteps", total_num_steps)
-            self.logger.log_tabular("Loss/Loss_reward_critic")
-            self.logger.log_tabular("Loss/Loss_cost_critic")
-            self.logger.log_tabular("Loss/Loss_actor")
-            self.logger.log_tabular("Misc/Reward_critic_norm")
-            self.logger.log_tabular("Misc/Cost_critic_norm")
-            self.logger.log_tabular("Misc/Entropy")
-            self.logger.log_tabular("Misc/Ratio")
-            self.logger.log_tabular("Time/Total", end - start)
-            self.logger.log_tabular("Time/FPS", int(total_num_steps / (end - start)))
-            self.logger.dump_tabular()
+                self.logger.log_tabular("Metrics/EpRet", min_and_max=True, std=True)
+                self.logger.log_tabular("Metrics/EpCost", min_and_max=True, std=True)
+                self.logger.log_tabular("Eval/EpRet")
+                self.logger.log_tabular("Eval/EpCost")
+                self.logger.log_tabular("Train/Epoch", episode)
+                self.logger.log_tabular("Train/TotalSteps", total_num_steps)
+                self.logger.log_tabular("Loss/Loss_reward_critic")
+                self.logger.log_tabular("Loss/Loss_cost_critic")
+                self.logger.log_tabular("Loss/Loss_actor")
+                self.logger.log_tabular("Misc/Reward_critic_norm")
+                self.logger.log_tabular("Misc/Cost_critic_norm")
+                self.logger.log_tabular("Misc/Entropy")
+                self.logger.log_tabular("Misc/Ratio")
+                self.logger.log_tabular("Time/Total", end - start)
+                self.logger.log_tabular("Time/FPS", int(total_num_steps / (end - start)))
+                self.logger.dump_tabular()
 
 
     def return_aver_cost(self, aver_episode_costs):
         for agent_id in range(self.num_agents):
             self.buffer[agent_id].return_aver_insert(aver_episode_costs)
-
 
     def warmup(self):
         # reset env
@@ -395,7 +394,10 @@ class Runner:
 
         for agent_id in range(self.num_agents):
             self.buffer[agent_id].share_obs[0].copy_(share_obs[:, agent_id])
-            self.buffer[agent_id].obs[0].copy_(obs[:, agent_id])
+            if 'Frank'in self.config['env_name']:
+                self.buffer[agent_id].obs[0].copy_(obs[agent_id])
+            else:
+                self.buffer[agent_id].obs[0].copy_(obs[:, agent_id])
 
     @torch.no_grad()
     def collect(self, step):
@@ -458,7 +460,11 @@ class Runner:
         if self.config["env_name"] == "Safety9|8HumanoidVelocity-v0":
             actions[1]=actions[1][:, :8]
         for agent_id in range(self.num_agents):
-            self.buffer[agent_id].insert(share_obs[:, agent_id], obs[:, agent_id], rnn_states[:, agent_id],
+            if 'Frank'in self.config['env_name']:
+                obs_to_insert = obs[agent_id]
+            else:
+                obs_to_insert = obs[:, agent_id]
+            self.buffer[agent_id].insert(share_obs[:, agent_id], obs_to_insert, rnn_states[:, agent_id],
                                          rnn_states_critic[:, agent_id], actions[agent_id],
                                          action_log_probs[agent_id],
                                          values[:, agent_id], rewards[:, agent_id], masks[:, agent_id], None,
@@ -520,7 +526,7 @@ class Runner:
         one_episode_costs = torch.zeros(1, self.config["n_eval_rollout_threads"], device=self.config["device"])
 
         eval_obs, _, _ = self.eval_envs.reset()
-        eval_obs = torch.as_tensor(eval_obs, dtype=torch.float32, device=self.config["device"])
+        #eval_obs = torch.as_tensor(eval_obs, dtype=torch.float32, device=self.config["device"])
 
         eval_rnn_states = torch.zeros(self.config["n_eval_rollout_threads"], self.num_agents, self.config["recurrent_N"], self.config["hidden_size"],
                                    device=self.config["device"])
@@ -530,8 +536,12 @@ class Runner:
             eval_actions_collector = []
             for agent_id in range(self.num_agents):
                 self.trainer[agent_id].prep_rollout()
+                if 'Frank'in self.config['env_name']:
+                    obs_to_eval = eval_obs[agent_id]
+                else:
+                    obs_to_eval = eval_obs[:, agent_id]
                 eval_actions, temp_rnn_state = \
-                    self.trainer[agent_id].policy.act(eval_obs[:, agent_id],
+                    self.trainer[agent_id].policy.act(obs_to_eval,
                                                       eval_rnn_states[:, agent_id],
                                                       eval_masks[:, agent_id],
                                                       deterministic=True)
@@ -541,7 +551,6 @@ class Runner:
             if self.config["env_name"] == "Safety9|8HumanoidVelocity-v0":
                 zeros = torch.zeros(eval_actions_collector[-1].shape[0], 1)
                 eval_actions_collector[-1]=torch.cat((eval_actions_collector[-1], zeros), dim=1)
-
             eval_obs, _, eval_rewards, eval_costs, eval_dones, _, _ = self.eval_envs.step(
                 eval_actions_collector
             )
@@ -595,11 +604,11 @@ def train(args, cfg_train):
         env = make_ma_mujoco_env(
         scenario=args.scenario,
         agent_conf=args.agent_conf,
-        seed=cfg_train['seed'],
+        seed=args.seed,
         cfg_train=cfg_train,
     )
         cfg_eval = copy.deepcopy(cfg_train)
-        cfg_eval["seed"] = cfg_train["seed"] + 10000
+        cfg_eval["seed"] = args.seed + 10000
         cfg_eval["n_rollout_threads"] = cfg_eval["n_eval_rollout_threads"]
         eval_env = make_ma_mujoco_env(
         scenario=args.scenario,
@@ -609,7 +618,7 @@ def train(args, cfg_train):
     )
     else: 
         sim_params = parse_sim_params(args, cfg_env, cfg_train)
-        env = make_ma_shadow_hand_env(args, cfg_env, cfg_train, sim_params, agent_index)
+        env = make_ma_isaac_env(args, cfg_env, cfg_train, sim_params, agent_index)
         cfg_train["n_rollout_threads"] = env.num_envs
         cfg_train["n_eval_rollout_threads"] = env.num_envs
         eval_env = env

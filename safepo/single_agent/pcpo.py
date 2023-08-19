@@ -16,16 +16,18 @@
 
 from __future__ import annotations
 
-import argparse
 import os
 import random
 import sys
 import time
 from collections import deque
-from distutils.util import strtobool
 from typing import Callable
 
 import numpy as np
+try: 
+    from isaacgym import gymutil
+except ImportError:
+    pass
 import torch
 import torch.nn as nn
 import torch.optim
@@ -34,33 +36,10 @@ from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
-from safepo.common.env import make_sa_mujoco_env
+from safepo.common.env import make_sa_mujoco_env, make_sa_isaac_env
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
-
-
-def single_agent_args():
-    # training parameters
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int, default=0, help="seed of the experiment")
-    parser.add_argument("--device", type=str, default="cpu", help="the device (cpu or cuda) to run the code")
-    parser.add_argument("--num-envs", type=int, default=10, help="the number of parallel game environments")
-    parser.add_argument("--total-steps", type=int, default=10000000, help="total timesteps of the experiments",)
-    parser.add_argument("--env-id", type=str, default="SafetyPointGoal1-v0", help="the id of the environment",)
-    parser.add_argument("--use-eval", type=lambda x: bool(strtobool(x)), default=False, help="toggles evaluation",)
-    # general algorithm parameters
-    parser.add_argument("--steps-per-epoch", type=int, default=20000, help="the number of steps to run in each environment per policy rollout",)
-    parser.add_argument("--critic-lr", type=float, default=1e-3, help="the learning rate of the critic network")
-    # logger parameters
-    parser.add_argument("--log-dir", type=str, default="../runs", help="directory to save agent logs")
-    parser.add_argument("--experiment", type=str, default="single_agent_experiment", help="the name of the experiment")
-    parser.add_argument("--write-terminal", type=lambda x: bool(strtobool(x)), default=True, help="toggles terminal logging")
-    parser.add_argument("--use-tensorboard", type=lambda x: bool(strtobool(x)), default=False, help="toggles tensorboard logging")
-    # algorithm specific parameters
-    parser.add_argument("--cost-limit", type=float, default=25.0, help="the cost limit for the safety constraint")
-
-    args = parser.parse_args()
-    return args
+from safepo.utils.config import single_agent_args, isaac_gym_map, parse_sim_params
 
 
 def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
@@ -72,6 +51,7 @@ def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
             flat_params.append(data)
     assert flat_params, "No gradients were found in model parameters."
     return torch.cat(flat_params)
+
 
 def conjugate_gradients(
     fisher_product: Callable[[torch.Tensor], torch.Tensor],
@@ -100,6 +80,7 @@ def conjugate_gradients(
         rdotr = new_rdotr
     return vector_x
 
+
 def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> None:
     assert isinstance(vals, torch.Tensor)
     i: int = 0
@@ -114,6 +95,7 @@ def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> Non
             i += int(size)  # increment array position
     assert i == len(vals), f"Lengths do not match: {i} vs. {len(vals)}"
 
+
 def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
     grads = []
     for _, param in model.named_parameters():
@@ -122,6 +104,7 @@ def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
             grads.append(grad.view(-1))  # flatten tensor and append
     assert grads, "No gradients were found in model parameters."
     return torch.cat(grads)
+
 
 def fvp(
     params: torch.Tensor,
@@ -150,7 +133,8 @@ def fvp(
 
     return flat_grad_grad_kl + params * 0.1
 
-def main(args):
+
+def main(args, cfg_env=None):
     # set the random seed, device and number of threads
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -163,10 +147,19 @@ def main(args):
     local_steps_per_epoch = args.steps_per_epoch // args.num_envs
     epochs = args.total_steps // args.steps_per_epoch
 
-    env, obs_space, act_space = make_sa_mujoco_env(
-        num_envs=args.num_envs, env_id=args.env_id, seed=args.seed
-    )
-    eval_env, _, _ = make_sa_mujoco_env(num_envs=1, env_id=args.env_id, seed=None)
+    if args.task not in isaac_gym_map.keys():
+        env, obs_space, act_space = make_sa_mujoco_env(
+            num_envs=args.num_envs, env_id=args.task, seed=args.seed
+        )
+        eval_env, _, _ = make_sa_mujoco_env(num_envs=1, env_id=args.task, seed=None)
+
+    else:
+        sim_params = parse_sim_params(args, cfg_env, None)
+        env = make_sa_isaac_env(args=args, cfg=cfg_env, sim_params=sim_params)
+        eval_env = env
+        obs_space = env.observation_space
+        act_space = env.action_space
+        args.num_envs = env.num_envs
 
     # create the actor-critic module
     policy = ActorVCritic(
@@ -174,10 +167,10 @@ def main(args):
         act_dim=act_space.shape[0],
     ).to(device)
     reward_critic_optimizer = torch.optim.Adam(
-        policy.reward_critic.parameters(), lr=args.critic_lr
+        policy.reward_critic.parameters(), lr=1e-3
     )
     cost_critic_optimizer = torch.optim.Adam(
-        policy.cost_critic.parameters(), lr=args.critic_lr
+        policy.cost_critic.parameters(), lr=1e-3
     )
 
     # create the vectorized on-policy buffer
@@ -188,12 +181,12 @@ def main(args):
         device=device,
         num_envs=args.num_envs,
     )
+
     # set up the logger
     dict_args = vars(args)
     logger = EpochLogger(
         log_dir=args.log_dir,
         seed=str(args.seed),
-        use_tensorboard=args.use_tensorboard,
     )
     rew_deque = deque(maxlen=50)
     cost_deque = deque(maxlen=50)
@@ -204,8 +197,6 @@ def main(args):
     logger.save_config(dict_args)
     logger.setup_torch_saver(policy.actor)
     logger.log("Start with training.")
-
-    time.time()
 
     # training loop
     for epoch in range(epochs):
@@ -225,8 +216,8 @@ def main(args):
             next_obs, reward, cost, terminated, truncated, info = env.step(
                 act.detach().squeeze().cpu().numpy()
             )
-            ep_ret += reward
-            ep_cost += cost
+            ep_ret += reward.cpu().numpy() if args.task in isaac_gym_map.keys() else reward
+            ep_cost += cost.cpu().numpy() if args.task in isaac_gym_map.keys() else cost
             ep_len += 1
             next_obs, reward, cost, terminated, truncated = (
                 torch.as_tensor(x, dtype=torch.float32, device=device)
@@ -287,6 +278,7 @@ def main(args):
                         ep_ret[idx] = 0.0
                         ep_cost[idx] = 0.0
                         ep_len[idx] = 0.0
+                        logger.logged = False
 
                     buffer.finish_path(
                         last_value_r=last_value_r, last_value_c=last_value_c, idx=idx
@@ -516,22 +508,23 @@ def main(args):
         logger.dump_tabular()
         if (epoch+1) % 100 == 0 or epoch == 0:
             logger.torch_save(itr=epoch)
-            logger.save_state(
-                state_dict={
-                    "Normalizer": env.obs_rms,
-                },
-                itr = epoch
-            )
+            if args.task not in isaac_gym_map.keys():
+                logger.save_state(
+                    state_dict={
+                        "Normalizer": env.obs_rms,
+                    },
+                    itr = epoch
+                )
     logger.close()
 
 
 if __name__ == "__main__":
-    args = single_agent_args()
+    args, cfg_env = single_agent_args()
     relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])
     algo = os.path.basename(__file__).split(".")[0]
-    args.log_dir = os.path.join(args.log_dir, args.experiment, args.env_id, algo, relpath)
+    args.log_dir = os.path.join(args.log_dir, args.experiment, args.task, algo, relpath)
     if not args.write_terminal:
         terminal_log_name = "terminal.log"
         error_log_name = "error.log"
@@ -559,6 +552,6 @@ if __name__ == "__main__":
                 encoding="utf-8",
             ) as f_error:
                 sys.stderr = f_error
-                main(args)
+                main(args, cfg_env)
     else:
-        main(args)
+        main(args, cfg_env)

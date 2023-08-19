@@ -13,29 +13,24 @@
 # limitations under the License.
 # ==============================================================================
 
-from __future__ import annotations
 
+from __future__ import annotations
+try :
+    from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.ShadowHandCatchOver2underarm_Safe_finger import ShadowHandCatchOver2Underarm_Safe_finger
+    from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.ShadowHandCatchOver2underarm_Safe_joint import ShadowHandCatchOver2Underarm_Safe_joint
+    from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.ShadowHandOver_Safe_finger import ShadowHandOver_Safe_finger
+    from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.ShadowHandOver_Safe_joint import ShadowHandOver_Safe_joint
+    from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.freight_franka_pick_and_place import FreightFrankaPickAndPlace
+    from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.freight_franka_close_drawer import FreightFrankaCloseDrawer
+    from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.base.multi_vec_task import ShadowHandMultiVecTaskPython, FreightFrankaMultiVecTaskPython
+    from safepo.common.wrappers import GymnasiumIsaacEnv
+except ImportError:
+    pass
 from typing import Callable
 import safety_gymnasium
 from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeRescaleAction, SafeUnsqueeze
 from safety_gymnasium.vector.async_vector_env import SafetyAsyncVectorEnv
 from safepo.common.wrappers import ShareSubprocVecEnv, ShareDummyVecEnv, ShareEnv, SafeNormalizeObservation
-try :
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_bottle_cap import ShadowHandBottleCap
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_abreast import ShadowHandCatchAbreast
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_over2underarm import ShadowHandCatchOver2Underarm
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_catch_underarm import ShadowHandCatchUnderarm
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_close_inward import ShadowHandDoorCloseInward
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_close_outward import ShadowHandDoorCloseOutward
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_open_inward import ShadowHandDoorOpenInward
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_door_open_outward import ShadowHandDoorOpenOutward
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_lift_underarm import ShadowHandLiftUnderarm
-    from safepo.envs.safe_dexteroushands.tasks.shadow_hand_over import ShadowHandOver
-    
-    from safepo.envs.safe_dexteroushands.tasks.base.multi_vec_task import MultiVecTaskPython
-    from safepo.envs.safe_dexteroushands.tasks.base.vec_task import VecTaskPython
-except ImportError:
-    pass
 
 def make_sa_mujoco_env(num_envs: int, env_id: str, seed: int|None = None):
     """
@@ -84,7 +79,7 @@ def make_sa_mujoco_env(num_envs: int, env_id: str, seed: int|None = None):
     
     return env, obs_space, act_space
 
-def make_sa_shadow_hand_env(args, cfg, cfg_train, sim_params):
+def make_sa_isaac_env(args, cfg, sim_params):
     """
     Creates and returns a VecTaskPython environment for the single agent Shadow Hand task.
 
@@ -104,7 +99,7 @@ def make_sa_shadow_hand_env(args, cfg, cfg_train, sim_params):
     device_id = args.device_id
     rl_device = args.device
 
-    cfg["seed"] = cfg_train.get("seed", -1)
+    cfg["seed"] = args.seed
     cfg_task = cfg["env"]
     cfg_task["seed"] = cfg["seed"]
     task = eval(args.task)(
@@ -115,7 +110,10 @@ def make_sa_shadow_hand_env(args, cfg, cfg_train, sim_params):
         device_id=device_id,
         headless=args.headless,
         is_multi_agent=False)
-    env = VecTaskPython(task, rl_device)
+    try:
+        env = GymnasiumIsaacEnv(task, rl_device)
+    except ModuleNotFoundError:
+        env = None
 
     return env
 
@@ -152,7 +150,7 @@ def make_ma_mujoco_env(scenario, agent_conf, seed, cfg_train):
     else:
         return ShareSubprocVecEnv([get_env_fn(i) for i in range(cfg_train['n_rollout_threads'])])
 
-def make_ma_shadow_hand_env(args, cfg, cfg_train, sim_params, agent_index):
+def make_ma_isaac_env(args, cfg, cfg_train, sim_params, agent_index):
     """
     Creates and returns a multi-agent environment for the Shadow Hand task.
 
@@ -182,6 +180,12 @@ def make_ma_shadow_hand_env(args, cfg, cfg_train, sim_params, agent_index):
         headless=args.headless,
         agent_index=agent_index,
         is_multi_agent=True)
-    env = MultiVecTaskPython(task, rl_device)
+    task_name = task.__class__.__name__
+    if "ShadowHand" in task_name:
+        env = ShadowHandMultiVecTaskPython(task, rl_device)
+    elif "FreightFranka" in task_name:
+        env = FreightFrankaMultiVecTaskPython(task, rl_device)
+    else:
+        raise NotImplementedError
 
     return env

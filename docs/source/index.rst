@@ -13,7 +13,7 @@ Overall Algorithms Performance Analysis
 
 .. raw:: html
 
-   <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Overview--Vmlldzo1MDgyNTU3" style="border:none;width:100%; height:500px" title="Performance-PPO-Lag">
+   <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Overview-of-SafePO-Implementation--Vmlldzo1MTgyMDMy" style="border:none;width:100%; height:500px">
 
 .. raw:: html
 
@@ -52,6 +52,7 @@ results (eavluation outcomes, training curves) in ``safepo/results``.
    usage/eval
    usage/benchmark
    usage/implement
+   usage/make
 
 .. toctree::
    :hidden:
@@ -67,7 +68,7 @@ results (eavluation outcomes, training curves) in ``safepo/results``.
    :hidden:
    :caption: ALGORITHM
 
-   algorithms/general
+   algorithms/curve
    algorithms/lag
    algorithms/first_order
    algorithms/comparision

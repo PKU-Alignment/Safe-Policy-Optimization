@@ -13,13 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-
-from safepo.common.model import ActorVCritic
 import argparse
 import os
 import json
 from collections import deque
 from safepo.common.env import make_sa_mujoco_env, make_ma_mujoco_env
+from safepo.common.model import ActorVCritic
 from safepo.utils.config import multi_agent_velocity_map
 import numpy as np
 import joblib
@@ -31,7 +30,7 @@ def eval_single_agent(eval_dir, eval_episodes):
     config_path = eval_dir + '/config.json'
     config = json.load(open(config_path, 'r'))
 
-    env_id = config['env_id']
+    env_id = config['task']
     env_norms = os.listdir(eval_dir)
     env_norms = [env_norm for env_norm in env_norms if env_norm.endswith('.pkl')]
     final_norm_name = sorted(env_norms)[-1]
@@ -124,12 +123,11 @@ def eval_multi_agent(eval_dir, eval_episodes):
     return runner.eval(eval_episodes)
 
 
-def single_runs_eval(eval_dir, eval_episodes, save_dir=None):
+def single_runs_eval(eval_dir, eval_episodes):
 
-    algo = eval_dir.split('/')[-2]
     config_path = eval_dir + '/config.json'
     config = json.load(open(config_path, 'r'))
-    env = config['env_id'] if 'env_id' in config else config['env_name']
+    env = config['task'] if 'task' in config.keys() else config['env_name']
     if env in multi_agent_velocity_map.keys():
         reward, cost = eval_multi_agent(eval_dir, eval_episodes)
     else:
@@ -158,12 +156,13 @@ def benchmark_eval():
         env_path = os.path.join(benchmark_dir, env)
         algos = os.listdir(env_path)
         for algo in algos:
+            print(f"Start evaluating {algo} in {env}")
             algo_path = os.path.join(env_path, algo)
             seeds = os.listdir(algo_path)
             rewards, costs = [], []
             for seed in seeds:
                 seed_path = os.path.join(algo_path, seed)
-                reward, cost = single_runs_eval(seed_path, eval_episodes, save_dir=save_dir)
+                reward, cost = single_runs_eval(seed_path, eval_episodes)
                 rewards.append(reward)
                 costs.append(cost)
             output_file = open(f"{save_dir}/eval_result.txt", 'a')

@@ -145,6 +145,7 @@ class Logger:
         )
         self.torch_saver_elements = None
         self.use_tensorboard = use_tensorboard
+        self.logged = True
 
         # Setup tensor board logging if enabled and MPI root process
         if use_tensorboard:
@@ -334,6 +335,7 @@ class EpochLogger(Logger):
         self.epoch_dict = dict()
 
     def dump_tabular(self):
+        self.logged = True
         super().dump_tabular()
         for k, v in self.epoch_dict.items():
             if len(v) > 0:
@@ -366,4 +368,6 @@ class EpochLogger(Logger):
 
     def get_stats(self, key):
         """Get the values of a diagnostic."""
+        if key not in self.log_headers:
+            return 0.0
         return np.mean(self.epoch_dict[key])

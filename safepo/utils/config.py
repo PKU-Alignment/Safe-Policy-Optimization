@@ -61,6 +61,16 @@ multi_agent_velocity_map = {
     },
 }
 
+isaac_gym_map = {
+    "ShadowHandOver_Safe_joint": "shadow_hand_over_safe_finger",
+    "ShadowHandOver_Safe_joint": "shadow_hand_over_safe_joint",
+    "ShadowHandCatchOver2Underarm_Safe_finger": "shadow_hand_catch_over_2_underarm_safe_finger",
+    "ShadowHandCatchOver2Underarm_Safe_joint": "shadow_hand_catch_over_2_underarm_safe_joint",
+    "ShadowHandCatchUnderarm": "shadow_hand_catch_underarm",
+    "FreightFrankaCloseDrawer": "freight_franka_close_drawer",
+    "FreightFrankaPickAndPlace": "freight_franka_pick_and_place",
+}
+
 def set_np_formatting():
     np.set_printoptions(edgeitems=30, infstr='inf',
                         linewidth=4000, nanstr='nan', precision=2,
@@ -90,7 +100,7 @@ def parse_sim_params(args, cfg, cfg_train):
     try:
         from isaacgym import gymapi, gymutil
     except ImportError:
-        raise Exception("Please install isaacgym to run ShadowHand tasks!")
+        raise Exception("Please install isaacgym to run Isaac Gym tasks!")
     sim_params = gymapi.SimParams()
     sim_params.dt = 1./60.
     sim_params.num_client_threads = args.slices
@@ -123,6 +133,55 @@ def parse_sim_params(args, cfg, cfg_train):
 
     return sim_params
 
+def single_agent_args():
+    custom_parameters = [
+        {"name": "--seed", "type": int, "default":0, "help": "Random seed"},
+        {"name": "--use-eval", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Use evaluation environment for testing"},
+        {"name": "--task", "type": str, "default": "SafetyPointGoal1-v0", "help": "The task to run"},
+        {"name": "--num-envs", "type": int, "default": 10, "help": "The number of parallel game environments"},
+        {"name": "--experiment", "type": str, "default": "single_agent_exp", "help": "Experiment name"},
+        {"name": "--log-dir", "type": str, "default": "../runs", "help": "directory to save agent logs"},
+        {"name": "--device", "type": str, "default": "cpu", "help": "The device to run the model on"},
+        {"name": "--device-id", "type": int, "default": 0, "help": "The device id to run the model on"},
+        {"name": "--write-terminal", "type": lambda x: bool(strtobool(x)), "default": True, "help": "Toggles terminal logging"},
+        {"name": "--headless", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Toggles headless mode"},
+        {"name": "--total-steps", "type": int, "default": 10000000, "help": "Total timesteps of the experiments"},
+        {"name": "--steps-per-epoch", "type": int, "default": 20000, "help": "The number of steps to run in each environment per policy rollout"},
+        {"name": "--randomize", "type": bool, "default": False, "help": "Wheather to randomize the environments' initial states"},
+        {"name": "--cost-limit", "type": float, "default": 25.0, "help": "cost_lim"},
+        {"name": "--lagrangian-multiplier-init", "type": float, "default": 0.001, "help": "initial value of lagrangian multiplier"},
+        {"name": "--lagrangian-multiplier-lr", "type": float, "default": 0.035, "help": "learning rate of lagrangian multiplier"},
+    ]
+    # Create argument parser
+    parser = argparse.ArgumentParser(description="RL Policy")
+    issac_parameters = copy.deepcopy(custom_parameters)
+    for param in custom_parameters:
+        param_name = param.pop("name")
+        parser.add_argument(param_name, **param)
+
+    # Parse arguments
+
+    args = parser.parse_args()
+    cfg_env={}
+    base_path = os.path.dirname(os.path.abspath(__file__)).replace("utils", "multi_agent")
+    if args.task in isaac_gym_map.keys():
+        try:
+            from isaacgym import gymutil
+        except ImportError:
+            raise Exception("Please install isaacgym to run Isaac Gym tasks!")
+        args = gymutil.parse_arguments(description="RL Policy", custom_parameters=issac_parameters)
+        args.device = args.sim_device_type if args.use_gpu_pipeline else 'cpu'
+        cfg_env_path = "marl_cfg/{}.yaml".format(isaac_gym_map[args.task])
+        with open(os.path.join(base_path, cfg_env_path), 'r') as f:
+            cfg_env = yaml.load(f, Loader=yaml.SafeLoader)
+            cfg_env["name"] = args.task
+            if "task" in cfg_env:
+                if "randomize" not in cfg_env["task"]:
+                    cfg_env["task"]["randomize"] = args.randomize
+                else:
+                    cfg_env["task"]["randomize"] = False
+    return args, cfg_env
+
 
 def multi_agent_args(algo):
 
@@ -132,7 +191,7 @@ def multi_agent_args(algo):
         {"name": "--task", "type": str, "default": "MujocoVelocity", "help": "The task to run"},
         {"name": "--agent-conf", "type": str, "default": "2x1", "help": "The agent configuration"},
         {"name": "--scenario", "type": str, "default": "Swimmer", "help": "The scenario"},
-        {"name": "--experiment", "type": str, "default": "Base", "help": "Experiment name. If used with --metadata flag an additional information about physics engine, sim device, pipeline and domain randomization will be added to the name"},
+        {"name": "--experiment", "type": str, "default": "Base", "help": "Experiment name"},
         {"name": "--seed", "type": int, "default":0, "help": "Random seed"},
         {"name": "--model-dir", "type": str, "default": "", "help": "Choose a model dir"},
         {"name": "--safety-bound", "type": float, "default": 25.0, "help": "cost_lim"},
@@ -142,6 +201,7 @@ def multi_agent_args(algo):
         {"name": "--headless", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Toggles headless mode"},
         {"name": "--total-steps", "type": int, "default": None, "help": "Total timesteps of the experiments"},
         {"name": "--num-envs", "type": int, "default": None, "help": "The number of parallel game environments"},
+        {"name": "--randomize", "type": bool, "default": False, "help": "Wheather to randomize the environments' initial states"},
     ]
     # Create argument parser
     parser = argparse.ArgumentParser(description="RL Policy")
@@ -154,17 +214,13 @@ def multi_agent_args(algo):
 
     args = parser.parse_args()
 
-    if args.task in ["ShadowHandOver", "ShadowHandCatchUnderarm"]:
+    if args.task in isaac_gym_map.keys():
         try:
             from isaacgym import gymutil
         except ImportError:
-            raise Exception("Please install isaacgym to run ShadowHand tasks!")
+            raise Exception("Please install isaacgym to run Isaac Gym tasks!")
         args = gymutil.parse_arguments(description="RL Policy", custom_parameters=issac_parameters)
         args.device = args.sim_device_type if args.use_gpu_pipeline else 'cpu'
-    config_map = {
-        "ShadowHandOver": "shadow_hand_over",
-        "ShadowHandCatchUnderarm": "shadow_hand_catch_underarm",
-    }
     cfg_train_path = "marl_cfg/{}/config.yaml".format(algo)
     base_path = os.path.dirname(os.path.abspath(__file__)).replace("utils", "multi_agent")
     with open(os.path.join(base_path, cfg_train_path), 'r') as f:
@@ -192,9 +248,9 @@ def multi_agent_args(algo):
     relpath = "-".join([subfolder, relpath])
     cfg_train['log_dir']="../runs/"+args.experiment+'/'+env_name+'/'+algo+'/'+relpath
     cfg_env={}
-    if args.task in ["ShadowHandOver", "ShadowHandCatchUnderarm"]:
-        cfg_env_path = "marl_cfg/{}.yaml".format(config_map[args.task])
-        with open(os.path.join(os.getcwd(), cfg_env_path), 'r') as f:
+    if args.task in isaac_gym_map.keys():
+        cfg_env_path = "marl_cfg/{}.yaml".format(isaac_gym_map[args.task])
+        with open(os.path.join(base_path, cfg_env_path), 'r') as f:
             cfg_env = yaml.load(f, Loader=yaml.SafeLoader)
             cfg_env["name"] = args.task
             if "task" in cfg_env:

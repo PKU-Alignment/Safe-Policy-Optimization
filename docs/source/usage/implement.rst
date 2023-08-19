@@ -11,7 +11,7 @@ To verify the correctness of the classic RL algorithms, we provide the performan
 
 .. raw:: html
 
-    <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Classic-RL-Benchmarks--Vmlldzo1MTQ2NTYy" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+    <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Benchmarks-of-Classic-RL--Vmlldzo1MTgyMDA5" style="border:none;width:90%; height:1000px">
 
 .. raw:: html
 
@@ -36,7 +36,7 @@ You can customize new alforithms based on it.
 Next we will provide a detailed example to show how to customize the ``PPO`` algorithm to ``PPOLag`` algorithm.
 
 Example: PPOLag
-===============
+---------------
 
 The Lagrangian multiplier is a useful tool to control the constraint violation in the Safe RL algorithms.
 Classic RL algorithms combined with the Lagrangian multiplier are exellent baselines for Safe RL algorithms.

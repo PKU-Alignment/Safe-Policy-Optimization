@@ -1,7 +1,7 @@
 # if given, will override the device setting in gym. 
 env: 
-  env_name: "shadow_hand_over"
-  numEnvs: 512
+  env_name: "shadow_hand_two_catch_underarm"
+  numEnvs: 256
   envSpacing: 0.75
   episodeLength: 75
   enableDebugVis: False
@@ -22,16 +22,20 @@ env:
   resetDofPosRandomInterval: 0.2
   resetDofVelRandomInterval: 0.0
 
-  distRewardScale: 50
+  distRewardScale: 50.0
+  transition_scale: 0.05
+  orientation_scale: 0.5
+
   rotRewardScale: 1.0
   rotEps: 0.1
   actionPenaltyScale: -0.0002
   reachGoalBonus: 250
-  fallDistance: 0.4
+  fallDistance: 0.65
   fallPenalty: 0.0
 
   objectType: "egg" # can be block, egg or pen
-  observationType: "full_state" # 
+  observationType: "full_state" 
+  handAgentIndex: "[[0, 1, 2, 3, 4, 5]]"
   asymmetric_observations: False
   successTolerance: 0.1
   printNumSuccesses: False
