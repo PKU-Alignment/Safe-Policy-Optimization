@@ -6,6 +6,8 @@
 
 [![Organization](https://img.shields.io/badge/Organization-PKU--Alignment-blue)](https://github.com/PKU-Alignment)
 [![License](https://img.shields.io/github/license/PKU-Alignment/OmniSafe?label=license)](#license)
+[![codecov](https://codecov.io/gh/PKU-Alignment/Safe-Policy-Optimization/graph/badge.svg?token=KF0UM0UNXW)](https://codecov.io/gh/PKU-Alignment/Safe-Policy-Optimization)
+[![Documentation Status](https://readthedocs.org/projects/safe-policy-optimization/badge/?version=latest)](https://safe-policy-optimization.readthedocs.io/en/latest/?badge=latest)
 
 </div>
 
