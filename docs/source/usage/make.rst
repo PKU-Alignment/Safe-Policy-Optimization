@@ -32,6 +32,11 @@ which runs all alforithms on sampled environments and evaluate the trained polic
 
 The training logs would be saved in ``safepo/runs/benchmark``, while the evaluation results and learning curves would be saved in ``safepo/results/benchmark``.
 
+.. warning::
+
+    The default number of workers is 1. To run the benchmarking tools in parallel, you can increase the number of workers
+    by changing the `workers` configuration in `safepo/single_agent/benchmark.py` and `safepo/multi_agent/benchmark.py`.
+
 The terminal output would be like:
 
 .. code-block:: bash

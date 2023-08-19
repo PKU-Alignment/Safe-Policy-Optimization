@@ -1,7 +1,7 @@
 import argparse
 import shlex
 import subprocess
-from safepo.utils.config import multi_agent_velocity_map, isaac_gym_map
+from safepo.utils.config import multi_agent_velocity_map
 
 
 def parse_args():
@@ -30,19 +30,13 @@ def parse_args():
         "--start-seed", type=int, default=0, help="the number of the starting seed"
     )
     parser.add_argument(
-        "--workers",
-        type=int,
-        default=8,
-        help="the number of workers to run benchmark experimenets",
+        "--workers", type=int, default=1, help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--experiment", type=str, default="benchmark_multi_agent", help="name of the experiment"
+        "--experiment", type=str, default="benchmark", help="name of the experiment"
     )
     parser.add_argument(
         "--total-steps", type=int, default=1000000, help="total number of steps"
-    )
-    parser.add_argument(
-        "--num-envs", type=int, default=1, help="number of environments to run in parallel"
     )
     args = parser.parse_args()
 
@@ -85,8 +79,6 @@ if __name__ == "__main__":
                             "True",
                             "--total-steps",
                             str(args.total_steps),
-                            "--num-envs",
-                            str(args.num_envs),
                         ]
                     )
                 ]

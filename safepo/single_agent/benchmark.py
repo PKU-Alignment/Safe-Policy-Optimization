@@ -51,22 +51,19 @@ def parse_args():
         "--start-seed", type=int, default=0, help="the number of the starting seed"
     )
     parser.add_argument(
-        "--workers",
-        type=int,
-        default=16,
-        help="the number of workers to run benchmark experimenets",
+        "--workers", type=int, default=1, help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--experiment", type=str, default="test_benchmark", help="name of the experiment"
+        "--experiment", type=str, default="benchmark", help="name of the experiment"
     )
     parser.add_argument(
         "--total-steps", type=int, default=1000000, help="total number of steps"
     )
     parser.add_argument(
-        "--num-envs", type=int, default=1, help="number of environments to run in parallel"
+        "--num-envs", type=int, default=10, help="number of environments to run in parallel"
     )
     parser.add_argument(
-        "--steps-per-epoch", type=int, default=1000, help="number of steps per epoch"
+        "--steps-per-epoch", type=int, default=20000, help="number of steps per epoch"
     )
     args = parser.parse_args()
 
