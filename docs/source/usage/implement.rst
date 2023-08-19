@@ -36,7 +36,7 @@ You can customize new alforithms based on it.
 Next we will provide a detailed example to show how to customize the ``PPO`` algorithm to ``PPO-Lag`` algorithm.
 
 Example: PPO-Lag
----------------
+----------------
 
 The Lagrangian multiplier is a useful tool to control the constraint violation in the Safe RL algorithms.
 Classic RL algorithms combined with the Lagrangian multiplier are exellent baselines for Safe RL algorithms.
