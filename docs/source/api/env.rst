@@ -12,7 +12,7 @@ MuJoCo Environment
 
 Isaac Gym Environment
 
-.. autofunction:: make_sa_shadow_hand_env
+.. autofunction:: make_sa_isaac_env
 
 Multi-Agent Environment
 -----------------------
@@ -23,5 +23,5 @@ MuJoCo Environment
 
 Isaac Gym Environment
 
-.. autofunction:: make_ma_shadow_hand_env
+.. autofunction:: make_ma_isaac_env
 

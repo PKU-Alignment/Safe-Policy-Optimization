@@ -24,7 +24,7 @@ vel_envs = [
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--env-ids",
+        "--tasks",
         nargs="+",
         default=navi_envs+vel_envs,
         help="the ids of the environment to benchmark",
@@ -51,13 +51,19 @@ def parse_args():
         "--start-seed", type=int, default=0, help="the number of the starting seed"
     )
     parser.add_argument(
-        "--workers",
-        type=int,
-        default=48,
-        help="the number of workers to run benchmark experimenets",
+        "--workers", type=int, default=1, help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--experiment", type=str, default="benchmark_single_env_8_14", help="name of the experiment"
+        "--experiment", type=str, default="benchmark", help="name of the experiment"
+    )
+    parser.add_argument(
+        "--total-steps", type=int, default=1000000, help="total number of steps"
+    )
+    parser.add_argument(
+        "--num-envs", type=int, default=10, help="number of environments to run in parallel"
+    )
+    parser.add_argument(
+        "--steps-per-epoch", type=int, default=20000, help="number of steps per epoch"
     )
     args = parser.parse_args()
 
@@ -77,24 +83,27 @@ if __name__ == "__main__":
 
     commands = []
 
-    log_dir = f"../runs"
     for seed in range(0, args.num_seeds):
-        for env_id in args.env_ids:
+        for task in args.tasks:
             for algo in args.algo:
                 commands += [
                     " ".join(
                         [
                             f"python {algo}.py",
-                            "--env-id",
-                            env_id,
+                            "--task",
+                            task,
                             "--seed",
                             str(args.start_seed + 1000*seed),
                             "--write-terminal",
                             "False",
-                            "--log-dir",
-                            log_dir,
                             "--experiment",
                             args.experiment,
+                            "--total-steps",
+                            str(args.total_steps),
+                            "--num-envs",
+                            str(args.num_envs),
+                            "--steps-per-epoch",
+                            str(args.steps_per_epoch),
                         ]
                     )
                 ]

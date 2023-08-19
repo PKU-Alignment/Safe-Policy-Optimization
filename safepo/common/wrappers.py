@@ -28,8 +28,11 @@ from gymnasium.wrappers.normalize import NormalizeObservation
 from safety_gymnasium.vector.utils.tile_images import tile_images
 from safety_gymnasium.tasks.safe_multi_agent.safe_mujoco_multi import SafeMAEnv
 from typing import Optional
-
-
+try :
+    from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.hand_base.vec_task import VecTaskPython
+    from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.base.vec_task import VecTaskPython as FrankaVecTaskPython
+except ImportError:
+    pass
 
 class SafeNormalizeObservation(NormalizeObservation):
     """This wrapper will normalize observations as Gymnasium's NormalizeObservation wrapper does."""
@@ -39,7 +42,23 @@ class SafeNormalizeObservation(NormalizeObservation):
         obs, rews, costs, terminateds, truncateds, infos = self.env.step(action)
         obs = self.normalize(obs) if self.is_vector_env else self.normalize(np.array([obs]))[0]
         return obs, rews, costs, terminateds, truncateds, infos
-    
+
+try:
+    class GymnasiumIsaacEnv(VecTaskPython):
+        """This wrapper will use Gymnasium API to wrap IsaacGym environment."""
+
+        def step(self, action):
+            """Steps through the environment."""
+            obs, rews, costs, terminated, infos = super().step(action)
+            truncated = terminated
+            return obs, rews, costs, terminated, truncated, infos
+        
+        def reset(self):
+            """Resets the environment."""
+            obs = super().reset()
+            return obs, {}
+except NameError:
+    pass
 
 class ShareEnv(SafeMAEnv):
     

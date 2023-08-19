@@ -11,7 +11,7 @@ We have compared the following algorithms:
 - ``PPOLag``: `OpenAI Baselines: Safety Starter Agents <https://github.com/openai/safety-starter-agents>`_
 - ``TRPOLag``: `OpenAI Baselines: Safety Starter Agents <https://github.com/openai/safety-starter-agents>`_, `RL Safety Algorithms <https://github.com/SvenGronauer/RL-Safety-Algorithms>`_
 - ``CPO``: `OpenAI Baselines: Safety Starter Agents <https://github.com/openai/safety-starter-agents>`_, `RL Safety Algorithms <https://github.com/SvenGronauer/RL-Safety-Algorithms>`_
-- ``FOCOPS``: `Original Implementation:`
+- ``FOCOPS``: `Original Implementation <https://github.com/ymzhang01/focops>`_
 
 We compared those alforithms in 14 tasks from `Safety-Gymnasium <https://github.com/PKU-Alignment/safety-gymnasium>`_,
 they are:
@@ -39,7 +39,7 @@ The results are shown as follows.
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/PPOLag-Comparison--Vmlldzo1MTM3NDY4" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Comparison-of-PPOLag-s-Implementation--Vmlldzo1MTgxOTkx" style="border:none;width:90%; height:1000px" >
 
       .. raw:: html
 
@@ -49,7 +49,7 @@ The results are shown as follows.
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/TRPOLag-Comparison--Vmlldzo1MTM2NTE1" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Comparison-of-TRPOLag-s-Implementation--Vmlldzo1MTgyMDAz" style="border:none;width:90%; height:1000px" >
 
       .. raw:: html
 
@@ -59,7 +59,7 @@ The results are shown as follows.
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/CPO-Comparison--Vmlldzo1MTMzNjIx" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Comparison-of-CPO-s-Implementation--Vmlldzo1MTgyMDA2" style="border:none;width:90%; height:1000px" >
 
       .. raw:: html
 
@@ -69,7 +69,7 @@ The results are shown as follows.
 
       .. raw:: html
 
-         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/-FOCOPS-Comparison--Vmlldzo1MTI4OTI0" style="border:none;width:90%; height:1000px" title="Performance-PPO-Lag">
+         <iframe src="https://wandb.ai/pku_rl/SafePO/reports/Comparison-of-FOCOPS-s-Implementation--Vmlldzo1MTgxOTg3" style="border:none;width:90%; height:1000px" >
 
       .. raw:: html
 
