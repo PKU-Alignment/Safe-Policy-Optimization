@@ -159,59 +159,33 @@ pip install -e .
 
 ## Getting Started
 
+### One line benchmark
+
+To verify the performance of SafePO, you can run the following one line:
+
+```bash
+conda create -n safepo python=3.8
+conda activate safepo
+make benchmark
+``````
+
 ### Single-Agent
 
 each algorithm file is the entrance. Running `ALGO.py` with arguments about algorithms and environments does the training. For example, to run PPO-Lag in SafetyPointGoal1-v0 with seed 0, you can use the following command:
 
 ```bash
 cd safepo/single_agent
-python ppo_lag.py --env-id SafetyPointGoal1-v0 --seed 0
+python ppo_lag.py --task SafetyPointGoal1-v0 --seed 0
 ```
 
 To run a benchamrk parallelly, for example, you can use the following command to run `PPO-Lag`, `TRPO-Lag` in `SafetyAntVelocity-v1`, `SafetyHalfCheetahVelocity-v1`: 
 
 ```bash
 cd safepo/single_agent
-python benchmark.py --env-id SafetyAntVelocity-v1 SafetyHalfCheetahVelocity-v1 --algo ppo_lag trpo_lag --workers 2
+python benchmark.py --tasks SafetyAntVelocity-v1 SafetyHalfCheetahVelocity-v1 --algo ppo_lag trpo_lag --workers 2
 ```
 
 The command above will run two processes in parallel, each process will run one algorithm in one environment. The results will be saved in `./runs/`.
-
-Here we provide the list of arguments:
-
-| Argument             	|  Default            	| Info                                                       	|
-|----------------------	|---------------------	|------------------------------------------------------------	|
-| --seed               	| 0                   	| the random seed of the experiment                          	|
-| --device             	| cpu                 	| the device (cpu or cuda) to run the code                   	|
-| --torch-threads      	| 4                   	| number of threads for torch                                	|
-| --total-steps        	| 10000000            	| total timesteps of the experiments                         	|
-| --env-id             	| SafetyPointGoal1-v0 	| the id of the environment                                  	|
-| --use-eval           	| False               	| toggles evaluation                                         	|
-| --eval-episodes      	| 1                   	| the number of episodes for final evaluation                	|
-| --steps-per-epoch    	| 20000               	| the number of steps to run in each environment per rollout 	|
-| --update-iters       	| 10                  	| the max iteration to update the policy                     	|
-| --batch-size         	| 64/128              	| the number of mini-batches                                 	|
-| --entropy-coef       	| 0.0                 	| coefficient of the entropy                                 	|
-| --target-kl          	| 0.01/0.02           	| the target KL divergence threshold                         	|
-| --max-grad-norm      	| 40.0                	| the maximum norm for the gradient clipping                 	|
-| --critic-norm-coef   	| 0.001               	| the critic norm coefficient                                	|
-| --gamma              	| 0.99                	| the discount factor gamma                                  	|
-| --lam                	| 0.95                	| the lambda for the reward general advantage estimation     	|
-| --lam-c              	| 0.95                	| the lambda for the cost general advantage estimation       	|
-| --standardized-adv-r 	| True                	| toggles reward advantages standardization                  	|
-| --standardized-adv-c 	| True                	| toggles cost advantages standardization                    	|
-| --critic-lr          	| 1e-3                	| the learning rate of the critic network                    	|
-| --actor-lr           	| 3e-4/None           	| the learning rate of the actor network                     	|
-| --log-dir            	| ../runs             	| directory to save agent logs                               	|
-| --write-terminal     	| True                	| toggles terminal logging                                   	|
-| --fvp-sample-freq    	| 1                   	| the sub-sampling rate of the observation                   	|
-| --cg-damping         	| 0.1                 	| the damping value for conjugate gradient                   	|
-| --cg-iters           	| 15                  	| the number of conjugate gradient iterations                	|
-| --backtrack-iters    	| 15                  	| the number of backtracking line search iterations          	|
-| --backtrack-coef     	| 0.8                 	| the coefficient for backtracking line search               	|
-| --safety-bound         	| 25.0                	| the cost limit for the safety constraint                   	|
-
-**Note**: Some hyper-parameters are varied for different algorithms. For more details, please refer to the corresponding code files.
 
 ### Multi-Agent
 
@@ -224,7 +198,6 @@ To train a multi-agent algorithm:
 
 ```bash
 cd safepo/multi_agent
-# algo: macpo, mappo, happo, mappolag
 python macpo.py --agent-conf 4x2 --scenario Ant --experiment benchmark
 ```
 
@@ -232,15 +205,13 @@ You can also train on isaac-gym based environment:
 
 ```bash
 cd safepo/multi_agent
-# algo: macpo, mappo, happo, mappolag
-python macpo.py --task ShadowHandOver --experiment benchmark
+python macpo.py --task ShadowHandOver_Safe_joint --experiment benchmark
 ```
 
 **Note**: The default value for ``task`` is ``MujucoVelocity``. The default scenrio is ``Ant`` while the default agent configuration is ``2x4``. You can run other agent or scenrio by:
 
 ```bash
 cd safepo/multi_agent
-# algo: macpo, mappo, happo, mappolag
 python macpo.py --agent-conf 3x1 --scenario Hopper --experiment benchmark
 ```
 
@@ -252,7 +223,6 @@ After running the experiment, you can use the following command to plot the resu
 cd safepo
 python plot.py --logdir ./runs/benchmark
 ```
-
 
 ## Machine Configuration
 
