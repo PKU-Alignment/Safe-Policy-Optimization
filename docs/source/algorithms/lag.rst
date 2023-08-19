@@ -16,7 +16,7 @@ Experiment Results
 
          </iframe>
 
-    .. tab-item:: TRPOLag
+    .. tab-item:: TRPO-Lag
 
       .. raw:: html
 

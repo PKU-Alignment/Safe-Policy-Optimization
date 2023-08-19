@@ -2,7 +2,7 @@ import argparse
 import shlex
 import subprocess
 
-navi_robots = ['Car', 'Point', 'Racecar']
+navi_robots = ['Car', 'Point', 'Racecar', 'Ant']
 navi_tasks = ['Button', 'Circle', 'Goal', 'Push']
 diffculies = ['1', '2']
 vel_robots = ['Ant', 'HalfCheetah', 'Hopper', 'Walker2d', 'Swimmer', 'Humanoid']
@@ -57,7 +57,7 @@ def parse_args():
         "--experiment", type=str, default="benchmark", help="name of the experiment"
     )
     parser.add_argument(
-        "--total-steps", type=int, default=1000000, help="total number of steps"
+        "--total-steps", type=int, default=10000000, help="total number of steps"
     )
     parser.add_argument(
         "--num-envs", type=int, default=10, help="number of environments to run in parallel"

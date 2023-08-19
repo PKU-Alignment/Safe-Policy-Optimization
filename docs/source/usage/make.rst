@@ -42,6 +42,21 @@ The training logs would be saved in ``safepo/runs/benchmark``, while the evaluat
     The default number of workers is 1. To run the benchmarking tools in parallel, you can increase the number of workers
     by changing the `workers` configuration in `safepo/single_agent/benchmark.py` and `safepo/multi_agent/benchmark.py`.
 
+.. note::
+
+    The ``Doggo`` agent is not included in the benchmarking tools because it needs 1e8 training steps to converge.
+    You can run the ``Doggo`` agent by running:
+
+    .. code-block:: bash
+
+        cd safepo/single_agent
+        python benchmark.py --tasks \
+        SafetyDoggoButton1-v0 SafetyDoggoButton2-v0 \
+        SafetyDoggoCircle1-v0 SafetyDoggoCircle2-v0 \
+        SafetyDoggoPush1-v0 SafetyDoggoPush2-v0 \
+        SafetyDoggoGoal1-v0 SafetyDoggoGoal2-v0 \
+        --workers 1 --total-steps 100000000
+
 The terminal output would be like:
 
 .. code-block:: bash
