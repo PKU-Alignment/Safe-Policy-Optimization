@@ -81,7 +81,7 @@ def make_sa_mujoco_env(num_envs: int, env_id: str, seed: int|None = None):
 
 def make_sa_isaac_env(args, cfg, sim_params):
     """
-    Creates and returns a VecTaskPython environment for the single agent Shadow Hand task.
+    Creates and returns a VecTaskPython environment for the single agent Isaac Gym task.
 
     Args:
         args: Command-line arguments.
@@ -90,10 +90,10 @@ def make_sa_isaac_env(args, cfg, sim_params):
         sim_params: Parameters for the simulation.
 
     Returns:
-        env: VecTaskPython environment for the single agent Shadow Hand task.
+        env: VecTaskPython environment for the single agent Isaac Gym task.
 
     Warning:
-        SafePO's single agent Shadow Hand task is not ready for use yet.
+        SafePO's single agent Isaac Gym task is not ready for use yet.
     """
     # create native task and pass custom config
     device_id = args.device_id
@@ -119,7 +119,7 @@ def make_sa_isaac_env(args, cfg, sim_params):
 
 def make_ma_mujoco_env(scenario, agent_conf, seed, cfg_train):
     """
-    Creates and returns a multi-agent environment using Mujoco scenarios.
+    Creates and returns a multi-agent environment using MuJoCo scenarios.
 
     Args:
         args: Command-line arguments.
@@ -152,7 +152,7 @@ def make_ma_mujoco_env(scenario, agent_conf, seed, cfg_train):
 
 def make_ma_isaac_env(args, cfg, cfg_train, sim_params, agent_index):
     """
-    Creates and returns a multi-agent environment for the Shadow Hand task.
+    Creates and returns a multi-agent environment for the Isaac Gym task.
 
     Args:
         args: Command-line arguments.
@@ -162,7 +162,7 @@ def make_ma_isaac_env(args, cfg, cfg_train, sim_params, agent_index):
         agent_index: Index of the agent within the multi-agent environment.
 
     Returns:
-        env: A multi-agent environment for the Shadow Hand task.
+        env: A multi-agent environment for the Isaac Gym task.
     """
     # create native task and pass custom config
     device_id = args.device_id

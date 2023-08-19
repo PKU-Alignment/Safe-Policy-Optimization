@@ -1,5 +1,5 @@
-First Order Projection
-======================
+First Order Projection Methods
+==============================
 
 Experiment Results
 ------------------
