@@ -164,9 +164,9 @@ pip install -e .
 To verify the performance of SafePO, you can run the following one line:
 
 ```bash
-  conda create -n safepo python=3.8
-  conda activate safepo
-  make benchmark
+conda create -n safepo python=3.8
+conda activate safepo
+make benchmark
 ``````
 
 ### Single-Agent
@@ -198,7 +198,6 @@ To train a multi-agent algorithm:
 
 ```bash
 cd safepo/multi_agent
-# algo: macpo, mappo, happo, mappolag
 python macpo.py --agent-conf 4x2 --scenario Ant --experiment benchmark
 ```
 
@@ -206,7 +205,6 @@ You can also train on isaac-gym based environment:
 
 ```bash
 cd safepo/multi_agent
-# algo: macpo, mappo, happo, mappolag
 python macpo.py --task ShadowHandOver_Safe_joint --experiment benchmark
 ```
 
@@ -214,7 +212,6 @@ python macpo.py --task ShadowHandOver_Safe_joint --experiment benchmark
 
 ```bash
 cd safepo/multi_agent
-# algo: macpo, mappo, happo, mappolag
 python macpo.py --agent-conf 3x1 --scenario Hopper --experiment benchmark
 ```
 
