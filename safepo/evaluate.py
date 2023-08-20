@@ -138,7 +138,7 @@ def single_runs_eval(eval_dir, eval_episodes):
 def benchmark_eval():
     parser = argparse.ArgumentParser()
     parser.add_argument("--benchmark-dir", type=str, default='', help="the directory of the evaluation")
-    parser.add_argument("--eval-episodes", type=int, default=1, help="the number of episodes to evaluate")
+    parser.add_argument("--eval-episodes", type=int, default=3, help="the number of episodes to evaluate")
     parser.add_argument("--save-dir", type=str, default=None, help="the directory to save the evaluation result")
 
     args = parser.parse_args()

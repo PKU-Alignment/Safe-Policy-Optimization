@@ -20,7 +20,7 @@ eval_interval: 25
 log_interval: 25
 eval_episodes: 10000
 
-safety_bound: 10
+safety_bound: 25
 EPS: 1.e-8
 safety_gamma: 0.09
 line_search_fraction: 0.5

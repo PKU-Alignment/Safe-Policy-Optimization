@@ -2,7 +2,7 @@ import argparse
 import shlex
 import subprocess
 
-navi_robots = ['Car', 'Point', 'Racecar', 'Ant']
+navi_robots = ['Ant', 'Car', 'Doggo', 'Point', 'Racecar']
 navi_tasks = ['Button', 'Circle', 'Goal', 'Push']
 diffculies = ['1', '2']
 vel_robots = ['Ant', 'HalfCheetah', 'Hopper', 'Walker2d', 'Swimmer', 'Humanoid']
@@ -54,7 +54,7 @@ def parse_args():
         "--workers", type=int, default=1, help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--experiment", type=str, default="benchmark", help="name of the experiment"
+        "--experiment", type=str, default="benchmark_doggo", help="name of the experiment"
     )
     parser.add_argument(
         "--total-steps", type=int, default=10000000, help="total number of steps"
@@ -82,9 +82,14 @@ if __name__ == "__main__":
     args = parse_args()
 
     commands = []
-
+    gpus = [0, 1, 2, 3, 4, 5, 6, 7]
+    idx = 0
     for seed in range(0, args.num_seeds):
         for task in args.tasks:
+            if "Doggo" in task:
+                args.total_steps = str(100000000)
+                args.steps_per_epoch = str(200000)
+                args.num_envs = str(20)
             for algo in args.algo:
                 commands += [
                     " ".join(
@@ -104,9 +109,16 @@ if __name__ == "__main__":
                             str(args.num_envs),
                             "--steps-per-epoch",
                             str(args.steps_per_epoch),
+                            "--device",
+                            "cuda",
+                            "--device-id",
+                            str(idx),
                         ]
                     )
                 ]
+                idx += 1
+                if idx == len(gpus):
+                    idx = 0
 
     print("======= commands to run:")
     for command in commands:

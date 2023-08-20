@@ -72,7 +72,7 @@ class Actor(nn.Module):
 
     def __init__(self, obs_dim: int, act_dim: int):
         super().__init__()
-        self.mean = build_mlp_network([obs_dim, 64, 64, act_dim])
+        self.mean = build_mlp_network([obs_dim, 256, 256, act_dim])
         self.log_std = nn.Parameter(torch.zeros(act_dim), requires_grad=True)
 
     def forward(self, obs: torch.Tensor):
@@ -102,7 +102,7 @@ class VCritic(nn.Module):
 
     def __init__(self, obs_dim):
         super().__init__()
-        self.critic = build_mlp_network([obs_dim, 64, 64, 1])
+        self.critic = build_mlp_network([obs_dim, 256, 256, 1])
 
     def forward(self, obs):
         return torch.squeeze(self.critic(obs), -1)
@@ -194,12 +194,12 @@ class MultiAgentActor(nn.Module):
         tpdv (dict): Dictionary with data type and device for tensor conversion.
         
     Example:
-        config = {"hidden_size": 64, "gain": 0.1, ...}
+        config = {"hidden_size": 256, "gain": 0.1, ...}
         obs_space = gym.spaces.Box(low=0, high=1, shape=(4,))
         action_space = gym.spaces.Discrete(2)
         actor = MultiAgentActor(config, obs_space, action_space)
         observation = torch.randn(1, 4)
-        rnn_states = torch.zeros(1, 64)
+        rnn_states = torch.zeros(1, 256)
         masks = torch.ones(1, 1)
         actions, action_log_probs, new_rnn_states = actor(observation, rnn_states, masks)
         action = torch.tensor([0])
