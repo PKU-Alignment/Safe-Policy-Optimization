@@ -36,7 +36,7 @@ def parse_args():
         "--experiment", type=str, default="benchmark", help="name of the experiment"
     )
     parser.add_argument(
-        "--total-steps", type=int, default=1000000, help="total number of steps"
+        "--total-steps", type=int, default=10000000, help="total number of steps"
     )
     args = parser.parse_args()
 
