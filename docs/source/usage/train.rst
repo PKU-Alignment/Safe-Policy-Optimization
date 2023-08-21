@@ -48,7 +48,7 @@ We provide the detailed description of the command line arguments in the followi
         |                    | environments                     |                                               |
         +--------------------+----------------------------------+-----------------------------------------------+
         | --total-steps      | Total timesteps of the           | 10000000                                      |
-        |                    | experiments                      |                                                |
+        |                    | experiments                      |                                               |
         +--------------------+----------------------------------+-----------------------------------------------+
         | --task             | ID of the environment            | "SafetyPointGoal1-v0"                         |
         +--------------------+----------------------------------+-----------------------------------------------+

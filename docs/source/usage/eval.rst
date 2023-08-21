@@ -9,7 +9,7 @@ To evaluate the trained model, you can run:
 .. code-block:: bash
 
     cd safepo/
-    python evaluate.py --benchamrk-dir ./runs/ppo_lag_exp --eval-episodes 100 --save-dir ./results/ppo_lag_exp
+    python evaluate.py --benchmark-dir ./runs/ppo_lag_exp --eval-episodes 10 --save-dir ./results/ppo_lag_exp
 
 This will evaluate the model in the last checkpoint of the training, and save the evaluation results in `safepo/results/ppo_lag_exp`.
 
