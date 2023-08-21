@@ -208,6 +208,8 @@ cd safepo/multi_agent
 python macpo.py --task ShadowHandOver_Safe_joint --experiment benchmark
 ```
 
+**As Isaac Gym is holding in PyPI, you should install it manually, then clone [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) instead of installing from PyPI.**
+
 **Note**: The default value for ``task`` is ``MujucoVelocity``. The default scenrio is ``Ant`` while the default agent configuration is ``2x4``. You can run other agent or scenrio by:
 
 ```bash
