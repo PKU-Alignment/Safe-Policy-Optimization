@@ -11,7 +11,7 @@ To run the algorithms with default configuration, you need to specify the enviro
 .. code-block:: bash
 
     cd safepo/single_agent
-    python ppo_lag.py --env-id SafetyPointGoal1-v0 --experiment ppo_lag_exp
+    python ppo_lag.py --task SafetyPointGoal1-v0 --experiment ppo_lag_exp
 
 Then you can check the results in the ``runs/ppo_lag_exp`` folder.
 
@@ -50,7 +50,7 @@ We provide the detailed description of the command line arguments in the followi
         | --total-steps      | Total timesteps of the           | 10000000                                      |
         |                    | experiments                      |                                               |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --env-id           | ID of the environment            | "SafetyPointGoal1-v0"                         |
+        | --task           | ID of the environment            | "SafetyPointGoal1-v0"                         |
         +--------------------+----------------------------------+-----------------------------------------------+
         | --use-eval         | Toggles evaluation               | False                                         |
         +--------------------+----------------------------------+-----------------------------------------------+
