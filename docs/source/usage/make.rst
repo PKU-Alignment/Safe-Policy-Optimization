@@ -27,7 +27,7 @@ including training curves and evaluation rewards and costs.
 Simple benchmark running
 ------------------------
 
-The full benchamrk is time-consuming.
+The full benchmark is time-consuming.
 To verify the performance of SafePO, we provide a simple benchmark command,
 which runs all alforithms on sampled environments and evaluate the trained policies.
 

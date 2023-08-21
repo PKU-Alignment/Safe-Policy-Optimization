@@ -181,7 +181,7 @@ cd safepo/single_agent
 python ppo_lag.py --task SafetyPointGoal1-v0 --seed 0
 ```
 
-To run a benchamrk parallelly, for example, you can use the following command to run `PPO-Lag`, `TRPO-Lag` in `SafetyAntVelocity-v1`, `SafetyHalfCheetahVelocity-v1`: 
+To run a benchmark parallelly, for example, you can use the following command to run `PPO-Lag`, `TRPO-Lag` in `SafetyAntVelocity-v1`, `SafetyHalfCheetahVelocity-v1`: 
 
 ```bash
 cd safepo/single_agent
