@@ -33,7 +33,7 @@ which runs all alforithms on sampled environments and evaluate the trained polic
 
 .. code-block:: bash
     
-    make benchmark-simple
+    make simple-benchmark
 
 The training logs would be saved in ``safepo/runs/benchmark``, while the evaluation results and learning curves would be saved in ``safepo/results/benchmark``.
 
