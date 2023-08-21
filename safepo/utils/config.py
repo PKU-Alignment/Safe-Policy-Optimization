@@ -62,11 +62,10 @@ multi_agent_velocity_map = {
 }
 
 isaac_gym_map = {
-    "ShadowHandOver_Safe_joint": "shadow_hand_over_safe_finger",
+    "ShadowHandOver_Safe_finger": "shadow_hand_over_safe_finger",
     "ShadowHandOver_Safe_joint": "shadow_hand_over_safe_joint",
     "ShadowHandCatchOver2Underarm_Safe_finger": "shadow_hand_catch_over_2_underarm_safe_finger",
     "ShadowHandCatchOver2Underarm_Safe_joint": "shadow_hand_catch_over_2_underarm_safe_joint",
-    "ShadowHandCatchUnderarm": "shadow_hand_catch_underarm",
     "FreightFrankaCloseDrawer": "freight_franka_close_drawer",
     "FreightFrankaPickAndPlace": "freight_franka_pick_and_place",
 }

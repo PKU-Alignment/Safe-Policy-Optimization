@@ -30,7 +30,7 @@ def eval_single_agent(eval_dir, eval_episodes):
     config_path = eval_dir + '/config.json'
     config = json.load(open(config_path, 'r'))
 
-    env_id = config['task']
+    env_id = config['task'] if 'task' in config.keys() else config['env_name']
     env_norms = os.listdir(eval_dir)
     env_norms = [env_norm for env_norm in env_norms if env_norm.endswith('.pkl')]
     final_norm_name = sorted(env_norms)[-1]

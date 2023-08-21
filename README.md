@@ -50,6 +50,9 @@
 
 Here we provide a table of Safe RL algorithms that the benchmark includes.
 
+
+**note: Four more classic RL algorithms are also included in the benchmark, namely PG, NaturalPG, TRPO, and PPO.**
+
 |                                 Algorithm                                  |    Proceedings&Cites    |                                 Official Code Repo                                  |                                                         Official Code Last Update                                                          |                                                                      Official Github Stars                                                                      |
 | :------------------------------------------------------------------------: | :---------------------: | :---------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 |             [PPO-Lag](https://cdn.openai.com/safexp-short.pdf)             |           :x:           |          [Tensorflow 1 ](https://github.com/openai/safety-starter-agents)           |             ![GitHub last commit](https://img.shields.io/github/last-commit/openai/safety-starter-agents?label=last%20update)              |         [![GitHub stars](https://img.shields.io/github/stars/openai/safety-starter-agents)](https://github.com/openai/safety-starter-agents/stargazers)         |
