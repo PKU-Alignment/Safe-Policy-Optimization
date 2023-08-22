@@ -82,8 +82,6 @@ if __name__ == "__main__":
     args = parse_args()
 
     commands = []
-    gpus = [0, 1, 2, 3, 4, 5, 6, 7]
-    idx = 0
     for seed in range(0, args.num_seeds):
         for task in args.tasks:
             if "Doggo" in task:
@@ -109,16 +107,10 @@ if __name__ == "__main__":
                             str(args.num_envs),
                             "--steps-per-epoch",
                             str(args.steps_per_epoch),
-                            "--device",
-                            "cuda",
-                            "--device-id",
-                            str(idx),
                         ]
                     )
                 ]
-                idx += 1
-                if idx == len(gpus):
-                    idx = 0
+
 
     print("======= commands to run:")
     for command in commands:

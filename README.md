@@ -18,14 +18,20 @@
 
 **Safe Policy Optimization (SafePO)**  is a comprehensive algorithm benchmark for Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, SafePO is developed with the following key features:
 
-- **Comprehensive Safe RL benchmark**: We offer high-quality implementation of both single-agent safe reinforcement learning algorithms (CPO, PCPO, FOCOPS, PPO-Lag, TRPO-Lag, CUP, CPPO-PID, and RCPO) and multi-agent safe reinforcement learning algorithms (HAPPO, MAPPO-Lag, IPPO, MACPO, and MAPPO).
-- **Richer interfaces**：In SafePO, you can modify the parameters of the algorithm according to your requirements. You can pass in the parameters you want to change via ``argparse`` at the terminal.
-- **Single file style**：SafePO adopts a single-file style to implement algorithms, aiming to function as an algorithm library that integrates tutorial and tool capabilities. This design choice prioritizes readability and extensibility, albeit at the expense of inheritance and code simplicity. Unlike modular frameworks, users can grasp the essence of the algorithms without the need to extensively navigate through the entire library.
-- **More information**：We provide rich data visualization methods. Reinforcement learning algorithms typically involves huge number of parameters. In order to better understand the changes of each parameter in the training process, we use log files, [TensorBoard](https://www.tensorflow.org/tensorboard), and [wandb](https://wandb.ai/) to visualize them. We believe this will help developers tune each algorithm more efficiently.
-
 <div align=center>
-    <img src="assets/framework_new.png" width="500" border="1"/>
+    <img src="assets/arch.png" width="800" border="1"/>
 </div>
+
+**Correctness.** For a benchmark, it is critical to ensure its correctness and reliability.
+%To achieve this goal, we examine the implementation of SafePO carefully.
+Firstly, each algorithm is implemented strictly according to the original paper (e.g., ensuring consistency with the gradient flow of the original paper, etc). Secondly, for algorithms with a commonly acknowledged open-source code base, we compare our implementation with those line by line, in order to double-check the correctness. Finally, we compare SafePO with existing benchmarks (e.g., [Safety-Starter-Agents](https://github.com/openai/safety-starter-agents) and [RL-Safety-Algorithms](https://github.com/SvenGronauer/RL-Safety-Algorithms)) outperforms other existing implementations.
+
+**Extensibility.** SafePO enjoys high extensibility thanks to its architecture. New algorithms can be integrated to SafePO by inheriting from base algorithms and only implementing their unique features. For example, we integrate PPO by inheriting from policy gradient and only adding the clip ratio variable and rewriting the function that computes the loss of policy. In a similar way, algorithms can be easily added to SafePO.
+
+**Logging and Visualization.** Another important functionality of SafePO is logging and visualization. Supporting both TensorBoard and WandB, we offer code for the visualizations of more than 40 parameters and intermediate computation results, for the purpose of inspecting the training process. Common parameters and metrics such as KL-divergence, SPS (step per second), and variance of cost are visualized universally. During training, users are able to inspect the changes of every parameter, collect the log file, and obtain saved checkpoint models. The complete and comprehensive visualization allows easier observation, model selection, and comparison.
+
+**Documentation.** In addition to its code implementation, SafePO comes with an [extensive documentation](https://safe-policy-optimization.readthedocs.io). We include detailed guidance on installation and propose solutions to common issues. Moreover, we provide instructions on simple usage and advanced customization of SafePO. Official information concerning maintenance, ethical and responsible use are stated clearly for reference.
+
 
 - [Overview of Algorithms](#overview-of-algorithms)
 - [Supported Environments](#supported-environments)
@@ -68,11 +74,11 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 | [HAPPO (Purely reward optimisation)](https://arxiv.org/pdf/2109.11251.pdf) |  ICLR 2022 (Cite: 10)   |                [Pytorch](https://github.com/cyanrain7/TRPO-in-MARL)                 |                ![GitHub last commit](https://img.shields.io/github/last-commit/cyanrain7/TRPO-in-MARL?label=last%20update)                 |               [![GitHub stars](https://img.shields.io/github/stars/cyanrain7/TRPO-in-MARL)](https://github.com/cyanrain7/TRPO-in-MARL/stargazers)               |
 | [MAPPO (Purely reward optimisation)](https://arxiv.org/pdf/2103.01955.pdf) |   Preprint(Cite: 98)    |                [Pytorch](https://github.com/marlbenchmark/on-policy)                |                ![GitHub last commit](https://img.shields.io/github/last-commit/marlbenchmark/on-policy?label=last%20update)                |              [![GitHub stars](https://img.shields.io/github/stars/marlbenchmark/on-policy)](https://github.com/marlbenchmark/on-policy/stargazers)              |
 
-## Supported Environments
+## Supported Environments: Safety-Gymnasium
 
-## Safety-Gymnasium
+Here is a list of all the environments support for now; some are being tested in our baselines, and we will gradually release them in later updates. For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium).
 
-Here is a list of all the environments Saty-Gymnasiumn support for now; some are being tested in our baselines, and we will gradually release them in later updates. For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium).
+### Gymnasium-based Environments
 
 <table border="1">
   <thead>
@@ -110,14 +116,8 @@ Here is a list of all the environments Saty-Gymnasiumn support for now; some are
 
 **note**: Safe velocity tasks support both single-agent and multi-agent algorithms, while safe navigation tasks only support single-agent algorithms currently.
 
-## Safe-Dexterous-Hands
 
-**note**: These tasks support multi-agent algorithms only currently.
-
-### Prerequisites
-
-It uses [Anaconda](https://www.anaconda.com/) to create virtual environments.
-To install Anaconda, follow instructions [here](https://docs.anaconda.com/anaconda/install/linux/).
+### Isaac Gym-based Environments
 
 Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` 
 directory, like `joint_monkey.py`. Please follow troubleshooting steps described in the Isaac Gym Preview Release 3/4
@@ -128,22 +128,13 @@ install instructions if you have any trouble running the samples.
 
 | Base Environments            | Description                                                                                                                                                           | Demo                                                        |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| ShadowHandOver               | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand.                        | <img src="assets/hand/0v1.gif" align="middle" width="250"/> |
-| ShadowHandCatchOver2Underarm | This environment is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand | <img src="assets/hand/2.gif" align="middle" width="250"/>   |
+| ShadowHandOver_Safe_finger               | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand.                        | <img src="assets/hand/0v1.gif" align="middle" width="250"/> |
+| ShadowHandCatchOver2Underarm_Safe_finger | This environment is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand | <img src="assets/hand/2.gif" align="middle" width="250"/>   |
 
 **We implement some different constraints to the base environments, expanding the setting to both single-agent and multi-agent.**
 
 <img src="assets/hand.png" align="middle" width="1000"/>
 
-## What's More
-
-Our team has also designed a number of more interesting safety tasks for two-handed dexterous manipulation, and this work will soon be releasing code for use by more Safe RL researchers.
-| Base Environments                    | Description | Demo                                                                       |
-| ------------------------------------ | ----------- | -------------------------------------------------------------------------- |
-| ShadowHandOverWall                   | None        | <img src="assets/handover_wall.png" align="middle" width="150"/>           |
-| ShadowHandOverWallDown               | None        | <img src="assets/handover_wall_down.png" align="middle" width="150"/>      |
-| ShadowHandCatchOver2UnderarmWall     | None        | <img src="assets/catchunderarm_wall.png" align="middle" width="150"/>      |
-| ShadowHandCatchOver2UnderarmWallDown | None        | <img src="assets/catchunderarm_wall_down.png" align="middle" width="150"/> |
 
 ## Pre-requisites
 
@@ -211,7 +202,7 @@ cd safepo/multi_agent
 python macpo.py --task ShadowHandOver_Safe_joint --experiment benchmark
 ```
 
-**As Isaac Gym is holding in PyPI, you should install it manually, then clone [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) instead of installing from PyPI.**
+**As Isaac Gym is not holding in PyPI, you should install it manually, then clone [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) instead of installing from PyPI.**
 
 ### Plot the result
 
