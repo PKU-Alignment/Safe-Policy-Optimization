@@ -31,7 +31,7 @@ from safepo.common.popart import PopArt
 from safepo.common.model import MultiAgentActor as Actor, MultiAgentCritic as Critic
 from safepo.common.buffer import SeparatedReplayBuffer
 from safepo.common.logger import EpochLogger
-from safepo.utils.config import multi_agent_args, parse_sim_params, set_np_formatting, set_seed
+from safepo.utils.config import multi_agent_args, parse_sim_params, set_np_formatting, set_seed, multi_agent_velocity_map, isaac_gym_map
 
 
 def check(input):
@@ -526,7 +526,6 @@ class Runner:
         one_episode_costs = torch.zeros(1, self.config["n_eval_rollout_threads"], device=self.config["device"])
 
         eval_obs, _, _ = self.eval_envs.reset()
-        #eval_obs = torch.as_tensor(eval_obs, dtype=torch.float32, device=self.config["device"])
 
         eval_rnn_states = torch.zeros(self.config["n_eval_rollout_threads"], self.num_agents, self.config["recurrent_N"], self.config["hidden_size"],
                                    device=self.config["device"])
@@ -600,7 +599,7 @@ class Runner:
 def train(args, cfg_train):
     agent_index = [[[0, 1, 2, 3, 4, 5]],
                    [[0, 1, 2, 3, 4, 5]]]
-    if args.task == "MujocoVelocity":
+    if args.task in multi_agent_velocity_map:
         env = make_ma_mujoco_env(
         scenario=args.scenario,
         agent_conf=args.agent_conf,
@@ -616,12 +615,15 @@ def train(args, cfg_train):
         seed=cfg_eval['seed'],
         cfg_train=cfg_eval,
     )
-    else: 
+    elif args.task in isaac_gym_map:
         sim_params = parse_sim_params(args, cfg_env, cfg_train)
         env = make_ma_isaac_env(args, cfg_env, cfg_train, sim_params, agent_index)
         cfg_train["n_rollout_threads"] = env.num_envs
         cfg_train["n_eval_rollout_threads"] = env.num_envs
         eval_env = env
+    else: 
+        raise NotImplementedError
+    
     torch.set_num_threads(4)
     runner = Runner(env, eval_env, cfg_train, args.model_dir)
 

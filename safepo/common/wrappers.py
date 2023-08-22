@@ -26,7 +26,10 @@ from gymnasium.spaces import Box
 from gymnasium.wrappers.normalize import NormalizeObservation
 
 from safety_gymnasium.vector.utils.tile_images import tile_images
-from safety_gymnasium.tasks.safe_multi_agent.safe_mujoco_multi import SafeMAEnv
+try:
+    from safety_gymnasium.tasks.safe_multi_agent.safe_mujoco_multi import SafeMAEnv
+except ImportError:
+    from safety_gymnasium.tasks.safe_multi_agent.tasks.velocity.safe_mujoco_multi import SafeMAEnv
 from typing import Optional
 try :
     from safety_gymnasium.tasks.safe_isaac_gym.envs.tasks.hand_base.vec_task import VecTaskPython

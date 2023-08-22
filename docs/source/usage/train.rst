@@ -23,7 +23,7 @@ The multi-agent algorithms running is similar to the single-agent algorithms. Fo
 .. code-block:: bash
 
     cd safepo/multi_agent
-    python mappolag.py --scenario Ant --agent-conf 2x4 --experiment mappo_lag_exp
+    python mappolag.py --task Safety2x4AntVelocity-v0 --experiment mappo_lag_exp
 
 Then you can check the results in the ``runs/mappo_lag_exp`` folder.
 
@@ -78,10 +78,6 @@ We provide the detailed description of the command line arguments in the followi
         |                   | for testing                    |                                              |
         +-------------------+--------------------------------+----------------------------------------------+
         | --task            | The task to run                | "MujocoVelocity"                             |
-        +-------------------+--------------------------------+----------------------------------------------+
-        | --agent-conf      | The agent configuration        | "2x4"                                        |
-        +-------------------+--------------------------------+----------------------------------------------+
-        | --scenario        | The scenario                   | "Ant"                                        |
         +-------------------+--------------------------------+----------------------------------------------+
         | --experiment      | Experiment name                | "Base"                                       |
         |                   | If used with --metadata flag,  |                                              |

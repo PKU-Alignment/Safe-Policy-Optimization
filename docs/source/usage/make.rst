@@ -62,10 +62,10 @@ The terminal output would be like:
 .. code-block:: bash
     
     ======= commands to run:
-    running python macpo.py --agent-conf 2x4 --scenario Ant --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 10000000
-    running python mappo.py --agent-conf 2x4 --scenario Ant --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 10000000
-    running python mappolag.py --agent-conf 2x4 --scenario Ant --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 10000000
-    running python happo.py --agent-conf 2x4 --scenario Ant --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 10000000
+    running python macpo.py --task Safety2x4AntVelocity-v0 --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 10000000
+    running python mappo.py --task Safety2x4AntVelocity-v0 --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 10000000
+    running python mappolag.py --task Safety2x4AntVelocity-v0 --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 10000000
+    running python happo.py --task Safety2x4AntVelocity-v0 --seed 0 --write-terminal False --experiment benchmark --headless True --total-steps 10000000
     ...
     running python pcpo.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 10000000
     running python ppo_lag.py --task SafetyAntVelocity-v1 --seed 0 --write-terminal False --experiment benchmark --total-steps 10000000

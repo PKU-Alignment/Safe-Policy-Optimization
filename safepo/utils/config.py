@@ -61,6 +61,15 @@ multi_agent_velocity_map = {
     },
 }
 
+multi_agent_goal_tasks = [
+    "SafetyPointMultiGoal0-v0",
+    "SafetyPointMultiGoal1-v0",
+    "SafetyPointMultiGoal2-v0",
+    "SafetyAntMultiGoal0-v0",
+    "SafetyAntMultiGoal1-v0",
+    "SafetyAntMultiGoal2-v0",
+]
+
 isaac_gym_map = {
     "ShadowHandOver_Safe_finger": "shadow_hand_over_safe_finger",
     "ShadowHandOver_Safe_joint": "shadow_hand_over_safe_joint",
@@ -187,9 +196,9 @@ def multi_agent_args(algo):
     # Define custom parameters
     custom_parameters = [
         {"name": "--use-eval", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Use evaluation environment for testing"},
-        {"name": "--task", "type": str, "default": "MujocoVelocity", "help": "The task to run"},
-        {"name": "--agent-conf", "type": str, "default": "2x1", "help": "The agent configuration"},
-        {"name": "--scenario", "type": str, "default": "Swimmer", "help": "The scenario"},
+        {"name": "--task", "type": str, "default": "Safety2x4AntVelocity-v0", "help": "The task to run"},
+        {"name": "--agent-conf", "type": str, "default": "2x4", "help": "The agent configuration"},
+        {"name": "--scenario", "type": str, "default": "Ant", "help": "The scenario"},
         {"name": "--experiment", "type": str, "default": "Base", "help": "Experiment name"},
         {"name": "--seed", "type": int, "default":0, "help": "Random seed"},
         {"name": "--model-dir", "type": str, "default": "", "help": "Choose a model dir"},
@@ -224,18 +233,19 @@ def multi_agent_args(algo):
     base_path = os.path.dirname(os.path.abspath(__file__)).replace("utils", "multi_agent")
     with open(os.path.join(base_path, cfg_train_path), 'r') as f:
         cfg_train = yaml.load(f, Loader=yaml.SafeLoader)
-        if args.task == "MujocoVelocity":
+        if args.task in multi_agent_velocity_map.keys():
             cfg_train.update(cfg_train.get("mamujoco"))
+            args.agent_conf = multi_agent_velocity_map[args.task]["agent_conf"]
+            args.scenario = multi_agent_velocity_map[args.task]["scenario"]
+        elif args.task in multi_agent_goal_tasks:
+            cfg_train.update(cfg_train.get("magoal"))
+
     cfg_train["use_eval"] = args.use_eval
     cfg_train["safety_bound"]=args.safety_bound
     cfg_train["algorithm_name"]=algo
     cfg_train["device"] = args.device + ":" + str(args.device_id)
 
-    if args.task == "MujocoVelocity":
-        env_name = "Safety"+args.agent_conf+args.scenario+"Velocity-v0"
-    else:
-        env_name = args.task
-    cfg_train["env_name"] = env_name
+    cfg_train["env_name"] = args.task
 
     if args.total_steps:
         cfg_train["num_env_steps"] = args.total_steps
@@ -245,7 +255,7 @@ def multi_agent_args(algo):
     relpath = time.strftime("%Y-%m-%d-%H-%M-%S")
     subfolder = "-".join(["seed", str(args.seed).zfill(3)])
     relpath = "-".join([subfolder, relpath])
-    cfg_train['log_dir']="../runs/"+args.experiment+'/'+env_name+'/'+algo+'/'+relpath
+    cfg_train['log_dir']="../runs/"+args.experiment+'/'+args.task+'/'+algo+'/'+relpath
     cfg_env={}
     if args.task in isaac_gym_map.keys():
         cfg_env_path = "marl_cfg/{}.yaml".format(isaac_gym_map[args.task])
@@ -259,7 +269,7 @@ def multi_agent_args(algo):
                     cfg_env["task"]["randomize"] = False
             else:
                 cfg_env["task"] = {"randomize": False}
-    elif args.task == "MujocoVelocity":
+    elif args.task in multi_agent_velocity_map.keys() or args.task in multi_agent_goal_tasks:
         pass
     else:
         warn_task_name()
