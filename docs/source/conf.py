@@ -6,6 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import pathlib
+import os
 import sys
 
 
@@ -33,6 +34,10 @@ extensions = [
     'sphinx_design',
 ]
 
+if not os.getenv('READTHEDOCS', None):
+    extensions.append('sphinxcontrib.spelling')
+
+source_suffix = {'.rst': 'restructuredtext', '.md': 'markdown'}
 templates_path = ['_templates']
 exclude_patterns = []
 

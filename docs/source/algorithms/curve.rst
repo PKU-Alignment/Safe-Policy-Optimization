@@ -4,7 +4,7 @@ Training Curves
 Safe reinforcement learning algorithms are designed to achieve high reward while satisfying the safety constraint.
 In this section, we evaluate the performance of SafePO's algorithms on the various environments in `Safety-Gymnasium <https://github.com/PKU-Alignment/safety-gymnasium>`_.
 
-Single Agent
+Single-Agent
 ------------
 
 First order
@@ -97,8 +97,8 @@ Second order
 
          </iframe>
 
-Muilti-Agent
-------------
+Multi-Agent
+-----------
 
 .. tab-set::
 

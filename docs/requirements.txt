@@ -7,3 +7,4 @@ sphinx-design
 moviepy
 pygame
 sphinx_github_changelog
+sphinxcontrib-spelling

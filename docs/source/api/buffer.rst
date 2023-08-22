@@ -3,7 +3,7 @@ Buffer
 
 .. currentmodule:: safepo.common.buffer
 
-Single Agent Buffer
+Single-Agent Buffer
 -------------------
 
 .. autoclass:: VectorizedOnPolicyBuffer

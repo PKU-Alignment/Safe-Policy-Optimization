@@ -1,7 +1,7 @@
 Logger
 ======
 
-Simple usage
+Simple Usage
 ------------
 
 .. code-block:: python

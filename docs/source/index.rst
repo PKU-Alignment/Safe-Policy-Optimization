@@ -41,7 +41,7 @@ One line to run SafePO benchmark:
    make benchmark
 
 Then you can check the runs in ``safepo/runs``. After that, you can check the 
-results (eavluation outcomes, training curves) in ``safepo/results``.
+results (evaluation outcomes, training curves) in ``safepo/results``.
 
 
 .. toctree::
