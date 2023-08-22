@@ -18,21 +18,20 @@
 
 **Safe Policy Optimization (SafePO)**  is a comprehensive algorithm benchmark for Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, SafePO is developed with the following key features:
 
+<div align=center>
+    <img src="assets/arch.png" width="800" border="1"/>
+</div>
+
 **Correctness.** For a benchmark, it is critical to ensure its correctness and reliability.
 %To achieve this goal, we examine the implementation of SafePO carefully.
 Firstly, each algorithm is implemented strictly according to the original paper (e.g., ensuring consistency with the gradient flow of the original paper, etc). Secondly, for algorithms with a commonly acknowledged open-source code base, we compare our implementation with those line by line, in order to double-check the correctness. Finally, we compare SafePO with existing benchmarks (e.g., [Safety-Starter-Agents](https://github.com/openai/safety-starter-agents) and [RL-Safety-Algorithms](https://github.com/SvenGronauer/RL-Safety-Algorithms)) outperforms other existing implementations.
 
-**Extensibility.** SafePO enjoys high extensibility thanks to its architecture. New algorithms can be integrated to SafePO by inheriting from base algorithms and only implementing their unique features. For example, we integrate PPO by inheriting from policy gradient and only adding the clip ratio variable and rewriting the function that computes the loss of policy $\pi$. In a similar way, algorithms can be easily added to SafePO.
-% Beyond, other parts of SafePO are also changeable, by simply replacing the existing implementation.
-%It enables users to validate their ideas very quickly and allows fair comparisons since all other parts are controlled. 
+**Extensibility.** SafePO enjoys high extensibility thanks to its architecture. New algorithms can be integrated to SafePO by inheriting from base algorithms and only implementing their unique features. For example, we integrate PPO by inheriting from policy gradient and only adding the clip ratio variable and rewriting the function that computes the loss of policy. In a similar way, algorithms can be easily added to SafePO.
 
-**Logging and Visualization.** Another important functionality of SafePO is logging and visualization. Supporting both TensorBoard and WandB, we offer code for the visualizations of more than 40 parameters and intermediate computation results, for the purpose of inspecting the training process. Common parameters and metrics such as KL-divergence, SPS (step per second), and variance of cost are visualized universally. Special features of algorithms are also reported, such as the Lagrangian multiplier of Lagrangian-based methods, $g^T H^{-1}g, g^T H^{-1}b, \nu^*, \textrm{and } \lambda^*$ of CPO, proportional, integral, and derivative of PID-based algorithms, etc. During training, users are able to inspect the changes of every parameter, collect the log file, and obtain saved checkpoint models. The complete and comprehensive visualization allows easier observation, model selection, and comparison.
+**Logging and Visualization.** Another important functionality of SafePO is logging and visualization. Supporting both TensorBoard and WandB, we offer code for the visualizations of more than 40 parameters and intermediate computation results, for the purpose of inspecting the training process. Common parameters and metrics such as KL-divergence, SPS (step per second), and variance of cost are visualized universally. During training, users are able to inspect the changes of every parameter, collect the log file, and obtain saved checkpoint models. The complete and comprehensive visualization allows easier observation, model selection, and comparison.
 
 **Documentation.** In addition to its code implementation, SafePO comes with an [extensive documentation](https://safe-policy-optimization.readthedocs.io). We include detailed guidance on installation and propose solutions to common issues. Moreover, we provide instructions on simple usage and advanced customization of SafePO. Official information concerning maintenance, ethical and responsible use are stated clearly for reference.
 
-<div align=center>
-    <img src="assets/arch.png" width="800" border="1"/>
-</div>
 
 - [Overview of Algorithms](#overview-of-algorithms)
 - [Supported Environments](#supported-environments)
