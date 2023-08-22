@@ -42,13 +42,25 @@ single-simple-benchmark:
 	 SafetyAntVelocity-v1 SafetyHumanoidVelocity-v1 \
 	 SafetyPointGoal1-v0 SafetyCarButton1-v0 \
 
-simple-benchmark: install-editable multi-simple-benchmark single-simple-benchmark plot eval
+multi-test-benchmark:
+	cd safepo/multi_agent && $(PYTHON) benchmark.py --total-steps 2000 --experiment benchmark --num-envs 1 --tasks \
+	 Safety2x4AntVelocity-v0 Safety4x2AntVelocity-v0 \
+	 Safety2x3HalfCheetahVelocity-v0 Safety6x1HalfCheetahVelocity-v0 \
+
+single-test-benchmark:
+	cd safepo/single_agent && $(PYTHON) benchmark.py --total-steps 2000  --experiment benchmark --num-envs 1 --steps-per-epoch 1000 --tasks \
+	 SafetyAntVelocity-v1 SafetyHumanoidVelocity-v1 \
+	 SafetyPointGoal1-v0 SafetyCarButton1-v0 \
 
 plot:
 	cd safepo && $(PYTHON) plot.py --logdir ./runs/benchmark
 
 eval:
 	cd safepo && $(PYTHON) evaluate.py --benchmark-dir ./runs/benchmark
+
+simple-benchmark: install-editable multi-simple-benchmark single-simple-benchmark plot eval
+
+test-benchmark: install-editable multi-test-benchmark single-test-benchmark plot eval
 
 benchmark: install-editable multi-benchmark single-benchmark plot eval
 
