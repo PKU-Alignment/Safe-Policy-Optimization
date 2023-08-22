@@ -39,7 +39,7 @@ def parse_args():
         "--total-steps", type=int, default=10000000, help="total number of steps"
     )
     parser.add_argument(
-        "--num-envs", type=int, default=1, help="number of environments to run in parallel"
+        "--num-envs", type=int, default=10, help="number of environments to run in parallel"
     )
     args = parser.parse_args()
 
