@@ -38,6 +38,9 @@ def parse_args():
     parser.add_argument(
         "--total-steps", type=int, default=10000000, help="total number of steps"
     )
+    parser.add_argument(
+        "--num-envs", type=int, default=10, help="number of environments to run in parallel"
+    )
     args = parser.parse_args()
 
     return args
@@ -59,16 +62,12 @@ if __name__ == "__main__":
     for seed in range(0, args.num_seeds):
         for task in args.tasks:
             for algo in args.algo:
-                agen_conf = multi_agent_velocity_map[task]['agent_conf']
-                scenario = multi_agent_velocity_map[task]['scenario']
                 commands += [
                     " ".join(
                         [
                             f"python {algo}.py",
-                            "--agent-conf",
-                            agen_conf,
-                            "--scenario",
-                            scenario,
+                            "--task",
+                            task,
                             "--seed",
                             str(args.start_seed + 1000*seed),
                             "--write-terminal",
@@ -79,6 +78,8 @@ if __name__ == "__main__":
                             "True",
                             "--total-steps",
                             str(args.total_steps),
+                            "--num-envs",
+                            str(args.num_envs),
                         ]
                     )
                 ]

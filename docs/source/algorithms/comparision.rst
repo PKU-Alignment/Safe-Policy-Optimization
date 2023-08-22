@@ -29,6 +29,11 @@ they are:
 - ``SafetyWalker2dVelocity-v1``
 - ``SafetySwimmerVelocity-v1``
 
+.. warning::
+
+     It may takes some time to load the results.
+     If you can not see the results, please directly visit `wandb.ai <https://wandb.ai/pku_rl/SafePO/reports?view=table>`_.
+
 The results are shown as follows.
 
 .. tab-set::

@@ -5,7 +5,7 @@
 <div align="center">
 
 [![Organization](https://img.shields.io/badge/Organization-PKU--Alignment-blue)](https://github.com/PKU-Alignment)
-[![License](https://img.shields.io/github/license/PKU-Alignment/OmniSafe?label=license)](#license)
+[![License](https://img.shields.io/github/license/PKU-Alignment/Safe-Policy-Optimization?label=license)](#license)
 [![codecov](https://codecov.io/gh/PKU-Alignment/Safe-Policy-Optimization/graph/badge.svg?token=KF0UM0UNXW)](https://codecov.io/gh/PKU-Alignment/Safe-Policy-Optimization)
 [![Documentation Status](https://readthedocs.org/projects/safe-policy-optimization/badge/?version=latest)](https://safe-policy-optimization.readthedocs.io/en/latest/?badge=latest)
 
@@ -201,7 +201,7 @@ To train a multi-agent algorithm:
 
 ```bash
 cd safepo/multi_agent
-python macpo.py --agent-conf 4x2 --scenario Ant --experiment benchmark
+python macpo.py --task Safety2x4AntVelocity-v0 --experiment benchmark
 ```
 
 You can also train on isaac-gym based environment:
@@ -212,13 +212,6 @@ python macpo.py --task ShadowHandOver_Safe_joint --experiment benchmark
 ```
 
 **As Isaac Gym is holding in PyPI, you should install it manually, then clone [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) instead of installing from PyPI.**
-
-**Note**: The default value for ``task`` is ``MujucoVelocity``. The default scenrio is ``Ant`` while the default agent configuration is ``2x4``. You can run other agent or scenrio by:
-
-```bash
-cd safepo/multi_agent
-python macpo.py --agent-conf 3x1 --scenario Hopper --experiment benchmark
-```
 
 ### Plot the result
 
