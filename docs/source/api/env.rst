@@ -3,7 +3,7 @@ Environment Maker
 
 .. currentmodule:: safepo.common.env
 
-Single Agent Environment
+Single-Agent Environment
 ------------------------
 
 MuJoCo Environment

@@ -13,7 +13,7 @@ We have compared the following algorithms:
 - ``CPO``: `OpenAI Baselines: Safety Starter Agents <https://github.com/openai/safety-starter-agents>`_, `RL Safety Algorithms <https://github.com/SvenGronauer/RL-Safety-Algorithms>`_
 - ``FOCOPS``: `Original Implementation <https://github.com/ymzhang01/focops>`_
 
-We compared those alforithms in 12 tasks from `Safety-Gymnasium <https://github.com/PKU-Alignment/safety-gymnasium>`_,
+We compared those algorithms in 12 tasks from `Safety-Gymnasium <https://github.com/PKU-Alignment/safety-gymnasium>`_,
 they are:
 
 - ``SafetyPointButton1-v0``

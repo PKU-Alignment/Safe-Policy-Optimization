@@ -11,7 +11,7 @@ To run the algorithms with default configuration, you need to specify the enviro
 .. code-block:: bash
 
     cd safepo/single_agent
-    python ppo_lag.py --task SafetyPointGoal1-v0 --experiment ppo_lag_exp
+    python ppo_lag.py   task SafetyPointGoal1-v0   experiment ppo_lag_exp
 
 Then you can check the results in the ``runs/ppo_lag_exp`` folder.
 
@@ -23,12 +23,12 @@ The multi-agent algorithms running is similar to the single-agent algorithms. Fo
 .. code-block:: bash
 
     cd safepo/multi_agent
-    python mappolag.py --task Safety2x4AntVelocity-v0 --experiment mappo_lag_exp
+    python mappolag.py   task Safety2x4AntVelocity-v0   experiment mappo_lag_exp
 
 Then you can check the results in the ``runs/mappo_lag_exp`` folder.
 
-Cunstomizing Training
----------------------
+Customizing Training
+--------------------
 
 We use command line interface to support training customization.
 We provide the detailed description of the command line arguments in the following
@@ -40,71 +40,71 @@ We provide the detailed description of the command line arguments in the followi
         +--------------------+----------------------------------+-----------------------------------------------+
         | Argument           | Description                      | Default Value                                 |
         +====================+==================================+===============================================+
-        | --seed             | Seed of the experiment           | 0                                             |
+        |   seed             | Seed of the experiment           | 0                                             |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --device           | Device to run the code           | "cpu"                                         |
+        |   device           | Device to run the code           | "cpu"                                         |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --num-envs         | Number of parallel game          | 10                                            |
+        |   num-envs         | Number of parallel game          | 10                                            |
         |                    | environments                     |                                               |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --total-steps      | Total timesteps of the           | 10000000                                      |
+        |   total-steps      | Total steps of the               | 10000000                                      |
         |                    | experiments                      |                                               |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --task             | ID of the environment            | "SafetyPointGoal1-v0"                         |
+        |   task             | ID of the environment            | "SafetyPointGoal1-v0"                         |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --use-eval         | Toggles evaluation               | False                                         |
+        |   use-eval         | Toggles evaluation               | False                                         |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --steps-per-epoch  | Number of steps to run in each   | 20000                                         |
+        |   steps-per-epoch  | Number of steps to run in each   | 20000                                         |
         |                    | environment per policy rollout   |                                               |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --critic-lr        | Learning rate of the critic      | 1e-3                                          |
+        |   critic-lr        | Learning rate of the critic      | 1e-3                                          |
         |                    | network                          |                                               |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --log-dir          | Directory to save agent logs     | "../runs"                                     |
+        |   log-dir          | Directory to save agent logs     | "../runs"                                     |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --experiment       | Name of the experiment           | "single_agent_experiment"                     |
+        |   experiment       | Name of the experiment           | "single_agent_experiment"                     |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --write-terminal   | Toggles terminal logging         | True                                          |
+        |   write-terminal   | Toggles terminal logging         | True                                          |
         +--------------------+----------------------------------+-----------------------------------------------+
-        | --use-tensorboard  | Toggles tensorboard logging      | False                                         |
+        |   use-tensorboard  | Toggles tensorboard logging      | False                                         |
         +--------------------+----------------------------------+-----------------------------------------------+
 
     .. tab-item:: Multi-agent Algorithms
 
         +-------------------+--------------------------------+----------------------------------------------+
-        | Parameter         | Description                    | Default Value                                |
+        | Argument          | Description                    | Default Value                                |
         +===================+================================+==============================================+
-        | --use-eval        | Use evaluation environment     | False                                        |
+        |   use-eval        | Use evaluation environment     | False                                        |
         |                   | for testing                    |                                              |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --task            | The task to run                | "MujocoVelocity"                             |
+        |   task            | The task to run                | "Safety2x4AntVelocity-v0"                    |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --experiment      | Experiment name                | "Base"                                       |
-        |                   | If used with --metadata flag,  |                                              |
+        |   experiment      | Experiment name                | "multi_agent_experiment"                     |
+        |                   | If used with   metadata flag,  |                                              |
         |                   | additional information about   |                                              |
         |                   | physics engine, sim device,    |                                              |
         |                   | pipeline and domain            |                                              |
         |                   | randomization will be added    |                                              |
         |                   | to the name                    |                                              |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --seed            | Random seed                    | 0                                            |
+        |   seed            | Random seed                    | 0                                            |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --model-dir       | Choose a model dir             | ""                                           |
+        |   model-dir       | The model dir                  | ""                                           |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --safety-bound    | cost_limit                     | 25.0                                         |
+        |   safety-bound    | Cost_limit                     | 25.0                                         |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --device          | The device to run the model on | "cpu"                                        |
+        |   device          | The device to run the model on | "cpu"                                        |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --device-id       | The device id to run the       | 0                                            |
+        |   device-id       | The device id to run the       | 0                                            |
         |                   | model on                       |                                              |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --write-terminal  | Toggles terminal logging       | True                                         |
+        |   write-terminal  | Toggles terminal logging       | True                                         |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --headless        | Toggles headless mode          | False                                        |
+        |   headless        | Toggles headless mode          | False                                        |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --total-steps     | Total timesteps of the         | None                                         |
+        |   total-steps     | Total steps of the             | None                                         |
         |                   | experiments                    |                                              |
         +-------------------+--------------------------------+----------------------------------------------+
-        | --num-envs        | The number of parallel game    | None                                         |
+        |   num-envs        | The number of parallel game    | None                                         |
         |                   | environments                   |                                              |
         +-------------------+--------------------------------+----------------------------------------------+

@@ -1,10 +1,10 @@
 Efficient Commands
 ==================
 
-To help users quickly reporduce our results,
+To help users quickly reproduce our results,
 we provide a command line tool for easy installation, benchmarking, and evaluation.
 
-One line benchmark running
+One Line Benchmark Running
 --------------------------
 
 First, create a conda environment with Python 3.8.
@@ -20,16 +20,16 @@ Then, run the following command to install SafePO and run the full benchmark:
     
     make benchmark
 
-This command will install SafePO in editable mode and excute the training process parallelly.
+This command will install SafePO in editable mode and execute the training process of all algorithms on all environments.
 After the training process is finished, it will evaluate the trained policies and generate the benchmark results,
 including training curves and evaluation rewards and costs.
 
-Simple benchmark running
+Simple Benchmark Running
 ------------------------
 
 The full benchmark is time-consuming.
 To verify the performance of SafePO, we provide a simple benchmark command,
-which runs all alforithms on sampled environments and evaluate the trained policies.
+which runs all algorithms on sampled environments and evaluate the trained policies.
 
 .. code-block:: bash
     

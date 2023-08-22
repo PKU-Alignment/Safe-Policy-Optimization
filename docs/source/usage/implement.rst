@@ -18,20 +18,20 @@ To verify the correctness of the classic RL algorithms, we provide the performan
     </iframe>
 
 
-Intergrated Safe RL Pipeline
+Integrated Safe RL Pipeline
 ----------------------------
 
 SafePO's classic RL algorithms are integrated with the Safe RL pipeline, though they make no use of the constraint.
 You can customize the Safe RL algorithms based on the classic RL algorithms.
 
-Breifly, the ``PPO`` in SafePO has the following characteristics, which are also suitable for other customization of safe RL algorithms.
+Briefly, the ``PPO`` in SafePO has the following characteristics, which are also suitable for other customization of safe RL algorithms.
 
-- ``VectorizedOnPolicyBuffer``: A vectorized buffer supporting cost adavantage estimation.
+- ``VectorizedOnPolicyBuffer``: A vectorized buffer supporting cost advantage estimation.
 - ``ActorVCritic``: A actor-critic network supporting cost value estimation.
 - ``Lagrange``: A lagrangian multiplier for constraint violation control.
 
 Beyond the above characteristics, the ``PPO`` in SafePO also provides a training pipeline for data collection and training.
-You can customize new alforithms based on it.
+You can customize new algorithms based on it.
 
 Next we will provide a detailed example to show how to customize the ``PPO`` algorithm to ``PPO-Lag`` algorithm.
 
@@ -39,7 +39,7 @@ Example: PPO-Lag
 ----------------
 
 The Lagrangian multiplier is a useful tool to control the constraint violation in the Safe RL algorithms.
-Classic RL algorithms combined with the Lagrangian multiplier are exellent baselines for Safe RL algorithms.
+Classic RL algorithms combined with the Lagrangian multiplier are trustworthy baselines for Safe RL algorithms.
 
 .. note::
 

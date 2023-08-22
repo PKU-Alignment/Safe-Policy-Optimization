@@ -16,6 +16,8 @@ default: install
 check_pip_install = $(PYTHON) -m pip show $(1) &>/dev/null || (cd && $(PYTHON) -m pip install $(1) --upgrade)
 check_pip_install_extra = $(PYTHON) -m pip show $(1) &>/dev/null || (cd && $(PYTHON) -m pip install $(2) --upgrade)
 
+# Installations
+
 install:
 	$(PYTHON) -m pip install -vvv .
 
@@ -25,6 +27,24 @@ install-editable:
 	$(PYTHON) -m pip install -e .
 
 install-e: install-editable  # alias
+
+docs-install:
+	$(call check_pip_install_extra,pydocstyle,pydocstyle[toml])
+	$(call check_pip_install,doc8)
+	$(call check_pip_install,sphinx)
+	$(call check_pip_install,sphinx-autoapi)
+	$(call check_pip_install,sphinx-autobuild)
+	$(call check_pip_install,sphinx-copybutton)
+	$(call check_pip_install,sphinx-autodoc-typehints)
+	$(call check_pip_install_extra,sphinxcontrib-spelling,sphinxcontrib-spelling pyenchant)
+	$(PYTHON) -m pip install -r docs/requirements.txt
+
+pytest-install:
+	$(call check_pip_install,pytest)
+	$(call check_pip_install,pytest-cov)
+	$(call check_pip_install,pytest-xdist)
+
+# Benchmark
 
 multi-benchmark:
 	cd safepo/multi_agent && $(PYTHON) benchmark.py --total-steps 10000000 --experiment benchmark
@@ -64,13 +84,16 @@ test-benchmark: install-editable multi-test-benchmark single-test-benchmark plot
 
 benchmark: install-editable multi-benchmark single-benchmark plot eval
 
-pytest-install:
-	$(call check_pip_install,pytest)
-	$(call check_pip_install,pytest-cov)
-	$(call check_pip_install,pytest-xdist)
-
 pytest: pytest-install
 	cd tests &&  \
 	$(PYTHON) -m pytest --verbose --color=yes --durations=0 \
 		--cov="../safepo" --cov-config=.coveragerc --cov-report=xml --cov-report=term-missing \
 		$(PYTESTOPTS) . 
+
+# Documentation
+
+docs: docs-install
+	$(PYTHON) -m sphinx_autobuild --watch $(PROJECT_PATH) --open-browser docs/source docs/build
+
+spelling: docs-install
+	$(PYTHON) -m sphinx_autobuild -b spelling docs/source docs/build

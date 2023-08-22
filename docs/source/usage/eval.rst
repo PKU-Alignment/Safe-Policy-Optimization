@@ -16,7 +16,7 @@ This will evaluate the model in the last checkpoint of the training, and save th
 Training Curve Plotter
 ----------------------
 
-Training curves reveal the episodic reward and cost overtime, which is usefull to evaluate the performance of the algorithms.
+Training curves reveal the episodic reward and cost overtime, which is useful to evaluate the performance of the algorithms.
 
 suppose you have ran the training script in `algorithms training <./train.html>`_ and saved the training log in `safepo/runs/ppo_lag_exp`, then you can plot the training curve by running:
 
@@ -27,7 +27,7 @@ suppose you have ran the training script in `algorithms training <./train.html>`
 
 .. note::
 
-    This plotter is also suitable for mmulti-agent algorithms plotting. However, in experiment we found that 
+    This plotter is also suitable for multi-agent algorithms plotting. However, in experiment we found that 
     the cost value training curve of multi-agent safe and unsafe algorithms are largely different, which makes the
     plot not very clear. So we recommend to plot the multi-agent training curve by running the plotter in ``safepo/multi_agent/plot_for_benchmark``.
 

@@ -32,7 +32,7 @@ Implementation Details
 
 .. note::
 
-   All experiemnts are ran under total 1e7 steps, while in the `Doggo <https://www.safety-gymnasium.com/en/latest/components_of_environments/agents.html>`_ agent, 1e8 steps are used.
+   All experiments are ran under total 1e7 steps, while in the `Doggo <https://www.safety-gymnasium.com/en/latest/components_of_environments/agents.html>`_ agent, 1e8 steps are used.
    This setting is the same as `Safety-Gym <https://www.google.com.hk/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&ved=2ahUKEwjevqzswM-AAxXZtlYBHVFlDOAQFnoECBIQAQ&url=https%3A%2F%2Fopenai.com%2Fresearch%2Fsafety-gym&usg=AOvVaw2bTv-b9BBuC-4eDmkFZPr3&opi=89978449>`_
 
 Environment Wrapper
@@ -81,8 +81,8 @@ of observations, rewards and costs:
 Lagrangian Multiplier
 ~~~~~~~~~~~~~~~~~~~~~
 
-Lagreangian-based alforithms use ``Lagrangian Multiplier`` to control the safety
-constraint. The ``Lagrangian Multiplier`` is an intergrated part of
+Lagrangian-based algorithms use ``Lagrangian Multiplier`` to control the safety
+constraint. The ``Lagrangian Multiplier`` is an Integrated part of
 SafePO.
 
 Some key points:
@@ -132,9 +132,9 @@ We provide how ``SafePO`` implements the two stage projection:
 
     .. tab-item:: CUP
 
-      CUP first make a PPO update to imporve the policy reward.
+      CUP first make a PPO update to improve the policy reward.
       Then it projects the policy back to the safe set.
-      We will foccus on the projection part.
+      We will focus on the projection part.
 
       - Get the cost advantage from buffer and prepare training data.
 
@@ -149,7 +149,7 @@ We provide how ``SafePO`` implements the two stage projection:
                shuffle=True,
          )
 
-      - Update the policy by using cost adavantage and kl divergence.
+      - Update the policy by using cost advantage and kl divergence.
 
       .. code:: python
 
@@ -177,7 +177,7 @@ We provide how ``SafePO`` implements the two stage projection:
             distribution, old_distribution_b
          ).sum(-1, keepdim=True)
 
-      - Then, update the policy by using cost adavantage and kl divergence.
+      - Then, update the policy by using cost advantage and kl divergence.
 
       .. code:: python
 
