@@ -47,7 +47,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools
 
-      - name: Install OmniSafe
+      - name: Install SafePO
         run: |
           python -m pip install -vvv -e '.[test]'
 
