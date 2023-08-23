@@ -13,8 +13,8 @@
 
 **What's New**: 
 
-- We have release documentation for [Safe Policy Optimization](https://safe-policy-optimization.readthedocs.io).
-- The **benchmark results** of SafePO can be viewed at [Benchmark](https://safe-policy-optimization.readthedocs.io/en/latest/algorithms/general.html).
+- We have release [Documentation](https://safe-policy-optimization.readthedocs.io).
+- The **benchmark results** of SafePO can be viewed at [Wandb Report](https://safe-policy-optimization.readthedocs.io/en/latest/algorithms/general.html).
 
 **Safe Policy Optimization (SafePO)**  is a comprehensive algorithm benchmark for Safe Reinforcement Learning (Safe RL). It provides RL research community with a unified platform for processing and evaluating algorithms in various safe reinforcement learning environments. In order to better help the community study this problem, SafePO is developed with the following key features:
 
@@ -34,20 +34,17 @@ Firstly, each algorithm is implemented strictly according to the original paper 
 
 
 - [Overview of Algorithms](#overview-of-algorithms)
-- [Supported Environments](#supported-environments)
-- [Safety-Gymnasium](#safety-gymnasium)
-- [Safe-Dexterous-Hands](#safe-dexterous-hands)
-  - [Prerequisites](#prerequisites)
+- [Supported Environments: Safety-Gymnasium](#supported-environments-safety-gymnasium)
+  - [Gymnasium-based Environments](#gymnasium-based-environments)
+  - [Isaac Gym-based Environments](#isaac-gym-based-environments)
   - [Selected Tasks](#selected-tasks)
-- [What's More](#whats-more)
 - [Pre-requisites](#pre-requisites)
 - [Conda-Environment](#conda-environment)
 - [Getting Started](#getting-started)
+  - [Efficient Commands](#efficient-commands)
   - [Single-Agent](#single-agent)
   - [Multi-Agent](#multi-agent)
-    - [Safety DexterousHands](#safety-dexteroushands)
-    - [Safety-Gymnasium Multi-agent Velocity](#safety-gymnasium-multi-agent-velocity)
-    - [Multi-Agent Benchmark](#multi-agent-benchmark)
+  - [Experiment Evaluation](#experiment-evaluation)
 - [Machine Configuration](#machine-configuration)
 - [Ethical and Responsible Use](#ethical-and-responsible-use)
 - [PKU-Alignment Team](#pku-alignment-team)
@@ -76,7 +73,7 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 
 ## Supported Environments: Safety-Gymnasium
 
-Here is a list of all the environments support for now; some are being tested in our baselines, and we will gradually release them in later updates. For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium).
+For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium).
 
 ### Gymnasium-based Environments
 
@@ -106,7 +103,7 @@ Here is a list of all the environments support for now; some are being tested in
       <td>Circle[012]</td>
     </tr>
     <tr>
-      <td>Velocity</td>
+      <td>Safe Velocity</td>
       <td>Velocity</td>
       <td>HalfCheetah, Hopper, Swimmer, Walker2d, Ant, Humanoid</td>
       <td>SafetyAntVelocity-v1</td>
@@ -119,26 +116,24 @@ Here is a list of all the environments support for now; some are being tested in
 
 ### Isaac Gym-based Environments
 
-Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` 
-directory, like `joint_monkey.py`. Please follow troubleshooting steps described in the Isaac Gym Preview Release 3/4
-install instructions if you have any trouble running the samples.
-
+**As Isaac Gym is not holding in PyPI, you should install it manually, then clone [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) instead of installing from PyPI.
+Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` directory, like `joint_monkey.py`.**
 
 ### Selected Tasks
 
 | Base Environments            | Description                                                                                                                                                           | Demo                                                        |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| ShadowHandOver_Safe_finger               | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand.                        | <img src="assets/hand/0v1.gif" align="middle" width="250"/> |
-| ShadowHandCatchOver2Underarm_Safe_finger | This environment is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand | <img src="assets/hand/2.gif" align="middle" width="250"/>   |
+| ShadowHandOver           | These environments involve two fixed-position hands. The hand which starts with the object must find a way to hand it over to the second hand.                        | <img src="assets/hand/0v1.gif" align="middle" width="250"/> |
+| ShadowHandCatchOver2Underarm | This environment is made up of half ShadowHandCatchUnderarm and half ShadowHandCatchOverarm, the object needs to be thrown from the vertical hand to the palm-up hand | <img src="assets/hand/2.gif" align="middle" width="250"/>   |
 
-**We implement some different constraints to the base environments, expanding the setting to both single-agent and multi-agent.**
+**We implement some different constraints to the base environments, including ``Safe finger`` and ``Safe joint``. For more details, please refer to [Safety-Gymnasium](https://www.safety-gymnasium.com/en/latest/environments/safe_isaac_gym.html)**
 
 <img src="assets/hand.png" align="middle" width="1000"/>
 
 
 ## Pre-requisites
 
-To use SafePO-Baselines, you need to install environments. Please refer to [Mujoco](https://mujoco.org/), [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) for more details on installation. Details regarding the installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym). We currently support the `Preview Release 3` version of IsaacGym.
+To use SafePO-Baselines, you need to install environments. Please refer to [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) for more details on installation. Details regarding the installation of IsaacGym can be found [here](https://developer.nvidia.com/isaac-gym).
 
 ## Conda-Environment
 
@@ -149,11 +144,9 @@ conda activate safe
 pip install -e .
 ```
 
-> For detailed instructions, please refer to [Installation.md](Installation.md).
-
 ## Getting Started
 
-### One line benchmark
+### Efficient Commands
 
 To verify the performance of SafePO, you can run the following one line:
 
@@ -161,11 +154,22 @@ To verify the performance of SafePO, you can run the following one line:
 conda create -n safepo python=3.8
 conda activate safepo
 make benchmark
-``````
+```
+
+We also support simple benchmark commands for single-agent and multi-agent algorithms:
+
+```bash
+conda create -n safepo python=3.8
+conda activate safepo
+make simple-benchmark
+```
+
+This command will run all algorithms in sampled environments to get
+a quick overview of the performance of the algorithms.
 
 ### Single-Agent
 
-each algorithm file is the entrance. Running `ALGO.py` with arguments about algorithms and environments does the training. For example, to run PPO-Lag in SafetyPointGoal1-v0 with seed 0, you can use the following command:
+Each algorithm file is the entrance. Running `ALGO.py` with arguments about algorithms and environments does the training. For example, to run PPO-Lag in SafetyPointGoal1-v0 with seed 0, you can use the following command:
 
 ```bash
 cd safepo/single_agent
@@ -183,10 +187,7 @@ The command above will run two processes in parallel, each process will run one 
 
 ### Multi-Agent
 
-We also provide a safe MARL algorithm benchmark for safe MARL research on the challenging tasks of Safety DexterousHands and Safety-Gymnasium multi-agent velocity tasks. HAPPO, MACPO, MAPPO-Lag and MAPPO have already been implemented.
-
-
-#### Multi-Agent Training
+We also provide a safe MARL algorithm benchmark on the challenging tasks of Safety-Gymnasium  [Safe Multi-Agent Velocity](https://www.safety-gymnasium.com/en/latest/environments/safe_multi_agent.html) and [Safe Isaac Gym](https://www.safety-gymnasium.com/en/latest/environments/safe_isaac_gym.html) tasks. HAPPO, MACPO, MAPPO-Lag and MAPPO have already been implemented.
 
 To train a multi-agent algorithm:
 
@@ -195,22 +196,27 @@ cd safepo/multi_agent
 python macpo.py --task Safety2x4AntVelocity-v0 --experiment benchmark
 ```
 
-You can also train on isaac-gym based environment:
+You can also train on isaac-gym based environment if you have installed [Isaac Gym](https://developer.nvidia.com/isaac-gym).
 
 ```bash
 cd safepo/multi_agent
 python macpo.py --task ShadowHandOver_Safe_joint --experiment benchmark
 ```
 
-**As Isaac Gym is not holding in PyPI, you should install it manually, then clone [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) instead of installing from PyPI.**
-
-### Plot the result
+### Experiment Evaluation
 
 After running the experiment, you can use the following command to plot the results:
 
 ```bash
 cd safepo
 python plot.py --logdir ./runs/benchmark
+```
+
+To evaluate the performance of the algorithm, you can use the following command:
+
+```bash
+cd safepo
+python evaluate.py --benchmark-dir ./runs/benchmark
 ```
 
 ## Machine Configuration
