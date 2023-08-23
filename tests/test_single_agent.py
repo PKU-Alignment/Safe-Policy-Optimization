@@ -76,3 +76,10 @@ def test_natural_pg():
         shell=True,
         check=True,
     )
+
+def test_pg():
+    subprocess.run(
+        "python ../safepo/single_agent/pg.py --total-steps 1000 --num-envs 1 --steps-per-epoch 1000 --use-eval True",
+        shell=True,
+        check=True,
+    )

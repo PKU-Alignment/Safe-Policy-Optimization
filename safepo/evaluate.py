@@ -17,9 +17,9 @@ import argparse
 import os
 import json
 from collections import deque
-from safepo.common.env import make_sa_mujoco_env, make_ma_mujoco_env
+from safepo.common.env import make_sa_mujoco_env, make_ma_mujoco_env, make_ma_multi_goal_env, make_sa_isaac_env
 from safepo.common.model import ActorVCritic
-from safepo.utils.config import multi_agent_velocity_map
+from safepo.utils.config import multi_agent_velocity_map, multi_agent_goal_tasks
 import numpy as np
 import joblib
 import torch
@@ -48,11 +48,13 @@ def eval_single_agent(eval_dir, eval_episodes):
     model = ActorVCritic(
             obs_dim=obs_space.shape[0],
             act_dim=act_space.shape[0],
+            hidden_sizes=config['hidden_sizes'],
         )
     model.actor.load_state_dict(torch.load(model_path))
 
-    norm = joblib.load(open(norm_path, 'rb'))['Normalizer']
-    eval_env.obs_rms = norm
+    if os.path.exists(norm_path):
+        norm = joblib.load(open(norm_path, 'rb'))['Normalizer']
+        eval_env.obs_rms = norm
 
     eval_rew_deque = deque(maxlen=50)
     eval_cost_deque = deque(maxlen=50)
@@ -91,15 +93,22 @@ def eval_multi_agent(eval_dir, eval_episodes):
     config = json.load(open(config_path, 'r'))
 
     env_name = config['env_name']
-    env_info = multi_agent_velocity_map[env_name]
-    agent_conf = env_info['agent_conf']
-    scenario = env_info['scenario']
-    eval_env = make_ma_mujoco_env(
-        scenario=scenario,
-        agent_conf=agent_conf,
-        seed=np.random.randint(0, 1000),
-        cfg_train=config,
-    )
+    if env_name in multi_agent_velocity_map.keys():
+        env_info = multi_agent_velocity_map[env_name]
+        agent_conf = env_info['agent_conf']
+        scenario = env_info['scenario']
+        eval_env = make_ma_mujoco_env(
+            scenario=scenario,
+            agent_conf=agent_conf,
+            seed=np.random.randint(0, 1000),
+            cfg_train=config,
+        )
+    else:
+        eval_env = make_ma_multi_goal_env(
+            task=env_name,
+            seed=np.random.randint(0, 1000),
+            cfg_train=config,
+        )
 
     model_dir = eval_dir + f"/models_seed{config['seed']}"
     algo = config['algorithm_name']
@@ -128,7 +137,7 @@ def single_runs_eval(eval_dir, eval_episodes):
     config_path = eval_dir + '/config.json'
     config = json.load(open(config_path, 'r'))
     env = config['task'] if 'task' in config.keys() else config['env_name']
-    if env in multi_agent_velocity_map.keys():
+    if env in multi_agent_velocity_map.keys() or multi_agent_goal_tasks:
         reward, cost = eval_multi_agent(eval_dir, eval_episodes)
     else:
         reward, cost = eval_single_agent(eval_dir, eval_episodes)

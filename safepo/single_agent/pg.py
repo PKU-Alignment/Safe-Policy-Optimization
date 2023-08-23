@@ -30,18 +30,37 @@ except ImportError:
 import torch
 import torch.nn as nn
 import torch.optim
-from rich.progress import track
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.optim.lr_scheduler import LinearLR
 from torch.utils.data import DataLoader, TensorDataset
 
 from safepo.common.buffer import VectorizedOnPolicyBuffer
 from safepo.common.env import make_sa_mujoco_env, make_sa_isaac_env
-from safepo.common.lagrange import Lagrange
 from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 from safepo.utils.config import single_agent_args, isaac_gym_map, parse_sim_params
 
+
+default_cfg = {
+    'hidden_sizes': [64, 64],
+    'gamma': 0.99,
+    'target_kl': 0.02,
+    'batch_size': 64,
+    'learning_iters': 40,
+    'max_grad_norm': 40.0,
+}
+
+isaac_gym_specific_cfg = {
+    'total_steps': 100000000,
+    'steps_per_epoch': 32768,
+    'hidden_sizes': [1024, 1024, 512],
+    'gamma': 0.96,
+    'target_kl': 0.016,
+    'num_mini_batch': 4,
+    'use_value_coefficient': True,
+    'learning_iters': 8,
+    'max_grad_norm': 1.0,
+}
 
 def main(args, cfg_env=None):
     # set the random seed, device and number of threads
@@ -50,7 +69,7 @@ def main(args, cfg_env=None):
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.set_num_threads(4)
-    device = torch.device(args.device)
+    device = torch.device(f'{args.device}:{args.device_id}')
 
 
     if args.task not in isaac_gym_map.keys():
@@ -58,6 +77,7 @@ def main(args, cfg_env=None):
             num_envs=args.num_envs, env_id=args.task, seed=args.seed
         )
         eval_env, _, _ = make_sa_mujoco_env(num_envs=1, env_id=args.task, seed=None)
+        config = default_cfg
 
     else:
         sim_params = parse_sim_params(args, cfg_env, None)
@@ -66,14 +86,17 @@ def main(args, cfg_env=None):
         obs_space = env.observation_space
         act_space = env.action_space
         args.num_envs = env.num_envs
+        config = isaac_gym_specific_cfg
 
     # set training steps
-    local_steps_per_epoch = args.steps_per_epoch // args.num_envs
-    epochs = args.total_steps // args.steps_per_epoch
+    steps_per_epoch = config.get("steps_per_epoch", args.steps_per_epoch)
+    local_steps_per_epoch = steps_per_epoch // args.num_envs
+    epochs = args.total_steps // steps_per_epoch
     # create the actor-critic module
     policy = ActorVCritic(
         obs_dim=obs_space.shape[0],
         act_dim=act_space.shape[0],
+        hidden_sizes=config["hidden_sizes"],
     ).to(device)
     actor_optimizer = torch.optim.Adam(policy.actor.parameters(), lr=3e-4)
     actor_scheduler = LinearLR(
@@ -97,10 +120,12 @@ def main(args, cfg_env=None):
         size=local_steps_per_epoch,
         device=device,
         num_envs=args.num_envs,
+        gamma=config["gamma"],
     )
 
     # set up the logger
     dict_args = vars(args)
+    dict_args.update(config)
     logger = EpochLogger(
         log_dir=args.log_dir,
         seed=str(args.seed),
@@ -114,24 +139,23 @@ def main(args, cfg_env=None):
     logger.save_config(dict_args)
     logger.setup_torch_saver(policy.actor)
     logger.log("Start with training.")
-
+    obs, _ = env.reset()
+    obs = torch.as_tensor(obs, dtype=torch.float32, device=device)
+    ep_ret, ep_cost, ep_len = (
+        np.zeros(args.num_envs),
+        np.zeros(args.num_envs),
+        np.zeros(args.num_envs),
+    )
     # training loop
     for epoch in range(epochs):
         rollout_start_time = time.time()
-        obs, _ = env.reset()
-        obs = torch.as_tensor(obs, dtype=torch.float32, device=device)
-        ep_ret, ep_cost, ep_len = (
-            np.zeros(args.num_envs),
-            np.zeros(args.num_envs),
-            np.zeros(args.num_envs),
-        )
         # collect samples until we have enough to update
         for steps in range(local_steps_per_epoch):
             with torch.no_grad():
                 act, log_prob, value_r, value_c = policy.step(obs, deterministic=False)
-            next_obs, reward, cost, terminated, truncated, info = env.step(
-                act.detach().squeeze().cpu().numpy()
-            )
+            action = act.detach().squeeze() if args.task in isaac_gym_map.keys() else act.detach().squeeze().cpu().numpy()
+            next_obs, reward, cost, terminated, truncated, info = env.step(action)
+
             ep_ret += reward.cpu().numpy() if args.task in isaac_gym_map.keys() else reward
             ep_cost += cost.cpu().numpy() if args.task in isaac_gym_map.keys() else cost
             ep_len += 1
@@ -212,15 +236,11 @@ def main(args, cfg_env=None):
                 eval_rew, eval_cost, eval_len = 0.0, 0.0, 0.0
                 while not eval_done:
                     with torch.no_grad():
-                        act, log_prob, value_r, value_c = policy.step(
-                            eval_obs, deterministic=True
-                        )
+                        act, log_prob, value_r, value_c = policy.step(eval_obs, deterministic=True)
                     next_obs, reward, cost, terminated, truncated, info = env.step(
                         act.detach().squeeze().cpu().numpy()
                     )
-                    next_obs = torch.as_tensor(
-                        next_obs, dtype=torch.float32, device=device
-                    )
+                    next_obs = torch.as_tensor(next_obs, dtype=torch.float32, device=device)
                     eval_rew += reward
                     eval_cost += cost
                     eval_len += 1
@@ -258,12 +278,12 @@ def main(args, cfg_env=None):
                 data["target_value_c"],
                 advantage,
             ),
-            batch_size=64,
+            batch_size=config.get("batch_size", args.steps_per_epoch//config.get("num_mini_batch", 1)),
             shuffle=True,
         )
         update_counts = 0
         final_kl = torch.ones_like(old_distribution.loc)
-        for i in range(40):
+        for _ in range(config["learning_iters"]):
             for (
                 obs_b,
                 act_b,
@@ -274,28 +294,24 @@ def main(args, cfg_env=None):
             ) in dataloader:
                 reward_critic_optimizer.zero_grad()
                 loss_r = nn.functional.mse_loss(policy.reward_critic(obs_b), target_value_r_b)
-                for param in policy.reward_critic.parameters():
-                    loss_r += param.pow(2).sum() * 0.001
-                loss_r.backward()
-                clip_grad_norm_(policy.reward_critic.parameters(), 40.0)
-                reward_critic_optimizer.step()
-
                 cost_critic_optimizer.zero_grad()
                 loss_c = nn.functional.mse_loss(policy.cost_critic(obs_b), target_value_c_b)
+                for param in policy.reward_critic.parameters():
+                    loss_r += param.pow(2).sum() * 0.001
                 for param in policy.cost_critic.parameters():
                     loss_c += param.pow(2).sum() * 0.001
-                loss_c.backward()
-                clip_grad_norm_(policy.cost_critic.parameters(), 40.0)
-                cost_critic_optimizer.step()
-
                 distribution = policy.actor(obs_b)
                 log_prob = distribution.log_prob(act_b).sum(dim=-1)
                 ratio = torch.exp(log_prob - log_prob_b)
-                ratio_cliped = torch.clamp(ratio, 0.8, 1.2)
-                loss_pi = -torch.min(ratio * adv_b, ratio_cliped * adv_b).mean()
+                loss_pi = -(ratio * adv_b).mean()
                 actor_optimizer.zero_grad()
-                loss_pi.backward()
-                clip_grad_norm_(policy.actor.parameters(), 40.0)
+                total_loss = loss_pi + 2*loss_r + loss_c \
+                    if config.get("use_value_coefficient", False) \
+                    else loss_pi + loss_r + loss_c
+                total_loss.backward()
+                clip_grad_norm_(policy.parameters(), config["max_grad_norm"])
+                reward_critic_optimizer.step()
+                cost_critic_optimizer.step()
                 actor_optimizer.step()
 
                 logger.store(
@@ -315,11 +331,10 @@ def main(args, cfg_env=None):
             )
             final_kl = kl
             update_counts += 1
-            if kl > 0.02:
+            if kl > config["target_kl"]:
                 break
         update_end_time = time.time()
         actor_scheduler.step()
-
         if not logger.logged:
             # log data
             logger.log_tabular("Metrics/EpRet")

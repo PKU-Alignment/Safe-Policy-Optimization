@@ -196,7 +196,7 @@ def multi_agent_args(algo):
     # Define custom parameters
     custom_parameters = [
         {"name": "--use-eval", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Use evaluation environment for testing"},
-        {"name": "--task", "type": str, "default": "Safety2x4AntVelocity-v0", "help": "The task to run"},
+        {"name": "--task", "type": str, "default": "SafetyAntMultiGoal1-v0", "help": "The task to run"},
         {"name": "--agent-conf", "type": str, "default": "2x4", "help": "The agent configuration"},
         {"name": "--scenario", "type": str, "default": "Ant", "help": "The scenario"},
         {"name": "--experiment", "type": str, "default": "Base", "help": "Experiment name"},
@@ -238,7 +238,7 @@ def multi_agent_args(algo):
             args.agent_conf = multi_agent_velocity_map[args.task]["agent_conf"]
             args.scenario = multi_agent_velocity_map[args.task]["scenario"]
         elif args.task in multi_agent_goal_tasks:
-            cfg_train.update(cfg_train.get("magoal"))
+            cfg_train.update(cfg_train.get("mamujoco"))
 
     cfg_train["use_eval"] = args.use_eval
     cfg_train["safety_bound"]=args.safety_bound
