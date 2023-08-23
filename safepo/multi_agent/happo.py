@@ -26,12 +26,12 @@ import os
 import sys
 import time
 
-from safepo.common.env import make_ma_mujoco_env, make_ma_isaac_env
+from safepo.common.env import make_ma_mujoco_env, make_ma_isaac_env, make_ma_multi_goal_env
 from safepo.common.popart import PopArt
 from safepo.common.model import MultiAgentActor as Actor, MultiAgentCritic as Critic
 from safepo.common.buffer import SeparatedReplayBuffer
 from safepo.common.logger import EpochLogger
-from safepo.utils.config import multi_agent_args, parse_sim_params, set_np_formatting, set_seed, multi_agent_velocity_map, isaac_gym_map
+from safepo.utils.config import multi_agent_args, parse_sim_params, set_np_formatting, set_seed, multi_agent_velocity_map, isaac_gym_map, multi_agent_goal_tasks
 
 
 def check(input):
@@ -559,6 +559,12 @@ def train(args, cfg_train):
         cfg_train["n_rollout_threads"] = env.num_envs
         cfg_train["n_eval_rollout_threads"] = env.num_envs
         eval_env = env
+    elif args.task in multi_agent_goal_tasks:
+        env = make_ma_multi_goal_env(task=args.task, seed=args.seed, cfg_train=cfg_train)
+        cfg_eval = copy.deepcopy(cfg_train)
+        cfg_eval["seed"] = args.seed + 10000
+        cfg_eval["n_rollout_threads"] = cfg_eval["n_eval_rollout_threads"]
+        eval_env = make_ma_multi_goal_env(task=args.task, seed=args.seed + 10000, cfg_train=cfg_eval)
     else: 
         raise NotImplementedError
     

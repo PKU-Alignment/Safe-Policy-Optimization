@@ -30,7 +30,7 @@ from typing import Callable
 import safety_gymnasium
 from safety_gymnasium.wrappers import SafeAutoResetWrapper, SafeRescaleAction, SafeUnsqueeze
 from safety_gymnasium.vector.async_vector_env import SafetyAsyncVectorEnv
-from safepo.common.wrappers import ShareSubprocVecEnv, ShareDummyVecEnv, ShareEnv, SafeNormalizeObservation
+from safepo.common.wrappers import ShareSubprocVecEnv, ShareDummyVecEnv, ShareEnv, SafeNormalizeObservation, MultiGoalEnv
 
 def make_sa_mujoco_env(num_envs: int, env_id: str, seed: int|None = None):
     """
@@ -145,6 +145,38 @@ def make_ma_mujoco_env(scenario, agent_conf, seed, cfg_train):
 
         return init_env
 
+    if cfg_train['n_rollout_threads']== 1:
+        return ShareDummyVecEnv([get_env_fn(0)], cfg_train['device'])
+    else:
+        return ShareSubprocVecEnv([get_env_fn(i) for i in range(cfg_train['n_rollout_threads'])])
+
+def make_ma_multi_goal_env(task, seed, cfg_train):
+    """
+    Creates and returns a multi-agent environment using MuJoCo scenarios.
+
+    Args:
+        args: Command-line arguments.
+        cfg_train: Training configuration.
+
+    Returns:
+        env: A multi-agent environment.
+    """
+    def get_env_fn(rank):
+        def init_env():
+            """
+            Initializes and returns a ShareEnv instance for the given rank.
+
+            Returns:
+                env: Initialized ShareEnv instance.
+            """
+            env=MultiGoalEnv(
+                task=task,
+                seed=seed,
+            )
+            return env
+
+        return init_env
+    
     if cfg_train['n_rollout_threads']== 1:
         return ShareDummyVecEnv([get_env_fn(0)], cfg_train['device'])
     else:

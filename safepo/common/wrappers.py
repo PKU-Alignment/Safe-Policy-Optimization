@@ -19,12 +19,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from multiprocessing import Pipe, Process
 
+from typing import Any
 import torch
 import numpy as np
 from gymnasium.vector.vector_env import VectorEnv
 from gymnasium.spaces import Box
 from gymnasium.wrappers.normalize import NormalizeObservation
 
+import safety_gymnasium
 from safety_gymnasium.vector.utils.tile_images import tile_images
 try:
     from safety_gymnasium.tasks.safe_multi_agent.safe_mujoco_multi import SafeMAEnv
@@ -62,6 +64,97 @@ try:
             return obs, {}
 except NameError:
     pass
+
+class MultiGoalEnv():
+    
+    def __init__(
+        self,
+        task,
+        seed,
+    ):
+        self.env = safety_gymnasium.make(task)
+        self.single_action_space = self.env.action_space('agent_0')
+
+        self.action_spaces = {
+            'agent_0': self.env.action_space('agent_0'),
+            'agent_1': self.env.action_space('agent_1'),
+        }
+        self.env.reset(seed=seed)
+        self.num_agents = 2
+        self.n_actions = self.single_action_space.shape[0]
+        self.share_obs_size = self._get_share_obs_size()
+        self.obs_size=self._get_obs_size()
+        self.share_observation_spaces = {}
+        self.observation_spaces = {}
+        for agent in range(self.num_agents):
+            self.share_observation_spaces[f"agent_{agent}"] = Box(low=-10, high=10, shape=(self.share_obs_size,)) 
+            self.observation_spaces[f"agent_{agent}"] = Box(low=-10, high=10, shape=(self.obs_size,)) 
+
+    def __getattr__(self, name: str) -> Any:
+        """Returns an attribute with ``name``, unless ``name`` starts with an underscore."""
+        if name.startswith('_'):
+            raise AttributeError(f"accessing private attribute '{name}' is prohibited")
+        return getattr(self.env, name)
+
+    def _get_obs(self):
+        state = self.env.task.obs()
+        obs_n = []
+        for a in range(self.num_agents):
+            agent_id_feats = np.zeros(self.num_agents, dtype=np.float32)
+            agent_id_feats[a] = 1.0
+            obs_i = np.concatenate([state, agent_id_feats])
+            obs_i = (obs_i - np.mean(obs_i)) / np.std(obs_i)
+            obs_n.append(obs_i)
+        return obs_n
+
+    def _get_obs_size(self):
+        return len(self._get_obs()[0])
+
+    def _get_share_obs(self):
+        state = self.env.task.obs()
+        state_normed = (state - np.mean(state)) / (np.std(state)+1e-8)
+        share_obs = []
+        for _ in range(self.num_agents):
+            share_obs.append(state_normed)
+        return share_obs
+
+    def _get_share_obs_size(self):
+        return len(self._get_share_obs()[0])
+
+    def _get_avail_actions(self):
+        return np.ones(
+            shape=(
+                self.num_agents,
+                self.n_actions,
+            )
+        )
+
+    def reset(self, seed=None):
+        self.env.reset(seed=seed)
+        return self._get_obs(), self._get_share_obs(), self._get_avail_actions()
+
+    
+    def step(
+        self, actions: dict[str, np.ndarray]
+    ) -> tuple[
+        dict[str, np.ndarray],
+        dict[str, np.ndarray],
+        dict[str, np.ndarray],
+        dict[str, np.ndarray],
+        dict[str, str],
+    ]:
+        dict_actions={}
+        for agent_id, agent in enumerate(self.possible_agents):
+            dict_actions[agent]=actions[agent_id].cpu().numpy()
+        _, rewards, costs, terminations, truncations, infos = self.env.step(dict_actions)
+        dones={}
+        for agent_id, agent in enumerate(self.possible_agents):
+            dones[agent] = terminations[agent] or truncations[agent]
+            rewards[agent] = [rewards[agent]]
+            costs[agent]=[costs[agent]]
+        rewards, costs, dones, infos = list(rewards.values()), list(costs.values()), list(dones.values()), list(infos.values())
+        return self._get_obs(), self._get_share_obs(), rewards, costs, dones, infos, self._get_avail_actions()
+
 
 class ShareEnv(SafeMAEnv):
     
