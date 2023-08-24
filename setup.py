@@ -29,7 +29,7 @@ setup(
         'matplotlib >= 3.7.1',
         "seaborn >= 0.12.2",
         "pandas >=  1.5.3",
-        'safety-gymnasium == 1.2.0',
+        'safety-gymnasium',
         "rich>=13.3.0",
         "moviepy>=1.0.3",
     ],
