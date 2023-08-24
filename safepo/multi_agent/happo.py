@@ -467,7 +467,6 @@ class Runner:
         one_episode_costs = torch.zeros(1, self.config["n_eval_rollout_threads"], device=self.config["device"])
 
         eval_obs, _, _ = self.eval_envs.reset()
-        # eval_obs = torch.as_tensor(eval_obs, dtype=torch.float32, device=self.config["device"])
 
         eval_rnn_states = torch.zeros(self.config["n_eval_rollout_threads"], self.num_agents, self.config["recurrent_N"], self.config["hidden_size"],
                                    device=self.config["device"])

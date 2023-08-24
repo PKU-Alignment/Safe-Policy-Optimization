@@ -41,6 +41,7 @@ from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 from safepo.utils.config import single_agent_args, isaac_gym_map, parse_sim_params
 
+
 default_cfg = {
     'hidden_sizes': [64, 64],
     'gamma': 0.99,
@@ -60,6 +61,7 @@ isaac_gym_specific_cfg = {
     'use_value_coefficient': True,
     'learning_iters': 8,
     'max_grad_norm': 1.0,
+    'use_critic_norm': False,
 }
 
 
@@ -183,8 +185,9 @@ def main(args, cfg_env=None):
 
     # set training steps
     steps_per_epoch = config.get("steps_per_epoch", args.steps_per_epoch)
+    total_steps = config.get("total_steps", args.total_steps)
     local_steps_per_epoch = steps_per_epoch // args.num_envs
-    epochs = args.total_steps // steps_per_epoch
+    epochs = total_steps // steps_per_epoch
     # create the actor-critic module
     policy = ActorVCritic(
         obs_dim=obs_space.shape[0],
@@ -466,14 +469,16 @@ def main(args, cfg_env=None):
             ) in dataloader:
                 reward_critic_optimizer.zero_grad()
                 loss_r = nn.functional.mse_loss(policy.reward_critic(obs_b), target_value_r_b)
-
                 cost_critic_optimizer.zero_grad()
                 loss_c = nn.functional.mse_loss(policy.cost_critic(obs_b), target_value_c_b)
-                for param in policy.reward_critic.parameters():
-                    loss_r += param.pow(2).sum() * 0.001
-                for param in policy.cost_critic.parameters():
-                    loss_c += param.pow(2).sum() * 0.001
-                total_loss = loss_r + loss_c
+                if config.get("use_critic_norm", True):
+                    for param in policy.reward_critic.parameters():
+                        loss_r += param.pow(2).sum() * 0.001
+                    for param in policy.cost_critic.parameters():
+                        loss_c += param.pow(2).sum() * 0.001
+                total_loss = 2*loss_r + loss_c \
+                    if config.get("use_value_coefficient", False) \
+                    else loss_r + loss_c
                 total_loss.backward()
                 clip_grad_norm_(policy.parameters(), config["max_grad_norm"])
                 reward_critic_optimizer.step()
@@ -486,46 +491,46 @@ def main(args, cfg_env=None):
                     }
                 )
         update_end_time = time.time()
+        if not logger.logged:
+            # log data
+            logger.log_tabular("Metrics/EpRet")
+            logger.log_tabular("Metrics/EpCost")
+            logger.log_tabular("Metrics/EpLen")
+            if args.use_eval:
+                logger.log_tabular("Metrics/EvalEpRet")
+                logger.log_tabular("Metrics/EvalEpCost")
+                logger.log_tabular("Metrics/EvalEpLen")
+            logger.log_tabular("Train/Epoch", epoch + 1)
+            logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
+            logger.log_tabular("Train/KL")
+            logger.log_tabular("Train/LagragianMultiplier", lagrange.lagrangian_multiplier)
+            logger.log_tabular("Loss/Loss_reward_critic")
+            logger.log_tabular("Loss/Loss_cost_critic")
+            logger.log_tabular("Loss/Loss_actor")
+            logger.log_tabular("Time/Rollout", rollout_end_time - rollout_start_time)
+            if args.use_eval:
+                logger.log_tabular("Time/Eval", eval_end_time - eval_start_time)
+            logger.log_tabular("Time/Update", update_end_time - eval_end_time)
+            logger.log_tabular("Time/Total", update_end_time - rollout_start_time)
+            logger.log_tabular("Value/RewardAdv", data["adv_r"].mean().item())
+            logger.log_tabular("Value/CostAdv", data["adv_c"].mean().item())
+            logger.log_tabular("Misc/Alpha")
+            logger.log_tabular("Misc/FinalStepNorm")
+            logger.log_tabular("Misc/xHx")
+            logger.log_tabular("Misc/gradient_norm")
+            logger.log_tabular("Misc/H_inv_g")
+            logger.log_tabular("Misc/AcceptanceStep")
 
-        # log data
-        logger.log_tabular("Metrics/EpRet")
-        logger.log_tabular("Metrics/EpCost")
-        logger.log_tabular("Metrics/EpLen")
-        if args.use_eval:
-            logger.log_tabular("Metrics/EvalEpRet")
-            logger.log_tabular("Metrics/EvalEpCost")
-            logger.log_tabular("Metrics/EvalEpLen")
-        logger.log_tabular("Train/Epoch", epoch + 1)
-        logger.log_tabular("Train/TotalSteps", (epoch + 1) * args.steps_per_epoch)
-        logger.log_tabular("Train/KL")
-        logger.log_tabular("Train/LagragianMultiplier", lagrange.lagrangian_multiplier)
-        logger.log_tabular("Loss/Loss_reward_critic")
-        logger.log_tabular("Loss/Loss_cost_critic")
-        logger.log_tabular("Loss/Loss_actor")
-        logger.log_tabular("Time/Rollout", rollout_end_time - rollout_start_time)
-        if args.use_eval:
-            logger.log_tabular("Time/Eval", eval_end_time - eval_start_time)
-        logger.log_tabular("Time/Update", update_end_time - eval_end_time)
-        logger.log_tabular("Time/Total", update_end_time - rollout_start_time)
-        logger.log_tabular("Value/RewardAdv", data["adv_r"].mean().item())
-        logger.log_tabular("Value/CostAdv", data["adv_c"].mean().item())
-        logger.log_tabular("Misc/Alpha")
-        logger.log_tabular("Misc/FinalStepNorm")
-        logger.log_tabular("Misc/xHx")
-        logger.log_tabular("Misc/gradient_norm")
-        logger.log_tabular("Misc/H_inv_g")
-        logger.log_tabular("Misc/AcceptanceStep")
-
-        logger.dump_tabular()
-        if (epoch+1) % 100 == 0 or epoch == 0:
-            logger.torch_save(itr=epoch)
-            if args.task not in isaac_gym_map.keys():
-                logger.save_state(
-                    state_dict={
-                        "Normalizer": env.obs_rms,
-                    },
-                    itr = epoch
-                )
+            logger.dump_tabular()
+            if (epoch+1) % 100 == 0 or epoch == 0:
+                logger.torch_save(itr=epoch)
+                if args.task not in isaac_gym_map.keys():
+                    logger.save_state(
+                        state_dict={
+                            "Normalizer": env.obs_rms,
+                        },
+                        itr = epoch
+                    )
     logger.close()
 
 

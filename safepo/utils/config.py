@@ -196,7 +196,7 @@ def multi_agent_args(algo):
     # Define custom parameters
     custom_parameters = [
         {"name": "--use-eval", "type": lambda x: bool(strtobool(x)), "default": False, "help": "Use evaluation environment for testing"},
-        {"name": "--task", "type": str, "default": "SafetyAntMultiGoal1-v0", "help": "The task to run"},
+        {"name": "--task", "type": str, "default": "Safety2x4AntVelocity-v0", "help": "The task to run"},
         {"name": "--agent-conf", "type": str, "default": "2x4", "help": "The agent configuration"},
         {"name": "--scenario", "type": str, "default": "Ant", "help": "The scenario"},
         {"name": "--experiment", "type": str, "default": "Base", "help": "Experiment name"},

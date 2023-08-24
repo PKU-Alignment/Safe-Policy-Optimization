@@ -26,12 +26,12 @@ import os
 import sys
 import time
 
-from safepo.common.env import make_ma_mujoco_env, make_ma_isaac_env
+from safepo.common.env import make_ma_mujoco_env, make_ma_isaac_env, make_ma_multi_goal_env
 from safepo.common.popart import PopArt
 from safepo.common.model import MultiAgentActor as Actor, MultiAgentCritic as Critic
 from safepo.common.buffer import SeparatedReplayBuffer
 from safepo.common.logger import EpochLogger
-from safepo.utils.config import multi_agent_args, parse_sim_params, set_np_formatting, set_seed, multi_agent_velocity_map, isaac_gym_map
+from safepo.utils.config import multi_agent_args, parse_sim_params, set_np_formatting, set_seed, multi_agent_velocity_map, isaac_gym_map, multi_agent_goal_tasks
 
 
 def check(input):
@@ -152,7 +152,7 @@ class MAPPO_Trainer():
         (policy_loss - dist_entropy * self.config["entropy_coef"]).backward()
         actor_grad_norm = nn.utils.clip_grad_norm_(self.policy.actor.parameters(), self.config["max_grad_norm"])
         self.policy.actor_optimizer.step()
-        
+
         value_loss = self.cal_value_loss(values, value_preds_batch, return_batch, active_masks_batch)
         self.policy.critic_optimizer.zero_grad()
         (value_loss * self.config["value_loss_coef"]).backward()
@@ -162,16 +162,12 @@ class MAPPO_Trainer():
 
         return value_loss, critic_grad_norm, policy_loss, dist_entropy, actor_grad_norm, imp_weights
 
-
     def train(self, buffer, logger):
         advantages = buffer.returns[:-1] - self.value_normalizer.denormalize(buffer.value_preds[:-1])
         advantages_copy = advantages.clone()
-        # advantages_copy[buffer.active_masks[:-1] == 0.0] = torch.nan
         mean_advantages = torch.mean(advantages_copy)
-        # std_advantages = torch.std(advantages_copy)
         std_advantages = torch.std(advantages_copy)
         advantages = (advantages - mean_advantages) / (std_advantages + 1e-5)
-
 
         for _ in range(self.config["ppo_epoch"]):
             data_generator = buffer.feed_forward_generator(advantages, self.config["num_mini_batch"])
@@ -488,6 +484,7 @@ class Runner:
                 zeros = torch.zeros(eval_actions_collector[-1].shape[0], 1)
                 eval_actions_collector[-1]=torch.cat((eval_actions_collector[-1], zeros), dim=1)
 
+
             eval_obs, _, eval_rewards, eval_costs, eval_dones, _, _ = self.eval_envs.step(
                 eval_actions_collector
             )
@@ -553,6 +550,12 @@ def train(args, cfg_train):
         cfg_train["n_rollout_threads"] = env.num_envs
         cfg_train["n_eval_rollout_threads"] = env.num_envs
         eval_env = env
+    elif args.task in multi_agent_goal_tasks:
+        env = make_ma_multi_goal_env(task=args.task, seed=args.seed, cfg_train=cfg_train)
+        cfg_eval = copy.deepcopy(cfg_train)
+        cfg_eval["seed"] = args.seed + 10000
+        cfg_eval["n_rollout_threads"] = cfg_eval["n_eval_rollout_threads"]
+        eval_env = make_ma_multi_goal_env(task=args.task, seed=args.seed + 10000, cfg_train=cfg_eval)
     else: 
         raise NotImplementedError
     

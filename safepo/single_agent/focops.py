@@ -42,6 +42,7 @@ from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 from safepo.utils.config import single_agent_args, isaac_gym_map, parse_sim_params
 
+
 default_cfg = {
     'hidden_sizes': [64, 64],
     'gamma': 0.99,
@@ -61,6 +62,7 @@ isaac_gym_specific_cfg = {
     'use_value_coefficient': True,
     'learning_iters': 8,
     'max_grad_norm': 1.0,
+    'use_critic_norm': False,
 }
 
 def main(args, cfg_env=None):
@@ -91,8 +93,9 @@ def main(args, cfg_env=None):
 
     # set training steps
     steps_per_epoch = config.get("steps_per_epoch", args.steps_per_epoch)
+    total_steps = config.get("total_steps", args.total_steps)
     local_steps_per_epoch = steps_per_epoch // args.num_envs
-    epochs = args.total_steps // steps_per_epoch
+    epochs = total_steps // steps_per_epoch
     # create the actor-critic module
     policy = ActorVCritic(
         obs_dim=obs_space.shape[0],
@@ -312,10 +315,11 @@ def main(args, cfg_env=None):
                 loss_r = nn.functional.mse_loss(policy.reward_critic(obs_b), target_value_r_b)
                 cost_critic_optimizer.zero_grad()
                 loss_c = nn.functional.mse_loss(policy.cost_critic(obs_b), target_value_c_b)
-                for param in policy.reward_critic.parameters():
-                    loss_r += param.pow(2).sum() * 0.001
-                for param in policy.cost_critic.parameters():
-                    loss_c += param.pow(2).sum() * 0.001
+                if config.get("use_critic_norm", True):
+                    for param in policy.reward_critic.parameters():
+                        loss_r += param.pow(2).sum() * 0.001
+                    for param in policy.cost_critic.parameters():
+                        loss_c += param.pow(2).sum() * 0.001
 
                 old_distribution_b = Normal(loc=old_mean_b, scale=old_std_b)
                 distribution = policy.actor(obs_b)
@@ -326,7 +330,8 @@ def main(args, cfg_env=None):
                 ).sum(-1, keepdim=True)
                 loss_pi = (temp_kl - (1 / 1.5) * ratio * adv_b) * (
                     temp_kl.detach() <= 0.02
-                ).type(torch.float32).mean()
+                ).type(torch.float32)
+                loss_pi = loss_pi.mean()
                 actor_optimizer.zero_grad()
                 total_loss = loss_pi + 2*loss_r + loss_c \
                     if config.get("use_value_coefficient", False) \

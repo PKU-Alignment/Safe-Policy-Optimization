@@ -51,7 +51,7 @@ def parse_args():
         "--start-seed", type=int, default=0, help="the number of the starting seed"
     )
     parser.add_argument(
-        "--workers", type=int, default=16, help="the number of workers to run benchmark experimenets",
+        "--workers", type=int, default=8, help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
         "--experiment", type=str, default="benchmark_new_8_24", help="name of the experiment"
