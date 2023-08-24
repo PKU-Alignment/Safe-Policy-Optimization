@@ -108,6 +108,40 @@ For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alig
       <td>HalfCheetah, Hopper, Swimmer, Walker2d, Ant, Humanoid</td>
       <td>SafetyAntVelocity-v1</td>
     </tr>
+      <tr>
+      <td rowspan="2">Safe Multi-Agent</td>
+      <td>MultiGoal[012]</td>
+      <td>Multi-Point, Multi-Ant</td>
+      <td>SafetyAntMultiGoal1-v0</td>
+    </tr>
+    <tr>
+      <td>Multi-Agent Velocity</td>
+      <td>6x1HalfCheetah, 2x3HalfCheetah, 3x1Hopper, 2x1Swimmer, 2x3Walker2d, 2x4Ant, 4x2Ant, 9|8Humanoid</td>
+      <td>Safety2x4AntVelocity-v0</td>
+    </tr>
+    <tr>
+      <td rowspan="6">Safe Isaac Gym</td>
+      <td>FreightFrankaCloseDrawer</td>
+      <td rowspan="2">FreightFranka</td>
+      <td rowspan="2">FreightFrankaCloseDrawer</td>
+    </tr>
+    <tr>
+      <td>FreightFrankaPickAndPlace</td>
+    </tr>
+    <tr>
+      <td>ShadowHandCatchOver2Underarm_Safe_finger</td>
+      <td rowspan="4">ShadowHands</td>
+      <td rowspan="4">ShadowHandCatchOver2Underarm_Safe_finger</td>
+    </tr>
+    <tr>
+      <td>ShadowHandCatchOver2Underarm_Safe_joint</td>
+    </tr>
+    <tr>
+      <td>ShadowHandOver_Safe_finger</td>
+    </tr>
+    <tr>
+      <td>ShadowHandOver_Safe_joint</td>
+    </tr>
   </tbody>
 </table>
 
