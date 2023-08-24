@@ -70,9 +70,9 @@ class Actor(nn.Module):
         action_distribution = actor(observation)
     """
 
-    def __init__(self, obs_dim: int, act_dim: int):
+    def __init__(self, obs_dim: int, act_dim: int, hidden_sizes: list = [64, 64]):
         super().__init__()
-        self.mean = build_mlp_network([obs_dim, 256, 256, act_dim])
+        self.mean = build_mlp_network([obs_dim]+hidden_sizes+[act_dim])
         self.log_std = nn.Parameter(torch.zeros(act_dim), requires_grad=True)
 
     def forward(self, obs: torch.Tensor):
@@ -100,9 +100,9 @@ class VCritic(nn.Module):
         value_estimate = critic(observation)
     """
 
-    def __init__(self, obs_dim):
+    def __init__(self, obs_dim, hidden_sizes: list = [64, 64]):
         super().__init__()
-        self.critic = build_mlp_network([obs_dim, 256, 256, 1])
+        self.critic = build_mlp_network([obs_dim]+hidden_sizes+[1])
 
     def forward(self, obs):
         return torch.squeeze(self.critic(obs), -1)
@@ -128,11 +128,11 @@ class ActorVCritic(nn.Module):
         value_estimate = actor_critic.get_value(observation)
     """
 
-    def __init__(self, obs_dim, act_dim):
+    def __init__(self, obs_dim, act_dim, hidden_sizes: list = [64, 64]):
         super().__init__()
-        self.reward_critic = VCritic(obs_dim)
-        self.cost_critic = VCritic(obs_dim)
-        self.actor = Actor(obs_dim, act_dim)
+        self.reward_critic = VCritic(obs_dim, hidden_sizes)
+        self.cost_critic = VCritic(obs_dim, hidden_sizes)
+        self.actor = Actor(obs_dim, act_dim, hidden_sizes)
 
     def get_value(self, obs):
         """

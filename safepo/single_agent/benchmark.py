@@ -54,7 +54,7 @@ def parse_args():
         "--workers", type=int, default=1, help="the number of workers to run benchmark experimenets",
     )
     parser.add_argument(
-        "--experiment", type=str, default="benchmark_doggo", help="name of the experiment"
+        "--experiment", type=str, default="benchmark", help="name of the experiment"
     )
     parser.add_argument(
         "--total-steps", type=int, default=10000000, help="total number of steps"

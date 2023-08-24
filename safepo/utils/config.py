@@ -238,7 +238,7 @@ def multi_agent_args(algo):
             args.agent_conf = multi_agent_velocity_map[args.task]["agent_conf"]
             args.scenario = multi_agent_velocity_map[args.task]["scenario"]
         elif args.task in multi_agent_goal_tasks:
-            cfg_train.update(cfg_train.get("magoal"))
+            cfg_train.update(cfg_train.get("mamujoco"))
 
     cfg_train["use_eval"] = args.use_eval
     cfg_train["safety_bound"]=args.safety_bound
