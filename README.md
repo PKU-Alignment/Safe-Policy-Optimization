@@ -152,8 +152,8 @@ For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alig
 - **❗️As Safe MultiGoal and Safe Isaac Gym tasks have not been uploaded in PyPI due to too large package size, please install [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) manually to run those two tasks, by using following commands:**
 
 ```bash
-conda create -n safe python=3.8
-conda activate safe
+conda create -n safepo python=3.8
+conda activate safepo
 wget https://github.com/PKU-Alignment/safety-gymnasium/archive/refs/heads/main.zip
 unzip main.zip
 cd safety-gymnasium-main
@@ -179,8 +179,8 @@ To use SafePO-Baselines, you need to install environments. Please refer to [Safe
 ## Conda-Environment
 
 ```bash
-conda create -n safe python=3.8
-conda activate safe
+conda create -n safepo python=3.8
+conda activate safepo
 # because the cuda version, we recommend you install pytorch manual.
 pip install -e .
 ```
@@ -205,14 +205,14 @@ conda activate safepo
 make simple-benchmark
 ```
 
-These commands will run all algorithms in sampled environments to get
+The above commands will run all algorithms in sampled environments to get
 a quick overview of the performance of the algorithms.
 
 **Please notice that these commands would reinstall Safety-Gymnasium from PyPI.
-To run Safe Isaac Gym and Safe Multi Goal, please reinstall it manully from source by:**
+To run Safe Isaac Gym and Safe MultiGoal, please reinstall it manully from source by:**
 
 ```bash
-conda activate safe
+conda activate safepo
 wget https://github.com/PKU-Alignment/safety-gymnasium/archive/refs/heads/main.zip
 unzip main.zip
 cd safety-gymnasium-main
