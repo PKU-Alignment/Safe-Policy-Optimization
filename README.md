@@ -35,7 +35,6 @@ Firstly, each algorithm is implemented strictly according to the original paper 
 
 - [Overview of Algorithms](#overview-of-algorithms)
 - [Supported Environments: Safety-Gymnasium](#supported-environments-safety-gymnasium)
-  - [Isaac Gym-based Environments](#isaac-gym-based-environments)
   - [Selected Tasks](#selected-tasks)
 - [Pre-requisites](#pre-requisites)
 - [Conda-Environment](#conda-environment)
@@ -153,6 +152,8 @@ For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alig
 - **❗️As Safe MultiGoal and Safe Isaac Gym tasks have not been uploaded in PyPI due to too large package size, please install [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) manually to run those two tasks, by using following commands:**
 
 ```bash
+conda create -n safe python=3.8
+conda activate safe
 wget https://github.com/PKU-Alignment/safety-gymnasium/archive/refs/heads/main.zip
 unzip main.zip
 cd safety-gymnasium-main
@@ -188,7 +189,7 @@ pip install -e .
 
 ### Efficient Commands
 
-To verify the performance of SafePO, you can run the following one line:
+To verify the performance of SafePO, you can run the following:
 
 ```bash
 conda create -n safepo python=3.8
@@ -204,8 +205,19 @@ conda activate safepo
 make simple-benchmark
 ```
 
-This command will run all algorithms in sampled environments to get
+These commands will run all algorithms in sampled environments to get
 a quick overview of the performance of the algorithms.
+
+**Please notice that these commands would reinstall Safety-Gymnasium from PyPI.
+To run Safe Isaac Gym and Safe Multi Goal, please reinstall it manully from source by:**
+
+```bash
+conda activate safe
+wget https://github.com/PKU-Alignment/safety-gymnasium/archive/refs/heads/main.zip
+unzip main.zip
+cd safety-gymnasium-main
+pip install -e .
+```
 
 ### Single-Agent
 
@@ -216,14 +228,14 @@ cd safepo/single_agent
 python ppo_lag.py --task SafetyPointGoal1-v0 --seed 0
 ```
 
-To run a benchmark parallelly, for example, you can use the following command to run `PPO-Lag`, `TRPO-Lag` in `SafetyAntVelocity-v1`, `SafetyHalfCheetahVelocity-v1`: 
+To run a benchmark parallelly, for example, you can use the following commands to run `PPO-Lag`, `TRPO-Lag` in `SafetyAntVelocity-v1`, `SafetyHalfCheetahVelocity-v1`: 
 
 ```bash
 cd safepo/single_agent
 python benchmark.py --tasks SafetyAntVelocity-v1 SafetyHalfCheetahVelocity-v1 --algo ppo_lag trpo_lag --workers 2
 ```
 
-The command above will run two processes in parallel, each process will run one algorithm in one environment. The results will be saved in `./runs/`.
+Commands above will run two processes in parallel, each process will run one algorithm in one environment. The results will be saved in `./runs/`.
 
 ### Multi-Agent
 
