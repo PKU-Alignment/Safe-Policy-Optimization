@@ -149,12 +149,15 @@ For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alig
 - **Safe Navigation** tasks support single-agent algorithms.
 - **Safe MultiGoal** tasks support multi-agent algorithms.
 - **Safe Isaac Gym** tasks do not support evaluation after training yet.
+- **As Isaac Gym is not holding in PyPI, you should install it manually, then ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` directory, like `joint_monkey.py`.**
+- **❗️As Safe MultiGoal and Safe Isaac Gym tasks have not been uploaded in PyPI due to too large package size, please install [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) manually to run those two tasks, by using following commands:**
 
-
-### Isaac Gym-based Environments
-
-**As Isaac Gym is not holding in PyPI, you should install it manually, then clone [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium) instead of installing from PyPI.
-Ensure that Isaac Gym works on your system by running one of the examples from the `python/examples` directory, like `joint_monkey.py`.**
+```bash
+wget https://github.com/PKU-Alignment/safety-gymnasium/archive/refs/heads/main.zip
+unzip main.zip
+cd safety-gymnasium-main
+pip install -e .
+```
 
 ### Selected Tasks
 
