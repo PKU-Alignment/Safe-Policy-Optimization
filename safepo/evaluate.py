@@ -137,7 +137,7 @@ def single_runs_eval(eval_dir, eval_episodes):
     config_path = eval_dir + '/config.json'
     config = json.load(open(config_path, 'r'))
     env = config['task'] if 'task' in config.keys() else config['env_name']
-    if env in multi_agent_velocity_map.keys():
+    if env in multi_agent_velocity_map.keys() or env in multi_agent_goal_tasks:
         reward, cost = eval_multi_agent(eval_dir, eval_episodes)
     else:
         reward, cost = eval_single_agent(eval_dir, eval_episodes)

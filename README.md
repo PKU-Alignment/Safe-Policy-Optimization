@@ -35,7 +35,6 @@ Firstly, each algorithm is implemented strictly according to the original paper 
 
 - [Overview of Algorithms](#overview-of-algorithms)
 - [Supported Environments: Safety-Gymnasium](#supported-environments-safety-gymnasium)
-  - [Gymnasium-based Environments](#gymnasium-based-environments)
   - [Isaac Gym-based Environments](#isaac-gym-based-environments)
   - [Selected Tasks](#selected-tasks)
 - [Pre-requisites](#pre-requisites)
@@ -75,7 +74,6 @@ Here we provide a table of Safe RL algorithms that the benchmark includes.
 
 For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alignment/safety-gymnasium).
 
-### Gymnasium-based Environments
 
 <table border="1">
   <thead>
@@ -145,7 +143,12 @@ For more details, please refer to [Safety-Gymnasium](https://github.com/PKU-Alig
   </tbody>
 </table>
 
-**note**: Safe velocity tasks support both single-agent and multi-agent algorithms, while safe navigation tasks only support single-agent algorithms currently.
+**note**: 
+
+- **Safe Velocity** and **Safe Isaac Gym** tasks support both single-agent and multi-agent algorithms.
+- **Safe Navigation** tasks support single-agent algorithms.
+- **Safe MultiGoal** tasks support multi-agent algorithms.
+- **Safe Isaac Gym** tasks do not support evaluation after training yet.
 
 
 ### Isaac Gym-based Environments
