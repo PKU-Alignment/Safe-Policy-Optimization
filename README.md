@@ -13,7 +13,7 @@
 
 **What's New**: 
 
-- Feel free to open an [issue](https://github.com/PKU-Alignment/Safe-Policy-Optimization/issues) if you encounter any problems in Mac or Windows.
+- Feel free to open an [issue](https://github.com/PKU-Alignment/Safe-Policy-Optimization/issues) if you encounter any problem in Mac or Windows.
 - We have release [Documentation](https://safe-policy-optimization.readthedocs.io).
 - The **benchmark results** of SafePO can be viewed at [Wandb Report](https://safe-policy-optimization.readthedocs.io/en/latest/algorithms/general.html).
 
@@ -274,7 +274,7 @@ python evaluate.py --benchmark-dir ./runs/benchmark
 
 ## Machine Configuration
 
-We test all algorithms and experiments on **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**. All of our experiments are run on Linux platform. If you encounter any problems in Mac or Windows, please feel free to open an issue.
+We test all algorithms and experiments on **CPU: AMD Ryzen Threadripper PRO 3975WX 32-Cores** and **GPU: NVIDIA GeForce RTX 3090, Driver Version: 495.44**. All of our experiments are run on Linux platform. If you encounter any problem in Mac or Windows, please feel free to open an [issue](https://github.com/PKU-Alignment/Safe-Policy-Optimization/issues).
 
 ## Ethical and Responsible Use
 
