@@ -11,7 +11,7 @@ To run the algorithms with default configuration, you need to specify the enviro
 .. code-block:: bash
 
     cd safepo/single_agent
-    python ppo_lag.py   task SafetyPointGoal1-v0   experiment ppo_lag_exp
+    python ppo_lag.py   --task SafetyPointGoal1-v0   --experiment ppo_lag_exp
 
 Then you can check the results in the ``runs/ppo_lag_exp`` folder.
 
@@ -23,7 +23,7 @@ The multi-agent algorithms running is similar to the single-agent algorithms. Fo
 .. code-block:: bash
 
     cd safepo/multi_agent
-    python mappolag.py   task Safety2x4AntVelocity-v0   experiment mappo_lag_exp
+    python mappolag.py  --task Safety2x4AntVelocity-v0  --experiment mappo_lag_exp
 
 Then you can check the results in the ``runs/mappo_lag_exp`` folder.
 
