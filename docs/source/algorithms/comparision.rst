@@ -13,21 +13,7 @@ We have compared the following algorithms:
 - ``CPO``: `OpenAI Baselines: Safety Starter Agents <https://github.com/openai/safety-starter-agents>`_, `RL Safety Algorithms <https://github.com/SvenGronauer/RL-Safety-Algorithms>`_
 - ``FOCOPS``: `Original Implementation <https://github.com/ymzhang01/focops>`_
 
-We compared those algorithms in 12 tasks from `Safety-Gymnasium <https://github.com/PKU-Alignment/safety-gymnasium>`_,
-they are:
-
-- ``SafetyPointButton1-v0``
-- ``SafetyPointCircle1-v0``
-- ``SafetyPointGoal1-v0``
-- ``SafetyCarButton1-v0``
-- ``SafetyCarGoal1-v0``
-- ``SafetyCarPush1-v0``
-- ``SafetyAntVelocity-v1``
-- ``SafetyHalfCheetahVelocity-v1``
-- ``SafetyHopperVelocity-v1``
-- ``SafetyHumanoidVelocity-v1``
-- ``SafetyWalker2dVelocity-v1``
-- ``SafetySwimmerVelocity-v1``
+We compared those algorithms in tasks from `Safety-Gymnasium <https://github.com/PKU-Alignment/safety-gymnasium>`_,
 
 .. warning::
 
