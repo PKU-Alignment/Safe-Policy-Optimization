@@ -24,7 +24,7 @@
 </div>
 
 **Correctness.** For a benchmark, it is critical to ensure its correctness and reliability.
-%To achieve this goal, we examine the implementation of SafePO carefully.
+To achieve this goal, we examine the implementation of SafePO carefully.
 Firstly, each algorithm is implemented strictly according to the original paper (e.g., ensuring consistency with the gradient flow of the original paper, etc). Secondly, for algorithms with a commonly acknowledged open-source code base, we compare our implementation with those line by line, in order to double-check the correctness. Finally, we compare SafePO with existing benchmarks (e.g., [Safety-Starter-Agents](https://github.com/openai/safety-starter-agents) and [RL-Safety-Algorithms](https://github.com/SvenGronauer/RL-Safety-Algorithms)) outperforms other existing implementations.
 
 **Extensibility.** SafePO enjoys high extensibility thanks to its architecture. New algorithms can be integrated to SafePO by inheriting from base algorithms and only implementing their unique features. For example, we integrate PPO by inheriting from policy gradient and only adding the clip ratio variable and rewriting the function that computes the loss of policy. In a similar way, algorithms can be easily added to SafePO.
@@ -240,7 +240,7 @@ Commands above will run two processes in parallel, each process will run one alg
 
 ### Multi-Agent
 
-We also provide a safe MARL algorithm benchmark on the challenging tasks of Safety-Gymnasium  [Safe Multi-Agent Velocity](https://www.safety-gymnasium.com/en/latest/environments/safe_multi_agent.html) and [Safe Isaac Gym](https://www.safety-gymnasium.com/en/latest/environments/safe_isaac_gym.html) tasks. HAPPO, MACPO, MAPPO-Lag and MAPPO have already been implemented.
+We also provide a safe MARL algorithm benchmark on the challenging tasks of Safety-Gymnasium  [Safe Multi-Agent Velocity](https://www.safety-gymnasium.com/en/latest/environments/safe_multi_agent.html), [Safe Isaac Gym](https://www.safety-gymnasium.com/en/latest/environments/safe_isaac_gym.html) and [Safe MultiGoal](https://www.safety-gymnasium.com/en/latest/environments/safe_multi_agent/multi_goal.html) tasks. HAPPO, MACPO, MAPPO-Lag and MAPPO have already been implemented.
 
 To train a multi-agent algorithm:
 
@@ -249,7 +249,7 @@ cd safepo/multi_agent
 python macpo.py --task Safety2x4AntVelocity-v0 --experiment benchmark
 ```
 
-You can also train on isaac-gym based environment if you have installed [Isaac Gym](https://developer.nvidia.com/isaac-gym).
+You can also train on Isaac Gym based environment if you have installed [Isaac Gym](https://developer.nvidia.com/isaac-gym).
 
 ```bash
 cd safepo/multi_agent
