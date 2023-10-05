@@ -40,6 +40,9 @@ from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 from safepo.utils.config import single_agent_args, isaac_gym_map, parse_sim_params
 
+STEP_FRACTION=0.8
+PCPO_SEARCHING_STEPS=200
+CONJUGATE_GRADIENT_ITERS=15
 
 default_cfg = {
     'hidden_sizes': [64, 64],
@@ -362,7 +365,7 @@ def main(args, cfg_env=None):
         loss_pi_r.backward()
 
         grads = -get_flat_gradients_from(policy.actor)
-        x = conjugate_gradients(fvp, policy, fvp_obs, grads, 15)
+        x = conjugate_gradients(fvp, policy, fvp_obs, grads, CONJUGATE_GRADIENT_ITERS)
         assert torch.isfinite(x).all(), "x is not finite"
         xHx = torch.dot(x, fvp(x, policy, fvp_obs))
         H_inv_g = fvp(x, policy, fvp_obs)
@@ -381,7 +384,7 @@ def main(args, cfg_env=None):
         b_grads = get_flat_gradients_from(policy.actor)
         ep_costs = logger.get_stats("Metrics/EpCost") - args.cost_limit
 
-        p = conjugate_gradients(fvp, policy, fvp_obs, b_grads, 15)
+        p = conjugate_gradients(fvp, policy, fvp_obs, b_grads, CONJUGATE_GRADIENT_ITERS)
         q = xHx
         r = grads.dot(p)
         s = b_grads.dot(p)
@@ -401,7 +404,7 @@ def main(args, cfg_env=None):
         expected_reward_improve = grads.dot(step_direction)
 
         kl = torch.zeros(1)
-        for step in range(200):
+        for step in range(PCPO_SEARCHING_STEPS):
             new_theta = theta_old + step_frac * step_direction
             set_param_values_to_model(policy.actor, new_theta)
             acceptance_step = step + 1
@@ -413,7 +416,7 @@ def main(args, cfg_env=None):
                     ratio = torch.exp(log_prob - data["log_prob"])
                     loss_reward = -(ratio * data["adv_r"]).mean()
                 except ValueError:
-                    step_frac *= 0.8
+                    step_frac *= STEP_FRACTION
                     continue
                 temp_distribution = policy.actor(data["obs"])
                 log_prob = temp_distribution.log_prob(data["act"]).sum(dim=-1)
@@ -443,7 +446,7 @@ def main(args, cfg_env=None):
             else:
                 logger.log(f"Accept step at i={step + 1}")
                 break
-            step_frac *= 0.8
+            step_frac *= STEP_FRACTION
         else:
             logger.log("INFO: no suitable step found...")
             step_direction = torch.zeros_like(step_direction)

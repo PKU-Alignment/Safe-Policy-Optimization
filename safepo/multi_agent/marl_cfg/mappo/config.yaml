@@ -3,13 +3,10 @@ algorithm_name: mappo
 experiment_name: check
 seed: 0
 run_dir: ./runs
-use_centralized_V: True
-use_obs_instead_of_state: False
 num_env_steps: 100000000
 episode_length: 8
 n_rollout_threads: 80
 n_eval_rollout_threads: 1
-use_linear_lr_decay: False
 hidden_size: 512
 use_render: False
 recurrent_N: 1
@@ -28,11 +25,11 @@ use_popart: True
 use_valuenorm: False
 use_proper_time_limits: False
 
-kl_threshold: 0.016
-ls_step: 10
+target_kl: 0.016
+searching_steps: 10
 accept_ratio: 0.5
 clip_param: 0.2
-ppo_epoch: 5
+learning_iters: 5
 num_mini_batch: 1
 data_chunk_length: 
 value_loss_coef: 1
