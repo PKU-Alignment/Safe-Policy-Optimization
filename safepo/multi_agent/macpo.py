@@ -254,11 +254,11 @@ class MACPO_Trainer():
 
         g_step_dir = self.conjugate_gradient(
             self.policy.actor, obs_batch, rnn_states_batch, actions_batch, masks_batch,\
-            available_actions_batch, active_masks_batch, reward_loss_grad.data, nsteps=self.config["conjugate_gradient_steps"]
+            available_actions_batch, active_masks_batch, reward_loss_grad.data, nsteps=self.config["conjugate_gradient_iters"]
         )  
         b_step_dir = self.conjugate_gradient(
             self.policy.actor, obs_batch, rnn_states_batch, actions_batch, masks_batch,\
-            available_actions_batch, active_masks_batch, B_cost_loss_grad.data, nsteps=self.config["conjugate_gradient_steps"]
+            available_actions_batch, active_masks_batch, B_cost_loss_grad.data, nsteps=self.config["conjugate_gradient_iters"]
         )  
 
         q_coef = (reward_loss_grad * g_step_dir).sum(0, keepdim=True)  
