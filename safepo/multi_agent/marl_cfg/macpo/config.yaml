@@ -34,6 +34,7 @@ use_proper_time_limits: False
 
 target_kl: 0.016
 searching_steps: 10
+conjugate_gradient_steps: 10
 accept_ratio: 0.5
 clip_param: 0.2
 learning_iters: 5
@@ -78,5 +79,5 @@ mamujoco:
   gamma: 0.99
   safety_gamma: 0.2
   target_kl: 0.01
-  learning_iters: 15 # Conjugate Gradient Iterations
+  learning_iters: 15 # Number of SGD Iterations
   entropy_coef: 0.01
