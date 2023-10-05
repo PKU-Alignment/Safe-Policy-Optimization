@@ -231,7 +231,7 @@ class MACPO_Trainer():
         self.policy.cost_optimizer.step()
 
 
-        rescale_constraint_val = (aver_episode_costs.mean() - self.config["safety_bound"]) * (1 - self.config["gamma"])
+        rescale_constraint_val = (aver_episode_costs.mean() - self.config["cost_limit"]) * (1 - self.config["gamma"])
 
         if rescale_constraint_val == 0:
             rescale_constraint_val = 1e-8
@@ -265,7 +265,7 @@ class MACPO_Trainer():
         r_coef = (reward_loss_grad * b_step_dir).sum(0, keepdim=True)  
         s_coef = (cost_loss_grad * b_step_dir).sum(0, keepdim=True)  
 
-        fraction = self.config["line_search_fraction"] 
+        fraction = self.config["step_fraction"] 
         loss_improve = 0
 
         B_cost_loss_grad_dot = torch.dot(B_cost_loss_grad, B_cost_loss_grad)
@@ -285,7 +285,7 @@ class MACPO_Trainer():
                 s_coef = 1e-8
             positive_Cauchy_value = (
                         q_coef - (r_coef ** 2) / (1e-8 + s_coef))  
-            whether_recover_policy_value = 2 * self.config["kl_threshold"] - (
+            whether_recover_policy_value = 2 * self.config["target_kl"] - (
                     rescale_constraint_val ** 2) / (
                                                        1e-8 + s_coef)
             if rescale_constraint_val < 0 and whether_recover_policy_value < 0:
@@ -301,24 +301,24 @@ class MACPO_Trainer():
 
         if optim_case in [3, 4]:
             lam = torch.sqrt(
-                (q_coef / (2 * self.config["kl_threshold"])))
+                (q_coef / (2 * self.config["target_kl"])))
             nu = torch.tensor(0)  # v_coef = 0
         elif optim_case in [1, 2]:
             LA, LB = [0, r_coef / rescale_constraint_val], [r_coef / rescale_constraint_val, np.inf]
             LA, LB = (LA, LB) if rescale_constraint_val < 0 else (LB, LA)
             proj = lambda x, L: max(L[0], min(L[1], x))
             lam_a = proj(torch.sqrt(positive_Cauchy_value / whether_recover_policy_value), LA)
-            lam_b = proj(torch.sqrt(q_coef / (torch.tensor(2 * self.config["kl_threshold"]))), LB)
+            lam_b = proj(torch.sqrt(q_coef / (torch.tensor(2 * self.config["target_kl"]))), LB)
 
             f_a = lambda lam: -0.5 * (positive_Cauchy_value / (
                         1e-8 + lam) + whether_recover_policy_value * lam) - r_coef * rescale_constraint_val / (
                                           1e-8 + s_coef)
-            f_b = lambda lam: -0.5 * (q_coef / (1e-8 + lam) + 2 * self.config["kl_threshold"] * lam)
+            f_b = lambda lam: -0.5 * (q_coef / (1e-8 + lam) + 2 * self.config["target_kl"] * lam)
             lam = lam_a if f_a(lam_a) >= f_b(lam_b) else lam_b
             nu = max(0, lam * rescale_constraint_val - r_coef) / (1e-8 + s_coef)
         else:
             lam = torch.tensor(0)
-            nu = torch.sqrt(torch.tensor(2 * self.config["kl_threshold"]) / (1e-8 + s_coef))
+            nu = torch.sqrt(torch.tensor(2 * self.config["target_kl"]) / (1e-8 + s_coef))
 
         x_a = (1. / (lam + 1e-8)) * (g_step_dir + nu * b_step_dir)
         x_b = (nu * b_step_dir)
@@ -339,7 +339,7 @@ class MACPO_Trainer():
 
         flag = False
         fraction_coef = self.config["fraction_coef"]
-        for i in range(self.config["ls_step"]):
+        for i in range(self.config["searching_steps"]):
             x_norm = torch.norm(x)
             if x_norm > 0.5:
                 x = x * 0.5 / x_norm
@@ -367,7 +367,7 @@ class MACPO_Trainer():
                 available_actions_batch, active_masks_batch, new_actor=self.policy.actor, old_actor=old_actor
             ).mean()
 
-            if ((kl < self.config["kl_threshold"]) and (loss_improve < 0 if optim_case > 1 else True)
+            if ((kl < self.config["target_kl"]) and (loss_improve < 0 if optim_case > 1 else True)
                     and (new_cost_loss.mean() - cost_loss.mean() <= max(-rescale_constraint_val, 0))):
                 flag = True
                 break

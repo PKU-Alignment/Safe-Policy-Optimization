@@ -42,6 +42,8 @@ from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 from safepo.utils.config import single_agent_args, isaac_gym_map, parse_sim_params
 
+FOCOPS_LAM=1.50
+FOCOPS_NU=2.00
 
 default_cfg = {
     'hidden_sizes': [64, 64],
@@ -131,6 +133,7 @@ def main(args, cfg_env=None):
         cost_limit=args.cost_limit,
         lagrangian_multiplier_init=args.lagrangian_multiplier_init,
         lagrangian_multiplier_lr=args.lagrangian_multiplier_lr,
+        lagrangian_upper_bound=FOCOPS_NU,
     )
 
     # set up the logger
@@ -328,8 +331,8 @@ def main(args, cfg_env=None):
                 temp_kl = torch.distributions.kl_divergence(
                     distribution, old_distribution_b
                 ).sum(-1, keepdim=True)
-                loss_pi = (temp_kl - (1 / 1.5) * ratio * adv_b) * (
-                    temp_kl.detach() <= 0.02
+                loss_pi = (temp_kl - (1 / FOCOPS_LAM) * ratio * adv_b) * (
+                    temp_kl.detach() <= dict_args['target_kl']
                 ).type(torch.float32)
                 loss_pi = loss_pi.mean()
                 actor_optimizer.zero_grad()

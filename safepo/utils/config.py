@@ -202,7 +202,7 @@ def multi_agent_args(algo):
         {"name": "--experiment", "type": str, "default": "Base", "help": "Experiment name"},
         {"name": "--seed", "type": int, "default":0, "help": "Random seed"},
         {"name": "--model-dir", "type": str, "default": "", "help": "Choose a model dir"},
-        {"name": "--safety-bound", "type": float, "default": 25.0, "help": "cost_lim"},
+        {"name": "--cost-limit", "type": float, "default": 25.0, "help": "cost_lim"},
         {"name": "--device", "type": str, "default": "cpu", "help": "The device to run the model on"},
         {"name": "--device-id", "type": int, "default": 0, "help": "The device id to run the model on"},
         {"name": "--write-terminal", "type": lambda x: bool(strtobool(x)), "default": True, "help": "Toggles terminal logging"},
@@ -241,7 +241,7 @@ def multi_agent_args(algo):
             cfg_train.update(cfg_train.get("mamujoco"))
 
     cfg_train["use_eval"] = args.use_eval
-    cfg_train["safety_bound"]=args.safety_bound
+    cfg_train["cost_limit"]=args.cost_limit
     cfg_train["algorithm_name"]=algo
     cfg_train["device"] = args.device + ":" + str(args.device_id)
 

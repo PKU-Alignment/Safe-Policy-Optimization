@@ -40,6 +40,7 @@ from safepo.common.logger import EpochLogger
 from safepo.common.model import ActorVCritic
 from safepo.utils.config import single_agent_args, isaac_gym_map, parse_sim_params
 
+CONJUGATE_GRADIENT_ITERS=15
 
 default_cfg = {
     'hidden_sizes': [64, 64],
@@ -367,7 +368,7 @@ def main(args, cfg_env=None):
         loss_pi.backward()
 
         grads = -get_flat_gradients_from(policy.actor)
-        x = conjugate_gradients(fvp, policy, fvp_obs, grads, 15)
+        x = conjugate_gradients(fvp, policy, fvp_obs, grads, CONJUGATE_GRADIENT_ITERS)
         assert torch.isfinite(x).all(), "x is not finite"
         xHx = torch.dot(x, fvp(x, policy, fvp_obs))
         assert xHx.item() >= 0, "xHx is negative"

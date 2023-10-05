@@ -177,7 +177,7 @@ class HAPPO_Trainer():
         std_advantages = torch.std(advantages_copy)
         advantages = (advantages - mean_advantages) / (std_advantages + 1e-5)
 
-        for _ in range(self.config["ppo_epoch"]):
+        for _ in range(self.config["learning_iters"]):
             data_generator = buffer.feed_forward_generator(advantages, self.config["num_mini_batch"])
 
             for sample in data_generator:

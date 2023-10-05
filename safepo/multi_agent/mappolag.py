@@ -177,7 +177,7 @@ class MAPPO_L_Trainer:
         actor_grad_norm = nn.utils.clip_grad_norm_(self.policy.actor.parameters(), self.config["max_grad_norm"])
         self.policy.actor_optimizer.step()
 
-        delta_lamda_lagr = -((aver_episode_costs.mean() - self.config["safety_bound"]) * (1 - self.config["gamma"]) + (imp_weights * cost_adv_targ)).mean().detach()
+        delta_lamda_lagr = -((aver_episode_costs.mean() - self.config["cost_limit"]) * (1 - self.config["gamma"]) + (imp_weights * cost_adv_targ)).mean().detach()
 
         R_Relu = torch.nn.ReLU()
         new_lamda_lagr = R_Relu(self.lamda_lagr - (delta_lamda_lagr * self.config["lagrangian_coef_rate"]))
@@ -213,7 +213,7 @@ class MAPPO_L_Trainer:
         std_cost_adv = torch.std(cost_adv_copy)
         cost_adv = (cost_adv - mean_cost_adv) / (std_cost_adv + 1e-8)
 
-        for _ in range(self.config["ppo_epoch"]):
+        for _ in range(self.config["learning_iters"]):
             data_generator = buffer.feed_forward_generator(advantages, self.config["num_mini_batch"], cost_adv=cost_adv)
 
             for sample in data_generator:
