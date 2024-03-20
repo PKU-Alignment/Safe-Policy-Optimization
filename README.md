@@ -11,6 +11,19 @@
 
 </div>
 
+## Citing Safe Policy Optimization
+
+If you find Safe Policy Optimization useful, please cite it in your publications.
+
+```bibtex
+@article{ji2023safety,
+  title={Safety-Gymnasium: A Unified Safe Reinforcement Learning Benchmark},
+  author={Ji, Jiaming and Zhang, Borong and Zhou, Jiayi and Pan, Xuehai and Huang, Weidong and Sun, Ruiyang and Geng, Yiran and Zhong, Yifan and Dai, Juntao and Yang, Yaodong},
+  journal={arXiv preprint arXiv:2310.12567},
+  year={2023}
+}
+```
+
 **What's New**: 
 
 - Feel free to open an [issue](https://github.com/PKU-Alignment/Safe-Policy-Optimization/issues) if you encounter any problem in Mac or Windows.
